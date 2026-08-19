@@ -26,6 +26,8 @@ export const PERMISSIONS = {
   // figures - the owner's margins are not counter-and-kitchen information.
   'ingredients.view': ['owner', 'manager', 'counter'],
   'ingredients.manage': ['owner', 'manager'],
+  // Counter staff receive deliveries and correct counts; that is the job.
+  'stock.record': ['owner', 'manager', 'counter'],
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Permission = keyof typeof PERMISSIONS;

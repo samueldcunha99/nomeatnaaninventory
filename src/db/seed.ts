@@ -20,7 +20,27 @@ import { SEED_INGREDIENTS, SEED_SUPPLIERS, unitCostMillipaisePerBase } from './s
 const TENANT_NAME = 'Nomeatnaan Cafe & Bakery';
 
 const ownerEmail = process.env.SEED_OWNER_EMAIL || 'owner@cafe.local';
-const ownerPassword = process.env.SEED_OWNER_PASSWORD || 'changeme-dev-only';
+
+/**
+ * A default password is a development convenience and nothing else. Outside
+ * development the seed refuses to run rather than creating an owner account whose
+ * password is published in this repository - that account has every permission there
+ * is, and "we'll change it after go-live" is how it stays "changeme-dev-only".
+ *
+ * NODE_ENV unset counts as not-development: the safe reading, since the server is the
+ * place least likely to have it set deliberately.
+ */
+const ownerPassword = (() => {
+  const supplied = process.env.SEED_OWNER_PASSWORD;
+  if (supplied) return supplied;
+  if (process.env.NODE_ENV === 'development') return 'changeme-dev-only';
+  throw new Error(
+    'SEED_OWNER_PASSWORD is required when NODE_ENV is not "development". ' +
+      'The seeded owner account has every permission in the system; it must not be ' +
+      'created with a password that is written down in the repository. ' +
+      'Set SEED_OWNER_PASSWORD in the environment and run the seed again.',
+  );
+})();
 
 await db.transaction(async (tx) => {
   const [existing] = await tx.select({ id: tenants.id }).from(tenants).where(eq(tenants.name, TENANT_NAME));
@@ -86,5 +106,5 @@ await db.transaction(async (tx) => {
 await sql.end();
 console.log(`seeded ${SEED_INGREDIENTS.length} ingredients, 3 suppliers, owner ${ownerEmail}`);
 if (!process.env.SEED_OWNER_PASSWORD) {
-  console.warn('WARNING: SEED_OWNER_PASSWORD was not set. Owner password is "changeme-dev-only".');
+  console.warn('WARNING: development seed - the owner password is "changeme-dev-only".');
 }

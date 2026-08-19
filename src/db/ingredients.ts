@@ -6,6 +6,7 @@
 import { and, eq, ilike, isNull, asc, sql as raw } from 'drizzle-orm';
 import { db } from './client.ts';
 import { ingredients, ingredientStock, auditLog } from './schema.ts';
+import { translating } from './errors.ts';
 import { assertPermission, type Actor } from '../lib/auth.ts';
 import type { UnitType } from '../lib/units.ts';
 
@@ -28,9 +29,8 @@ export class DuplicateIngredientError extends Error {
   }
 }
 
-function isUniqueViolation(err: unknown): boolean {
-  return typeof err === 'object' && err !== null && (err as { code?: string }).code === '23505';
-}
+/** The index the name collides on. Matched by name so nothing else gets mislabelled. */
+const NAME_CONSTRAINT = 'ingredients_tenant_name_uq';
 
 export type IngredientRow = {
   id: string;
@@ -112,8 +112,8 @@ export async function getIngredient(actor: Actor, id: string): Promise<Ingredien
 
 export async function createIngredient(actor: Actor, input: IngredientInput) {
   assertPermission(actor.role, 'ingredients.manage');
-  try {
-    return await db.transaction(async (tx) => {
+  const run = () =>
+    db.transaction(async (tx) => {
       const [row] = await tx
         .insert(ingredients)
         .values({ tenantId: actor.tenantId, ...input })
@@ -128,10 +128,10 @@ export async function createIngredient(actor: Actor, input: IngredientInput) {
       });
       return row;
     });
-  } catch (err) {
-    if (isUniqueViolation(err)) throw new DuplicateIngredientError(input.name);
-    throw err;
-  }
+
+  return translating(run, [
+    { constraint: NAME_CONSTRAINT, toError: () => new DuplicateIngredientError(input.name) },
+  ]);
 }
 
 /**
@@ -141,8 +141,8 @@ export async function createIngredient(actor: Actor, input: IngredientInput) {
  */
 export async function updateIngredient(actor: Actor, id: string, input: IngredientInput) {
   assertPermission(actor.role, 'ingredients.manage');
-  try {
-    return await db.transaction(async (tx) => {
+  const run = () =>
+    db.transaction(async (tx) => {
       const [before] = await tx
         .select()
         .from(ingredients)
@@ -166,10 +166,10 @@ export async function updateIngredient(actor: Actor, id: string, input: Ingredie
       });
       return after;
     });
-  } catch (err) {
-    if (isUniqueViolation(err)) throw new DuplicateIngredientError(input.name);
-    throw err;
-  }
+
+  return translating(run, [
+    { constraint: NAME_CONSTRAINT, toError: () => new DuplicateIngredientError(input.name) },
+  ]);
 }
 
 /**
