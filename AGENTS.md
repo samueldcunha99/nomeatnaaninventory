@@ -6,7 +6,7 @@ file records what we decided that the spec does not say, and why.
 Current state: **Month 1 complete (steps 1–7).** Schema, migrations, seed, unit conversion,
 weighted-average cost, auth, role enforcement, ingredient CRUD, stock receipts /
 adjustments / wastage, movement history and low-stock views are in and tested against live
-Postgres (86 tests). A **UI styling pass is in flight and incomplete** — 2 screens of 9.
+Postgres (86 tests). A **UI styling pass is in flight** — 3 screens of 9, Tailwind v4.
 Month 2 — deploy pipeline, then the costing engine — has not started and is gated.
 
 See [PROGRESS.md](PROGRESS.md) for state, history and open blockers, and
@@ -578,36 +578,65 @@ added:
 
 ### Contrast findings that constrain use
 
-- **`--fern` is a fill, not a text colour.** 3.63:1 on bone, below the 4.5:1 floor. Use
-  `--fern-ink` (`#3f6a53`, 5.53:1) for any text. The same applies to `--sky` and `--sage`:
-  both are light fills and neither can carry text on bone.
-- **The focus ring cannot be a single colour.** Bone and navy are 8.98:1 apart, so nothing
-  is simultaneously 3:1 from both. The ring is two-tone: `--focus` outline with a white
-  band filling the outline offset, which reads on a navy button and on the bone page alike.
+These are **palette constraints, not preferences.** They are measured, they are accepted,
+and they must not be "fixed" later by using the colour directly.
+
+#### `--color-fern` and `--color-sage` are FILLS. Neither may ever be text.
+
+| Token | On bone | Verdict |
+|---|---|---|
+| `--color-fern` `#59886f` | 3.63:1 | **Below the 4.5:1 floor. Fill only.** |
+| `--color-sage` `#becd9f` | 1.51:1 | **Nowhere near. Fill only.** |
+| `--color-sky` `#8bb7c7` | 1.94:1 | **Fill only.** |
+
+Use them as a background, a border, or a dot **with dark text beside or over them**. For
+green text use `--color-fern-ink` (`#3f6a53`, 5.53:1). The "in stock" badge is the pattern:
+`--color-ok-surface` fill, `--color-fern` hairline border, `--color-fern-ink` text — 5.50:1.
+
+If a future screen needs green status text, it uses `fern-ink`. It does not use `fern`.
+
+#### The focus ring is two-tone, and has to be
+
+Bone and navy are **8.98:1 apart**. A ring 3:1 from bone needs luminance ≤ 0.24; a ring 3:1
+from navy needs ≥ 0.28. No single colour satisfies both — it is arithmetically impossible,
+not a matter of picking harder.
+
+**What was chosen:** a 3px `--color-focus` (`#b3541e`, burnt orange) outline at 2px offset,
+with a 2px white `box-shadow` filling that offset gap. The orange reads against bone
+(4.47:1) and against the white band (5.00:1); the white band reads against navy (10.04:1).
+So the ring is visible on any surface in the palette.
+
+Burnt orange rather than a brand colour on purpose: focus must not be mistakable for a
+status or a brand accent, and it is the one place in the UI where standing out beats
+fitting in.
 
 ### Styling pass: where it stopped
 
-**2 screens of 9 are styled.** The pass was stopped deliberately after the reference
-implementation, so one screen could be agreed rather than nine reviewed.
+**3 screens of 9 are styled.** Stopped after the ingredients list, which is where the
+**table vocabulary** was designed — six of the remaining screens are tables, so that was a
+real decision rather than a mechanical pass.
 
 | Screen | State |
 |---|---|
 | `app/login/page.tsx` | ✅ styled — the reference implementation |
 | `app/page.tsx` (home) | ✅ styled — brandbar + nav cards |
-| `app/ingredients/*` (3 files + form) | ⬜ still inline `style={{…}}` |
+| `app/ingredients/page.tsx` | ✅ styled — the table reference |
+| `app/ingredients/new`, `[id]`, form | ⬜ still inline `style={{…}}` |
 | `app/stock/receipt/*`, `adjust/*` | ⬜ still inline `style={{…}}` |
 | `app/stock/history`, `app/stock/low` | ⬜ still inline `style={{…}}` |
 
-**⚠️ Unresolved: Tailwind is not installed.** PROJECT-SPEC § 3 names Tailwind in the stack,
-and the styling brief said to use it — but `package.json` has no Tailwind, no
-`postcss.config`, no `tailwind.config`, and the same brief said "no new dependencies".
-The two instructions conflict and the client has not yet chosen.
+**Tailwind v4 is installed and is the styling system.** Resolved after the reference
+screens: the spec named it, the rest of the client's work uses it, and Month 4's
+customer-facing screens have real design work where hand-rolled CSS starts costing.
 
-The work so far is **plain CSS with custom properties**, which satisfies every other
-constraint (tokens in one place, no hardcoded hex, zero new dependencies). If Tailwind is
-adopted later, only `app/globals.css` and the two styled screens need reworking — which is
-exactly why the pass stopped at one reference screen. **Do not install Tailwind without
-asking.**
+**There is no `tailwind.config.js`.** v4 is CSS-first: the theme *is* the `@theme` block in
+`app/globals.css`. Every token there is a real custom property **and** generates utilities —
+`--color-navy` gives `bg-navy`, `text-navy`, `border-navy` for free. So there is one
+definition, not a hex in a config plus a variable in a stylesheet drifting apart.
+
+Add a colour to `@theme` and nowhere else. `postcss.config.mjs` wires the plugin; that is
+the whole setup. No Tailwind plugins, no component library, no icon pack — icons are inline
+SVG, because two shapes do not justify a dependency.
 
 ### The class vocabulary so far
 
@@ -621,21 +650,38 @@ inventing per-screen classes:
 `.navgrid` / `.navcard` / `.navcard--write` / `.navcard__hint` ·
 `.section-title` / `.muted` / `.small`
 
-There is **no table class yet** — the three table screens are unstyled, so the table
-vocabulary is still to be designed. That is the next real decision in this pass.
+**The table pattern** (designed against the ingredients list, the hardest screen — search,
+filter, status column, badge, row action):
 
-### Outstanding UI fixes, requested and not yet done
+`.table-wrap` / `.table` / `.table .num` / `.col-secondary` ·
+`.badge` / `.badge--ok` / `.badge--low` / `.badge--out` / `.badge--muted` ·
+`.toolbar` / `.checkfield` / `.prose-note`
 
-1. **Ingredients list mixes units.** It shows quantity in base units (`20000 g`) but cost
-   per purchase unit (`₹515.00 / kg`). Show quantity in purchase units too (`20 kg`) using
-   the existing `milliBaseToPurchaseUnits()` helper — **no ad-hoc conversion in a
-   component.**
-2. **Stock receipt instruction text overflows** the right edge of the viewport. The `.page`
-   class fixes this (`width: min(100% - 2rem, …)`); the receipt page has not been converted
-   to it yet.
-3. **Tables must survive a narrow tablet viewport** without horizontal scroll on the columns
-   that matter.
+Four rules it encodes, each measured at 700px and 810px viewports:
 
+- **Rows are 56px** (`--spacing-row`), sized for a fingertip rather than a mouse pointer.
+  Row actions stay at the 44px floor inside them.
+- **Numeric columns are right-aligned AND `tabular-nums`.** Right alignment alone is not
+  enough: proportional digits still jitter column-wise and are harder to scan down a column.
+- **Badges never rely on colour alone.** Each is a glyph plus a word — "⚠ Low", "✓ In
+  stock" — so it survives greyscale, colour-blindness and a sun-washed tablet. Measured
+  contrast runs 4.84:1 to 7.12:1, all clearing the floor.
+- **Secondary columns fold below `md` rather than forcing a horizontal scroll.** Mark a
+  column `.col-secondary` when it is reference detail rather than decision data.
+  `.table-wrap` is the escape hatch, not the plan — at 700px the ingredients table
+  drops to five columns and still does not scroll sideways.
+### Requested UI fixes — all three done
+
+1. ✅ **Ingredients list unit mismatch.** It showed quantity in base units (`20000 g`) while
+   showing cost per purchase unit (`₹515.00 / kg`). Quantity now leads in purchase units
+   (`20 kg`) via `milliBaseToPurchaseUnits()`, with the base-unit figure kept as a
+   subordinate line because recipes are written in it. Both come from the shared helpers —
+   no conversion happens in the component.
+2. ✅ **Stock receipt instruction text overflowed the viewport.** The `<main>` had no width
+   constraint. It now uses `.page` (`width: min(100% - 2rem, 72rem)`) and the note uses
+   `.prose-note`, which caps the measure at 60ch rather than running edge to edge.
+3. ✅ **Tables survive a narrow tablet.** Verified at 700px and 810px: secondary columns fold,
+   five columns remain, and nothing scrolls sideways.
 ### Styling-pass rules
 
 - **No logic changes.** `src/db` and `src/lib` are off-limits during a styling pass. If a

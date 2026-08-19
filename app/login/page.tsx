@@ -16,7 +16,7 @@ export default function LoginPage() {
         <div className="brandbar__inner">
           {/* No logo asset was supplied, so the wordmark is set in Poppins for now. */}
           <span className="brandbar__name">NO MEAT NAAN</span>
-          <span className="small" style={{ opacity: 0.85 }}>
+          <span className="text-sm opacity-85">
             Management
           </span>
         </div>
@@ -24,7 +24,7 @@ export default function LoginPage() {
 
       <main className="page page--narrow">
         <h1>Sign in</h1>
-        <p className="muted small" style={{ marginTop: '-0.5rem' }}>
+        <p className="prose-note -mt-2">
           Staff access only.
         </p>
 

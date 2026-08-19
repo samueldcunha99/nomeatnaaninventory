@@ -27,7 +27,7 @@ Legend: ✅ done and verified · 🟡 in progress · ⬜ not started · 🚫 blo
 | 5 | Ingredient CRUD | ✅ |
 | 6 | Stock receipts, adjustments, wastage | ✅ |
 | 7 | Movement history + low-stock views | ✅ |
-| — | UI styling pass (post-Month-1) | 🚫 2 of 9 screens, blocked |
+| — | UI styling pass (post-Month-1) | 🟡 3 of 9 screens, unblocked |
 
 ### Month 2 — deploy pipeline, then the costing engine
 
@@ -59,7 +59,7 @@ by hand, and the deploy target is provisioned.**
 
 ## Open questions and blockers
 
-### 🚫 IN FLIGHT — UI styling pass, blocked on the Tailwind question
+### 🟡 IN FLIGHT — UI styling pass (Tailwind question resolved, see log)
 
 **2 screens of 9 styled. There is uncommitted work in the tree.** Stopped deliberately
 after the reference implementation so one screen could be agreed rather than nine reviewed.
@@ -524,3 +524,47 @@ header naming the sections that each record a real defect, plus the styling-pass
 class vocabulary. This file gained the styling blocker and the client-side gates.
 
 No code changed in this update.
+
+### 2026-08-19 — Tailwind v4 adopted; table vocabulary designed
+
+**Tailwind question resolved: install it.** Now was the cheap moment — two screens
+converted rather than nine reworked later. It is also in the spec, matches the rest of the
+client's work, and Month 4's customer-facing screens have real design work where
+hand-rolled CSS starts costing.
+
+**Tailwind v4, CSS-first.** There is no `tailwind.config.js`: the theme *is* the `@theme`
+block in `app/globals.css`. Every token is a real custom property **and** generates
+utilities, so `--color-navy` gives `bg-navy` / `text-navy` / `border-navy` from one
+definition — rather than a hex in a config drifting apart from a variable in a stylesheet.
+No plugins, no component library, no icon pack.
+
+**The table vocabulary was designed against the ingredients list**, deliberately — it is the
+hardest of the six table screens, carrying search, an include-inactive filter, a status
+column, a LOW badge and a row action. Everything else follows from it. Four rules, each
+measured at 700px and 810px rather than eyeballed:
+
+- 56px rows, sized for a fingertip; row actions hold the 44px floor inside them.
+- Numeric columns right-aligned **and** `tabular-nums` — right alignment alone still lets
+  proportional digits jitter, which makes a column harder to scan down.
+- Badges carry a glyph and a word, never colour alone. Contrast 4.84:1 to 7.12:1.
+- Secondary columns fold below `md` instead of forcing a horizontal scroll. At 700px the
+  ingredients table drops to five columns and still does not scroll sideways.
+
+**Palette constraints recorded** so nobody "fixes" them later: `--color-fern` (3.63:1),
+`--color-sage` (1.51:1) and `--color-sky` (1.94:1) are **fills only and may never be text**.
+Green text uses `--color-fern-ink` (5.53:1). The "in stock" badge is the pattern — fern as a
+hairline border and fill, fern-ink as the text.
+
+**Focus ring:** 3px `--color-focus` (#b3541e burnt orange) at 2px offset, with a 2px white
+band filling the gap. Bone and navy are 8.98:1 apart, so a single-colour ring 3:1 from both
+is arithmetically impossible — the two-tone ring reads on any surface in the palette.
+Burnt orange deliberately sits outside the brand palette: focus must not be mistakable for
+a status or an accent.
+
+All three requested UI fixes done: ingredients unit mismatch, receipt text overflow, and
+table behaviour on a narrow tablet.
+
+Six screens remain: ingredients new/edit/form, receipt form, adjust, history, low stock.
+They are now a mechanical pass against the vocabulary above.
+
+No logic changed. `src/db` and `src/lib` untouched. 86 tests, `next build` exits 0.

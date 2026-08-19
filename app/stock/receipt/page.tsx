@@ -12,12 +12,12 @@ export default async function ReceiptPage() {
   ]);
 
   return (
-    <main>
+    <main className="page">
       <p>
         <Link href="/">&larr; Home</Link>
       </p>
       <h1>Stock receipt</h1>
-      <p style={{ fontSize: 13, color: '#555' }}>
+      <p className="prose-note">
         Enter quantities in the unit you buy in, and what was actually paid for that line.
         The unit cost is worked out for you — check it against the delivery note before saving.
       </p>

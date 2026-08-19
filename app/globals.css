@@ -1,3 +1,5 @@
+@import 'tailwindcss';
+
 /*
  * Design tokens and internal-tier base styles.
  *
@@ -6,349 +8,378 @@
  * tap-target size beat aesthetics every time. Customer-facing screens (Month 4) get the
  * full brand treatment and do not share this file.
  *
- * Every colour in the app comes from here. No hardcoded hex in a component, ever - a
- * second source of colour is how a palette stops being a palette.
+ * Tailwind v4 has no tailwind.config.js. The theme IS this @theme block: every variable
+ * below is a real CSS custom property AND generates utilities, so `--color-navy` gives
+ * bg-navy / text-navy / border-navy for free. Add a colour here and nowhere else.
+ *
+ * Every hex literal in the codebase lives in this block. A second source of colour is how
+ * a palette stops being a palette.
  */
 
-:root {
-  /* ---- Brand palette, from the brand book ---------------------------------- */
-  --navy: #194373; /* primary: headers, buttons */
-  --bone: #f4f2ef; /* page background */
-  --mist: #cad9e0; /* borders, table stripes */
-  --sky: #8bb7c7; /* secondary accents */
-  --sage: #becd9f; /* subtle highlight */
-  --fern: #59886f; /* success, in stock */
+@theme {
+  /* ---- Brand palette, from the brand book -------------------------------- */
+  --color-navy: #194373; /* primary: headers, buttons */
+  --color-bone: #f4f2ef; /* page background */
+  --color-mist: #cad9e0; /* borders, table stripes */
+  --color-sky: #8bb7c7; /* secondary accents */
+  --color-sage: #becd9f; /* subtle highlight — FILL ONLY, see constraints */
+  --color-fern: #59886f; /* success, in stock — FILL ONLY, see constraints */
 
-  /* ---- State colours, added: the brand book has none ----------------------- */
+  /* ---- State colours, added: the brand book has none --------------------- */
   /*
    * The book is entirely cool blues and greens. Nothing in it can say "LOW STOCK" or
-   * "receipt refused". These two were chosen to sit alongside navy rather than shout
-   * over it - see AGENTS.md for the full reasoning and the measured contrast.
+   * "receipt refused". Chosen by measured contrast, not by eye — see AGENTS.md.
    */
-  --danger: #8c2f39; /* claret. 7.28:1 on bone */
-  --danger-surface: #f9edee; /* wash behind an error message */
-  --warn: #96591a; /* burnt amber. 5.02:1 on bone */
-  --warn-surface: #faf1e4;
+  --color-danger: #8c2f39; /* claret. 7.28:1 on bone */
+  --color-danger-surface: #f9edee;
+  --color-warn: #96591a; /* burnt amber. 5.02:1 on bone */
+  --color-warn-surface: #faf1e4;
 
-  /* ---- Derived text colours ------------------------------------------------ */
+  /* ---- Derived text colours ---------------------------------------------- */
   /*
-   * --fern is a FILL, not a text colour: 3.63:1 on bone, below the 4.5:1 floor.
-   * --fern-ink is the darkened variant for text. Same for any light brand colour.
+   * PALETTE CONSTRAINT: --color-fern is 3.63:1 on bone and --color-sage is 1.51:1.
+   * NEITHER may carry text. They are fills, or a dot with dark text beside them.
+   * Use --color-fern-ink for any green text. Do not "fix" this by using fern directly.
    */
-  --fern-ink: #3f6a53; /* 5.53:1 on bone */
-  --ink: #14202e; /* body text. 14.73:1 on bone - deliberately high for glare */
-  --ink-muted: #4a5b6b; /* secondary text. 6.26:1 - still passes, unlike true grey */
-  --on-navy: #ffffff; /* 10.04:1 on navy */
+  --color-fern-ink: #3f6a53; /* 5.53:1 on bone */
+  --color-ink: #14202e; /* body text. 14.73:1 — deliberately high for glare */
+  --color-ink-muted: #4a5b6b; /* secondary text. 6.26:1 — still passes */
+  --color-on-navy: #ffffff; /* 10.04:1 on navy */
 
-  /* ---- Surfaces ------------------------------------------------------------ */
-  --surface: #ffffff;
-  --stripe: #e9eff2; /* table zebra; ink on it is 14.18:1 */
-  --border: var(--mist);
-  --navy-dark: #12345c; /* button hover. white on it is 12.56:1 */
-  --ok-surface: #eef3ee; /* fern-ink on it is 5.50:1 */
+  /* ---- Surfaces ----------------------------------------------------------- */
+  --color-surface: #ffffff;
+  --color-stripe: #e9eff2; /* table zebra; ink on it is 14.18:1 */
+  --color-navy-dark: #12345c; /* button hover. white on it is 12.56:1 */
+  --color-ok-surface: #eef3ee; /* fern-ink on it is 5.50:1 */
+
   /*
-   * No single colour can be 3:1 against both bone and navy - they are 8.98:1 apart, so
-   * anything dark enough for bone is too dark for navy and vice versa. The ring is
-   * therefore two-tone: this colour, with a white band inside it (see :focus-visible).
+   * FOCUS RING. No single colour can be 3:1 against both bone and navy — they are
+   * 8.98:1 apart, so anything dark enough for bone is too light for navy. The ring is
+   * therefore two-tone: this colour with a white band inside it.
    * 4.47:1 on bone, 5.00:1 against that white band.
    */
-  --focus: #b3541e;
+  --color-focus: #b3541e;
 
-  /* ---- Scale --------------------------------------------------------------- */
+  /* ---- Scale -------------------------------------------------------------- */
+  /* 44px tap floor. Not negotiable: a tablet, one-handed, someone holding a tray. */
+  --spacing-tap: 44px;
+  --spacing-row: 56px; /* table row: a fingertip, not a mouse pointer */
+
+  --font-sans: var(--font-poppins), system-ui, -apple-system, sans-serif;
+}
+
+@layer base {
+  html {
+    /* Stops iOS inflating text in landscape, which breaks table layouts on a tablet. */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-bone text-ink font-sans;
+    /* never smaller: read at arm's length, under glare */
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  h1 {
+    @apply text-navy text-2xl font-semibold leading-tight;
+  }
+
+  h2,
+  h3 {
+    @apply text-navy font-semibold leading-tight;
+  }
+
+  a {
+    @apply text-navy;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+  }
+
   /*
-   * 44px is the accessibility floor for a tap target and it is not negotiable here:
-   * this runs on a tablet, one-handed, by someone holding a tray.
+   * Visible focus on everything interactive, no exceptions. The white ring fills the
+   * offset gap so it reads on a navy button and on the bone page alike.
    */
-  --tap: 44px;
-  --radius: 6px;
-  --gap: 12px;
-  --page-max: 72rem;
+  :where(a, button, input, select, textarea, summary):focus-visible {
+    @apply outline-focus outline-3 outline-offset-2;
+    box-shadow: 0 0 0 2px var(--color-surface);
+    border-radius: 2px;
+  }
+
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+@layer components {
+  /* ---- Layout ------------------------------------------------------------- */
+
+  /*
+   * min() rather than fixed padding — this is what stops long instruction text running
+   * off the right edge of a narrow tablet.
+   */
+  .page {
+    width: min(100% - 2rem, 72rem);
+    @apply mx-auto pt-6 pb-12;
+  }
+
+  .page--narrow {
+    width: min(100% - 2rem, 26rem);
+  }
+
+  /* Prose that must stay readable: caps the measure instead of running edge to edge. */
+  .prose-note {
+    @apply text-ink-muted text-sm;
+    max-width: 60ch;
+  }
+
+  /* ---- Controls ----------------------------------------------------------- */
+
+  .field {
+    @apply block mb-4;
+  }
+
+  .label {
+    @apply block font-semibold text-navy mb-1;
+  }
+
+  .input,
+  .select {
+    @apply block w-full min-h-tap px-3 py-2 text-ink bg-surface border-2 border-mist rounded-md;
+    font: inherit;
+  }
+
+  .input:hover,
+  .select:hover {
+    @apply border-sky;
+  }
+
+  .input[aria-invalid='true'] {
+    @apply border-danger;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 min-h-tap min-w-tap px-5 py-2
+      font-semibold text-on-navy bg-navy border-2 border-navy rounded-md cursor-pointer;
+    font-family: inherit;
+    font-size: inherit;
+  }
+
+  .btn:hover:not(:disabled) {
+    @apply bg-navy-dark;
+  }
+
+  .btn:disabled {
+    @apply cursor-not-allowed opacity-75;
+  }
+
+  .btn--secondary {
+    @apply text-navy bg-transparent;
+  }
+
+  .btn--secondary:hover:not(:disabled) {
+    @apply bg-mist;
+  }
+
+  /* Sits on navy, so it inverts. White on navy is 10.04:1. */
+  .btn--on-navy {
+    @apply text-on-navy bg-transparent border-on-navy;
+  }
+
+  .btn--on-navy:hover:not(:disabled) {
+    @apply text-navy bg-on-navy;
+  }
+
+  .btn--block {
+    @apply w-full;
+  }
+
+  /* ---- Messages ----------------------------------------------------------- */
+
+  /*
+   * Never colour alone. Every message carries an icon and a bold lead word, so it reads
+   * correctly in greyscale, to a colour-blind user, and on a washed-out tablet screen.
+   */
+  .msg {
+    @apply flex items-start gap-2.5 px-4 py-3 mb-4 rounded-md border-l-4;
+  }
+
+  .msg__icon {
+    @apply flex-none mt-0.5;
+  }
+
+  .msg__title {
+    @apply font-bold;
+  }
+
+  .msg--error {
+    @apply text-danger bg-danger-surface border-danger;
+  }
+
+  .msg--warn {
+    @apply text-warn bg-warn-surface border-warn;
+  }
+
+  .msg--ok {
+    @apply text-fern-ink bg-ok-surface border-fern;
+  }
+
+  /* ---- Brand bar ---------------------------------------------------------- */
+
+  .brandbar {
+    @apply bg-navy text-on-navy py-4;
+  }
+
+  .brandbar__inner {
+    width: min(100% - 2rem, 72rem);
+    @apply mx-auto flex items-center gap-3;
+  }
+
+  .brandbar__name {
+    @apply text-lg font-bold tracking-wide;
+  }
+
+  /* ---- Navigation cards ---------------------------------------------------- */
+
+  /*
+   * Cards, not a row of links. During a rush this is tapped by someone holding a tray,
+   * so the target is the whole card rather than a line of text with 12px between links.
+   */
+  .navgrid {
+    @apply grid gap-3 mb-8 p-0 list-none;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  }
+
+  .navcard {
+    @apply flex flex-col justify-center gap-0.5 min-h-20 px-5 py-4 bg-surface
+      border-2 border-mist rounded-md text-navy font-semibold no-underline;
+    border-left-width: 6px;
+    @apply border-l-sky;
+  }
+
+  .navcard:hover {
+    @apply border-navy bg-stripe;
+  }
+
+  .navcard--write {
+    @apply border-l-sage;
+  }
+
+  .navcard__hint {
+    @apply font-normal text-sm text-ink-muted;
+  }
+
+  .section-title {
+    @apply text-base uppercase tracking-widest text-ink-muted mb-2;
+  }
+
+  /* ---- Tables -------------------------------------------------------------- */
+
+  /*
+   * THE TABLE PATTERN. Six of the nine internal screens are tables, so this is designed
+   * once and reused rather than re-decided per screen.
+   *
+   * Rows are --spacing-row (56px) tall, sized for a fingertip rather than a mouse.
+   * Numeric columns are right-aligned AND tabular so digits line up column-wise; a
+   * right-aligned proportional figure still jitters and is harder to scan down.
+   */
+  .table-wrap {
+    /* The escape hatch for genuinely wide tables. Columns that matter are kept out of it
+       by hiding secondary ones at narrow widths — see .col-secondary. */
+    @apply w-full overflow-x-auto;
+  }
+
+  .table {
+    @apply w-full border-collapse text-left;
+  }
+
+  .table th {
+    @apply px-3 py-2 text-sm font-semibold uppercase tracking-wide text-ink-muted
+      border-b-2 border-mist align-bottom;
+  }
+
+  .table td {
+    @apply px-3 border-b border-mist align-middle;
+    height: var(--spacing-row);
+  }
+
+  .table tbody tr:nth-child(even) {
+    @apply bg-stripe;
+  }
+
+  .table tbody tr:hover {
+    @apply bg-mist;
+  }
+
+  .table .num {
+    /* tabular-nums: digits share a width, so figures line up column-wise. A
+       right-aligned proportional figure still jitters and is harder to scan down. */
+    @apply text-right tabular-nums;
+  }
+
+  /* A row that is itself the tap target (whole-row link pattern). */
+  .table .row-link {
+    @apply flex items-center min-h-tap font-semibold no-underline;
+  }
+
+  /*
+   * Secondary columns fold away below the tablet breakpoint rather than forcing a
+   * horizontal scroll on the columns that matter. Which columns are secondary is a
+   * per-screen decision; the mechanism is shared.
+   */
+  .col-secondary {
+    @apply hidden md:table-cell;
+  }
+
+  /* ---- Badges -------------------------------------------------------------- */
+
+  /*
+   * Never colour alone: every badge is an icon or glyph PLUS a word. A colour-blind
+   * user, a greyscale print and a sun-washed tablet all still read it.
+   */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold
+      uppercase tracking-wide whitespace-nowrap;
+  }
+
+  .badge--low {
+    @apply text-warn bg-warn-surface;
+    box-shadow: inset 0 0 0 1px var(--color-warn);
+  }
+
+  .badge--out {
+    @apply text-danger bg-danger-surface;
+    box-shadow: inset 0 0 0 1px var(--color-danger);
+  }
+
+  /* Fern as a FILL behind dark text — never fern as the text colour. */
+  .badge--ok {
+    @apply text-fern-ink bg-ok-surface;
+    box-shadow: inset 0 0 0 1px var(--color-fern);
+  }
+
+  .badge--muted {
+    @apply text-ink-muted bg-mist;
+  }
+
+  /* ---- Toolbar (search + filters above a table) ---------------------------- */
+
+  .toolbar {
+    @apply flex flex-wrap items-end gap-3 mb-4;
+  }
+
+  .toolbar .field {
+    @apply mb-0;
+  }
+
+  /*
+   * A bare checkbox is ~16px. The whole label is the tap target so it clears 44px, and
+   * the box itself is enlarged - this gets tapped with a thumb, not clicked with a mouse.
+   */
+  .checkfield {
+    @apply inline-flex items-center gap-2 min-h-tap px-1 font-semibold text-navy cursor-pointer;
+  }
 }
 
-html {
-  /* Stops iOS inflating text in landscape, which breaks table layouts on a tablet. */
-  -webkit-text-size-adjust: 100%;
-}
-
-body {
-  margin: 0;
-  background: var(--bone);
-  color: var(--ink);
-  font-family: var(--font-poppins), system-ui, -apple-system, sans-serif;
-  font-size: 16px; /* never smaller: this is read at arm's length under glare */
-  line-height: 1.5;
-}
-
-h1,
-h2,
-h3 {
-  color: var(--navy);
-  font-weight: 600;
-  line-height: 1.25;
-  margin: 0 0 var(--gap);
-}
-
-h1 {
-  font-size: 1.75rem;
-}
-
-a {
-  color: var(--navy);
-  text-decoration-thickness: 2px;
-  text-underline-offset: 3px;
-}
-
-/*
- * Visible focus everywhere, on every interactive thing, no exceptions.
- * The white box-shadow fills the outline-offset gap, so the ring reads on a navy button
- * and on the bone page alike.
- */
-:where(a, button, input, select, textarea, summary):focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 2px var(--surface);
-  border-radius: 2px;
-}
-
-/* ---- Layout --------------------------------------------------------------- */
-
-.page {
-  max-width: var(--page-max);
-  /* min() rather than a fixed padding: this is what stops long instruction text
-     running off the right edge of a narrow tablet. */
-  width: min(100% - 2rem, var(--page-max));
-  margin-inline: auto;
-  padding-block: 1.5rem 3rem;
-}
-
-.page--narrow {
-  width: min(100% - 2rem, 26rem);
-}
-
-/* ---- Controls -------------------------------------------------------------- */
-
-.field {
-  display: block;
-  margin-bottom: 1rem;
-}
-
-.label {
-  display: block;
-  font-weight: 600;
-  color: var(--navy);
-  margin-bottom: 0.25rem;
-}
-
-.input,
-.select {
-  display: block;
-  width: 100%;
-  min-height: var(--tap);
-  padding: 0.5rem 0.75rem;
-  font: inherit;
-  color: var(--ink);
-  background: var(--surface);
-  border: 2px solid var(--border);
-  border-radius: var(--radius);
-}
-
-.input:hover,
-.select:hover {
-  border-color: var(--sky);
-}
-
-.input[aria-invalid='true'] {
-  border-color: var(--danger);
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  min-height: var(--tap);
-  min-width: var(--tap);
-  padding: 0.5rem 1.25rem;
-  font: inherit;
-  font-weight: 600;
-  color: var(--on-navy);
-  background: var(--navy);
-  border: 2px solid var(--navy);
-  border-radius: var(--radius);
-  cursor: pointer;
-}
-
-.btn:hover:not(:disabled) {
-  background: var(--navy-dark);
-}
-
-.btn:disabled {
-  cursor: not-allowed;
-  /* Dimming alone would drop below 4.5:1, so the label carries the state too. */
-  opacity: 0.75;
-}
-
-.btn--secondary {
-  color: var(--navy);
-  background: transparent;
-}
-
-.btn--secondary:hover:not(:disabled) {
-  background: var(--mist);
-}
-
-.btn--block {
-  width: 100%;
-}
-
-/* ---- Messages -------------------------------------------------------------- */
-
-/*
- * Never colour alone. Each message carries an icon and a bold word, so it still reads
- * correctly in greyscale, to a colour-blind user, and on a washed-out tablet screen.
- */
-.msg {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.625rem;
-  padding: 0.75rem 1rem;
-  margin-bottom: 1rem;
-  border-radius: var(--radius);
-  border-left: 4px solid;
-}
-
-.msg__icon {
-  flex: none;
-  margin-top: 0.125rem;
-}
-
-.msg--error {
-  color: var(--danger);
-  background: var(--danger-surface);
-  border-color: var(--danger);
-}
-
-.msg--warn {
-  color: var(--warn);
-  background: var(--warn-surface);
-  border-color: var(--warn);
-}
-
-.msg--ok {
-  color: var(--fern-ink);
-  background: var(--ok-surface);
-  border-color: var(--fern);
-}
-
-.msg__title {
-  font-weight: 700;
-}
-
-/* ---- Brand bar ------------------------------------------------------------- */
-
-.brandbar {
-  background: var(--navy);
-  color: var(--on-navy);
-  padding: 1rem 0;
-}
-
-.brandbar__inner {
-  width: min(100% - 2rem, var(--page-max));
-  margin-inline: auto;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.brandbar__name {
-  font-size: 1.125rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.brandbar__spacer {
-  margin-left: auto;
-}
-
-/* Sits on navy, so it inverts. White on navy is 10.04:1. */
-.btn--on-navy {
-  color: var(--on-navy);
-  background: transparent;
-  border-color: var(--on-navy);
-}
-
-.btn--on-navy:hover:not(:disabled) {
-  color: var(--navy);
-  background: var(--on-navy);
-}
-
-/* ---- Navigation cards ------------------------------------------------------ */
-
-/*
- * Cards rather than a row of links. During a rush this is tapped by someone holding a
- * tray, so the target is the whole card - not a line of text with 12px between links,
- * which is what it was before.
- */
-.navgrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-  gap: var(--gap);
-  padding: 0;
-  margin: 0 0 2rem;
-  list-style: none;
-}
-
-.navcard {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.125rem;
-  min-height: 5rem;
-  padding: 1rem 1.25rem;
-  background: var(--surface);
-  border: 2px solid var(--border);
-  border-left: 6px solid var(--sky);
-  border-radius: var(--radius);
-  color: var(--navy);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.navcard:hover {
-  border-color: var(--navy);
-  border-left-color: var(--navy);
-  background: var(--stripe);
-}
-
-.navcard__hint {
-  font-weight: 400;
-  font-size: 0.875rem;
-  color: var(--ink-muted);
-}
-
-/* A group of cards that write to the ledger, marked apart from the read-only ones. */
-.navcard--write {
-  border-left-color: var(--sage);
-}
-
-.section-title {
-  font-size: 1rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ink-muted);
-  margin-bottom: 0.5rem;
-}
-
-.muted {
-  color: var(--ink-muted);
-}
-
-.small {
-  font-size: 0.875rem;
+@layer utilities {
+  .muted {
+    @apply text-ink-muted;
+  }
 }

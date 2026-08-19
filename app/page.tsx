@@ -15,10 +15,10 @@ export default async function HomePage() {
       <header className="brandbar">
         <div className="brandbar__inner">
           <span className="brandbar__name">NO MEAT NAAN</span>
-          <span className="small" style={{ opacity: 0.85 }}>
+          <span className="text-sm opacity-85">
             Management
           </span>
-          <span className="brandbar__spacer" />
+          <span className="ml-auto" />
           <form action={logoutAction}>
             <button className="btn btn--on-navy" type="submit">
               Sign out
@@ -29,7 +29,7 @@ export default async function HomePage() {
 
       <main className="page">
         <h1>Today</h1>
-        <p className="muted" style={{ marginTop: '-0.5rem' }}>
+        <p className="muted -mt-2">
           Signed in as <strong>{user.name}</strong> · {user.role}
         </p>
 

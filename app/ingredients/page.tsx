@@ -3,10 +3,14 @@ import { requirePermission } from '../../src/auth/server.ts';
 import { hasPermission } from '../../src/lib/auth.ts';
 import { listIngredients } from '../../src/db/ingredients.ts';
 import { setActiveAction } from './actions.ts';
-import { formatQty, formatINR, costPerPurchaseUnitPaise, isLowStock } from '../../src/lib/units.ts';
-
-const cell = { padding: '6px 10px', borderBottom: '1px solid #ddd', textAlign: 'left' } as const;
-const num = { ...cell, textAlign: 'right' } as const;
+import {
+  formatQty,
+  formatINR,
+  costPerPurchaseUnitPaise,
+  milliBaseToPurchaseUnits,
+  isLowStock,
+  baseUnitLabel,
+} from '../../src/lib/units.ts';
 
 export default async function IngredientsPage({
   searchParams,
@@ -22,81 +26,166 @@ export default async function IngredientsPage({
   const canManage = hasPermission(actor.role, 'ingredients.manage');
 
   return (
-    <main>
-      <p>
-        <Link href="/">&larr; Home</Link>
-      </p>
-      <h1>Ingredients</h1>
+    <>
+      <header className="brandbar">
+        <div className="brandbar__inner">
+          <Link className="brandbar__name text-on-navy no-underline" href="/">
+            NO MEAT NAAN
+          </Link>
+          <span className="text-sm opacity-85">Ingredients</span>
+        </div>
+      </header>
 
-      <form method="get" style={{ marginBottom: 16 }}>
-        <input name="q" defaultValue={q ?? ''} placeholder="Search by name" aria-label="Search by name" />
-        <label style={{ marginLeft: 12 }}>
-          <input type="checkbox" name="all" value="1" defaultChecked={!activeOnly} /> Include inactive
-        </label>
-        <button type="submit" style={{ marginLeft: 8 }}>
-          Apply
-        </button>
-      </form>
+      <main className="page">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1>Ingredients</h1>
+          {canManage ? (
+            <Link className="btn" href="/ingredients/new">
+              + New ingredient
+            </Link>
+          ) : null}
+        </div>
 
-      {canManage ? (
-        <p>
-          <Link href="/ingredients/new">+ New ingredient</Link>
-        </p>
-      ) : null}
+        <form method="get" className="toolbar">
+          <div className="field grow max-w-xs">
+            <label className="label" htmlFor="q">
+              Search
+            </label>
+            <input className="input" id="q" name="q" defaultValue={q ?? ''} placeholder="Ingredient name" />
+          </div>
 
-      {rows.length === 0 ? (
-        <p>No ingredients{q ? ` matching "${q}"` : ''}.</p>
-      ) : (
-        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-          <thead>
-            <tr>
-              <th style={cell}>Name</th>
-              <th style={cell}>Purchase unit</th>
-              <th style={num}>On hand</th>
-              <th style={num}>Avg cost</th>
-              <th style={cell}>Status</th>
-              {canManage ? <th style={cell}>Actions</th> : null}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              const low = isLowStock(r.qtyMilliBase, r.lowStockThresholdMilliBase);
-              return (
-                <tr key={r.id}>
-                  <td style={cell}>
-                    {canManage ? <Link href={`/ingredients/${r.id}`}>{r.name}</Link> : r.name}
-                  </td>
-                  <td style={cell}>
-                    {r.purchaseUnit} ({r.purchaseUnitInBase})
-                  </td>
-                  <td style={num}>
-                    {formatQty(r.qtyMilliBase, r.unitType)}
-                    {low ? (
-                      <span style={{ color: '#b00', marginLeft: 6 }} title="At or below the low stock threshold">
-                        LOW
-                      </span>
-                    ) : null}
-                  </td>
-                  <td style={num}>
-                    {formatINR(costPerPurchaseUnitPaise(r.weightedAvgCostMillipaisePerBase, r.purchaseUnitInBase))}
-                    <span style={{ color: '#555' }}> / {r.purchaseUnit}</span>
-                  </td>
-                  <td style={cell}>{r.isActive ? 'Active' : 'Inactive'}</td>
+          <label className="checkfield">
+            <input type="checkbox" name="all" value="1" defaultChecked={!activeOnly} className="size-5" />
+            Include inactive
+          </label>
+
+          <button className="btn btn--secondary" type="submit">
+            Apply
+          </button>
+        </form>
+
+        {rows.length === 0 ? (
+          <p className="prose-note">
+            No ingredients{q ? ` matching “${q}”` : ''}.
+            {activeOnly ? ' Tick “include inactive” to widen the search.' : ''}
+          </p>
+        ) : (
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th scope="col">Ingredient</th>
+                  <th scope="col" className="num">
+                    On hand
+                  </th>
+                  <th scope="col" className="num">
+                    Avg cost
+                  </th>
+                  <th scope="col" className="col-secondary">
+                    Bought by
+                  </th>
+                  <th scope="col">Status</th>
                   {canManage ? (
-                    <td style={cell}>
-                      <form action={setActiveAction}>
-                        <input type="hidden" name="id" value={r.id} />
-                        <input type="hidden" name="isActive" value={r.isActive ? 'false' : 'true'} />
-                        <button type="submit">{r.isActive ? 'Deactivate' : 'Reactivate'}</button>
-                      </form>
-                    </td>
+                    <th scope="col">
+                      <span className="sr-only">Actions</span>
+                    </th>
                   ) : null}
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {rows.map((r) => {
+                  const low = isLowStock(r.qtyMilliBase, r.lowStockThresholdMilliBase);
+                  const oversold = r.qtyMilliBase < 0;
+                  return (
+                    <tr key={r.id}>
+                      <th scope="row" className="px-3 font-semibold text-left">
+                        {canManage ? (
+                          <Link href={`/ingredients/${r.id}`}>{r.name}</Link>
+                        ) : (
+                          r.name
+                        )}
+                      </th>
+
+                      {/*
+                       * Purchase units lead - nobody thinks in 20,000 grams. The base-unit
+                       * figure stays as a subordinate line because recipes are written in
+                       * it. Both come from the shared helpers; no conversion happens here.
+                       */}
+                      <td className="num">
+                        <span className={oversold ? 'text-danger font-semibold' : ''}>
+                          {milliBaseToPurchaseUnits(r.qtyMilliBase, r.purchaseUnitInBase)} {r.purchaseUnit}
+                        </span>
+                        <span className="block text-xs muted tabular-nums">
+                          {formatQty(r.qtyMilliBase, r.unitType)}
+                        </span>
+                      </td>
+
+                      <td className="num">
+                        {formatINR(
+                          costPerPurchaseUnitPaise(r.weightedAvgCostMillipaisePerBase, r.purchaseUnitInBase),
+                        )}
+                        <span className="block text-xs muted">per {r.purchaseUnit}</span>
+                      </td>
+
+                      <td className="col-secondary muted text-sm">
+                        {r.purchaseUnit} = {r.purchaseUnitInBase} {baseUnitLabel(r.unitType)}
+                      </td>
+
+                      <td>
+                        <div className="flex flex-wrap items-center gap-1">
+                          {oversold ? (
+                            <span className="badge badge--out">
+                              <Glyph kind="alert" /> Oversold
+                            </span>
+                          ) : low ? (
+                            <span className="badge badge--low">
+                              <Glyph kind="alert" /> Low
+                            </span>
+                          ) : (
+                            <span className="badge badge--ok">
+                              <Glyph kind="check" /> In stock
+                            </span>
+                          )}
+                          {!r.isActive ? <span className="badge badge--muted">Inactive</span> : null}
+                        </div>
+                      </td>
+
+                      {canManage ? (
+                        <td>
+                          <form action={setActiveAction}>
+                            <input type="hidden" name="id" value={r.id} />
+                            <input type="hidden" name="isActive" value={r.isActive ? 'false' : 'true'} />
+                            <button className="btn btn--secondary text-sm px-3" type="submit">
+                              {r.isActive ? 'Deactivate' : 'Reactivate'}
+                              <span className="sr-only"> {r.name}</span>
+                            </button>
+                          </form>
+                        </td>
+                      ) : null}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </main>
+    </>
+  );
+}
+
+/**
+ * Badges must never rely on colour alone, so each carries a glyph as well as a word.
+ * Inline SVG rather than an icon pack - two shapes do not justify a dependency.
+ */
+function Glyph({ kind }: { kind: 'alert' | 'check' }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" className="flex-none">
+      {kind === 'alert' ? (
+        <path d="M10 1.7 19 18H1L10 1.7Zm0 5.3a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-1-1Zm0 8.2a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3Z" />
+      ) : (
+        <path d="M8 14.2 3.8 10l1.4-1.4L8 11.4l6.8-6.8L16.2 6 8 14.2Z" />
       )}
-    </main>
+    </svg>
   );
 }
