@@ -174,10 +174,13 @@ export async function listMovements(actor: Actor, filter: HistoryFilter = {}) {
 
   // Newest-first is right for the ledger overall, but within a single multi-line receipt
   // (shared referenceId), lines read in entry order (ascending seq).
-  const ordered = orderGroupLines(rows);
-
+  //
+  // Slice to the page FIRST, then reorder. Reordering the fetched rows before slicing
+  // permutes across the page boundary: when a receipt group straddles it, one line shows
+  // on both pages and another disappears from the ledger view entirely. Page membership
+  // must stay decided by the query's seq ordering, which is what OFFSET agrees with.
   return {
-    rows: ordered.slice(0, HISTORY_PAGE_SIZE),
+    rows: orderGroupLines(rows.slice(0, HISTORY_PAGE_SIZE)),
     page,
     pageSize: HISTORY_PAGE_SIZE,
     hasNextPage: rows.length > HISTORY_PAGE_SIZE,
@@ -190,7 +193,7 @@ export async function listMovements(actor: Actor, filter: HistoryFilter = {}) {
  * Preserves newest-first ordering for the ledger overall, but within a single
  * multi-line receipt (shared referenceId), orders lines in ascending entry order (seq).
  */
-function orderGroupLines(rows: MovementRow[]): MovementRow[] {
+export function orderGroupLines(rows: MovementRow[]): MovementRow[] {
   const result: MovementRow[] = [];
   let i = 0;
   while (i < rows.length) {

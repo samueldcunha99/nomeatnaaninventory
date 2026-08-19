@@ -1,0 +1,33 @@
+# Force text treatment and LF endings on source.
+#
+# Why this exists: a scripted edit once wrote two NUL bytes into src/db/stock.ts. The file
+# was cleaned in a19e5d2, but git heuristically treats a path as binary if any blob in the
+# comparison contains a NUL — so `git diff` and `git show` rendered
+# "Bin 3728 -> 5294 bytes" for the file holding the weighted-average arithmetic. Losing a
+# readable diff on the costing code is a review problem, not a cosmetic one.
+#
+# `diff` (bare) is the attribute that forces a TEXT diff - `text` alone only governs
+# checkin/checkout normalisation, so git still sniffed the NUL and called it binary. `eol=lf` also settles the CRLF warnings this repo emits
+# on Windows: the working tree matches what is stored, so diffs stay honest.
+#
+# See src/lib/source-integrity.test.ts, which fails the build if a NUL ever returns.
+
+*.ts   text eol=lf diff
+*.tsx  text eol=lf diff
+*.mjs  text eol=lf
+*.js   text eol=lf
+*.css  text eol=lf diff=css
+*.json text eol=lf
+*.md   text eol=lf diff=markdown
+*.sql  text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+
+# Real binaries: never diff or normalise these.
+*.png  binary
+*.jpg  binary
+*.webp binary
+*.pdf  binary
+*.woff  binary
+*.woff2 binary
+*.zip  binary
