@@ -78,6 +78,37 @@ Month 2 does not start until both are confirmed:
    is the part nothing has exercised and is where undiscovered defects are.
 2. The **deploy target is provisioned** (Month 2 step 0 needs somewhere to deploy to).
 
+### 📌 DECIDED — deployment target (blocks nothing, but read before Month 2 step 0)
+
+**VPS: E2E Networks, Mumbai region.** Not DigitalOcean Bangalore, not AWS Lightsail.
+
+- E2E bills in **INR with a GST invoice**, which the client needs. Foreign providers
+  billing in USD without GST create an accounting problem for the client, not for us.
+- **Mumbai is closer to Aurangabad than Bangalore** — lower latency for the counter PC
+  and kitchen tablet, which are on the cafe’s broadband all day.
+
+**The account is created by the client, in the client’s name, on the client’s payment
+method.** The developer receives access; the developer is **not** the account holder.
+
+This is a **contractual requirement, not a preference** — PROJECT-SPEC § 13 puts all
+third-party accounts in the client’s name on the client’s card. **No future agent should
+propose provisioning under the developer’s own account**, however convenient it looks at
+the time. A server the client cannot pay for or log into directly is a server they cannot
+keep when the warranty ends.
+
+| Setting | Value |
+|---|---|
+| Provider / region | E2E Networks, Mumbai |
+| OS | Ubuntu 24.04 LTS |
+| Size | 2 vCPU, 4 GB RAM |
+| Auth | **SSH key only — root password login disabled** |
+| Account holder | The client |
+
+4 GB is why the image is built in CI and shipped: `next build` on the VPS will OOM
+(PROJECT-SPEC § 3).
+
+**Nothing is provisioned and no deploy scripts exist.** Month 2 step 0 stays gated until
+the client has created the account.
 ### 🚫 BLOCKER on Module 4 — snapshotting must land before order confirmation goes live
 
 Snapshotting must land before Month 3 order confirmation goes live. 87 ms fetch+fold at
@@ -613,3 +644,49 @@ Six final polish fixes applied across the styled screens:
   no cross-line value duplication.
 
 87 tests passing against live Postgres, none skipped. `next build` exits 0.
+
+### 2026-08-19 — Deployment target decided; git binary-diff fixed; styling fixes verified
+
+**Deployment target: E2E Networks, Mumbai, Ubuntu 24.04 LTS, 2 vCPU / 4 GB, SSH keys only,
+account in the client’s name.** Recorded in full under open questions above. Nothing
+provisioned; Month 2 step 0 remains gated on the client creating the account.
+
+**Git was treating `src/db/stock.ts` as binary.** Residue from the NUL-byte incident: the
+initial-commit blob genuinely contains 2 NUL bytes, and git calls a path binary if *any*
+blob in the comparison does — so the file holding the weighted-average arithmetic showed
+"Bin 3728 -> 5294 bytes" instead of a reviewable diff. Added `.gitattributes`.
+
+Worth knowing for next time: `text eol=lf` alone did **not** fix it. `text` governs
+checkin/checkout normalisation; the attribute that forces a *text diff* is bare `diff`.
+The file now renders 51 insertions / 7 deletions, and no path anywhere in history is
+treated as binary.
+
+**Independent verification of the six styling fixes** rather than accepting the report.
+Four claims held exactly: no inline styles anywhere in `app/`, all 19 hex literals inside
+the `@theme` block and none in a component, movement-history quantities going through
+`milliBaseToPurchaseUnits()` and `formatQty()` with no ad-hoc conversion, and
+`AutoSubmitCheckbox` being a genuine client component whose no-JS path still works (the
+checkbox is a real form control and the Apply button remains).
+
+Two defects found that the report did not mention:
+
+1. **The receipt-group ordering broke pagination.** `orderGroupLines()` was applied to the
+   fetched rows *before* slicing to the page. Because the query fetches `PAGE + 1` rows,
+   reordering permuted across the page boundary: with a receipt straddling it, one line
+   appeared on **both** pages and another **disappeared from the ledger view entirely**.
+   Proved with a worked example before changing anything, then fixed by slicing first and
+   reordering only what is on the page — page membership stays decided by the query’s seq
+   order, which is what `OFFSET` agrees with. On an append-only audit trail a movement
+   you cannot see is the worst class of wrong. Guarded by 5 pure tests in
+   `src/db/history.test.ts`, verified by reverting the fix and watching them fail.
+
+2. **A UTF-8 BOM at the start of `app/ui/auto-submit-checkbox.tsx`**, immediately before
+   the `'use client'` directive. Removed. The existing source-integrity guard only checks
+   for NUL bytes, so it did not catch this.
+
+**PROGRESS.md append-only integrity confirmed.** All 22 dated log entries present, none
+dropped, none rewritten — checked by extracting every entry from every historical version
+and comparing bodies. A first pass appeared to show 22 rewritten entries; that was my
+check counting CRLF conversion as a change, not a real edit.
+
+92 tests, 0 failures. `next build` exits 0.
