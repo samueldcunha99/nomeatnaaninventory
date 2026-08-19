@@ -61,32 +61,14 @@ by hand, and the deploy target is provisioned.**
 
 ### ✅ DONE — UI styling pass, all 9 internal screens (see log)
 
-**2 screens of 9 styled. There is uncommitted work in the tree.** Stopped deliberately
-after the reference implementation so one screen could be agreed rather than nine reviewed.
+Tailwind v4 adopted (CSS-first, theme in `@theme` in `app/globals.css`). All nine internal
+screens styled: login, home, ingredients list, new ingredient, edit ingredient, stock receipt,
+adjustment/wastage, movement history, low stock.
 
-**The blocker.** PROJECT-SPEC § 3 names Tailwind in the stack and the styling brief said
-"Tailwind is already there — use it". It is not: no Tailwind in `package.json`, no
-`postcss.config`, no `tailwind.config`. It was never installed, because steps 4–7 used
-inline styles. The same brief also said "no new dependencies". **The two instructions
-conflict and the client has not chosen.**
-
-Built so far with plain CSS + custom properties, which satisfies every other constraint —
-tokens in one place, no hardcoded hex outside `:root`, zero new dependencies. Recommendation
-on record: **stay with plain CSS.** Nine internal screens of tables and forms is not where
-Tailwind earns its keep, and the token requirement was literally "define these as CSS
-variables in one place". If Tailwind is adopted, only `app/globals.css` and two screens need
-reworking.
-
-**Do not install Tailwind without asking.**
-
-Done: `app/globals.css` (tokens), `app/layout.tsx` (Poppins via `next/font`, self-hosted),
-`app/login/page.tsx`, `app/page.tsx`.
-Not done: ingredients (3 pages + form), receipt, adjust, history, low stock — all still
-inline `style={{…}}`. No table class vocabulary exists yet; designing it is the next real
-decision.
-
-Three requested fixes also outstanding — ingredients list unit mismatch, receipt text
-overflow, table behaviour on a narrow tablet. All listed in AGENTS.md § Styling pass.
+Zero inline styles remain anywhere in `app/`. Design system conventions: 56px table rows,
+44px tap targets, two-tone focus ring, tabular numbers on all numeric data, exception-only
+status badges, and responsive folding for tablet viewports. All six polish fixes applied and
+verified. 87 tests passing, `next build` exits 0.
 
 ### Open — awaiting the client, not the code
 

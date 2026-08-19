@@ -26,15 +26,13 @@ review, and the reasoning is written down there specifically so they are not rep
 
 | | |
 |---|---|
-| Month 1 (foundations + inventory) | ✅ complete, steps 1–7 |
+| Month 1 (foundations + inventory) | ✅ complete, steps 1–7 + UI styling pass (all 9 screens, Tailwind v4) |
 | Month 2 (deploy pipeline, then costing engine) | ⬜ not started, **gated** |
 | Current branch | `month1-step6-stock-movements` |
-| Tests | 86 total — 46 run without a database, 40 need Postgres |
+| Tests | 87 total — 46 run without a database, 41 need Postgres |
 | `next build` | exits 0 |
 
-**In flight and incomplete: a UI styling pass.** Two screens of nine are done. It is
-**blocked on an unresolved decision** — see PROGRESS.md § "Open — styling pass". There is
-uncommitted work in the tree.
+**UI styling pass is complete.** All nine internal screens styled with Tailwind v4 (`app/globals.css` `@theme`), 56px rows, 44px tap targets, and full exception badging. No inline styles remain.
 
 **Month 2 is gated** on two things outside the codebase: the owner exercising the
 multi-line receipt form by hand, and a deploy target being provisioned.
@@ -78,7 +76,7 @@ that line to a server.**
 
 ### Tests skip rather than fail without a database
 
-40 of the 86 tests need Postgres. Without it they **skip loudly**, printing
+41 of the 87 tests need Postgres. Without it they **skip loudly**, printing
 `SKIPPING …: no reachable DATABASE_URL`. A green suite showing skips is not a full pass —
 start Docker and re-run before trusting it.
 
