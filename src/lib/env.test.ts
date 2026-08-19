@@ -32,9 +32,13 @@ test('a non-postgres DATABASE_URL is rejected', () => {
   assert.ok(report.problems.some((p) => p.includes('postgres://')));
 });
 
-test('localhost in a production DATABASE_URL is caught', () => {
+test('localhost in a production DATABASE_URL is caught, but only for a deployment', () => {
   // Inside a container localhost is the container. This is the classic compose mistake.
-  const report = checkEnv({ ...base, DATABASE_URL: 'postgres://cafe:cafe@localhost:5432/cafe' });
+  const localhost = { ...base, DATABASE_URL: 'postgres://cafe:cafe@localhost:5432/cafe' };
+  // A build on a developer machine legitimately points at localhost, so the check is
+  // opt-in and off by default.
+  assert.equal(checkEnv(localhost).ok, true, 'not flagged during a build');
+  const report = checkEnv(localhost, { deployment: true });
   assert.equal(report.ok, false);
   assert.ok(report.problems.some((p) => p.includes('compose service name')));
 

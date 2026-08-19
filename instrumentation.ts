@@ -15,7 +15,7 @@ export async function register() {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
 
   const { checkEnv, formatEnvReport } = await import('./src/lib/env.ts');
-  const report = checkEnv();
+  const report = checkEnv(process.env, { deployment: true });
   if (report.ok) return;
 
   /*
@@ -30,5 +30,13 @@ export async function register() {
    * the message below is the last thing in the log.
    */
   console.error(`\n${formatEnvReport(report)}\n`);
-  process.exit(1);
+
+  /*
+   * Reached through globalThis deliberately. Next compiles this file for the edge runtime
+   * too (middleware uses it), and the edge bundler rejects a literal `process.exit`
+   * reference even on a branch that runtime-guards itself. This path only ever runs under
+   * Node — the NEXT_RUNTIME check above guarantees it.
+   */
+  const proc = (globalThis as { process?: { exit(code: number): never } }).process;
+  proc?.exit(1);
 }
