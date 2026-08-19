@@ -59,6 +59,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     needs: test
+    env:
+      DATABASE_URL: postgres://build:build@build-time-placeholder:5432/build
+      SEED_OWNER_PASSWORD: build-time-placeholder
+      NEXT_TELEMETRY_DISABLED: 1
+      NODE_ENV: production
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
