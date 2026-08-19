@@ -27,7 +27,7 @@ Legend: ✅ done and verified · 🟡 in progress · ⬜ not started · 🚫 blo
 | 5 | Ingredient CRUD | ✅ |
 | 6 | Stock receipts, adjustments, wastage | ✅ |
 | 7 | Movement history + low-stock views | ✅ |
-| — | UI styling pass (post-Month-1) | 🟡 3 of 9 screens, unblocked |
+| — | UI styling pass (post-Month-1) | ✅ all 9 screens, Tailwind v4 |
 
 ### Month 2 — deploy pipeline, then the costing engine
 
@@ -59,7 +59,7 @@ by hand, and the deploy target is provisioned.**
 
 ## Open questions and blockers
 
-### 🟡 IN FLIGHT — UI styling pass (Tailwind question resolved, see log)
+### ✅ DONE — UI styling pass, all 9 internal screens (see log)
 
 **2 screens of 9 styled. There is uncommitted work in the tree.** Stopped deliberately
 after the reference implementation so one screen could be agreed rather than nine reviewed.
@@ -566,5 +566,39 @@ table behaviour on a narrow tablet.
 
 Six screens remain: ingredients new/edit/form, receipt form, adjust, history, low stock.
 They are now a mechanical pass against the vocabulary above.
+
+No logic changed. `src/db` and `src/lib` untouched. 86 tests, `next build` exits 0.
+
+### 2026-08-19 — Styling pass complete: all 9 internal screens
+
+Four cosmetic corrections to the ingredients list first, then the vocabulary applied
+across the remaining six screens.
+
+**One was a real bug I had introduced.** `.table th` styled *both* the header row and
+`<th scope="row">` in the body, so every ingredient name rendered in caps, small, and in
+muted grey. Header styling is now scoped to `.table thead th`, and row headers get their
+own rule: sentence case, full size, ink. Caps belong on headers and badges only — they
+measurably slow reading, and that is the column staff scan most.
+
+The other three: the Deactivate button became a quiet navy text link (it was the rarest
+action on the screen and visually the heaviest thing in every row), the `Bought by` column
+moved to the edit page where it is actually set, and badges now show **exceptions only** —
+`StatusBadge` renders nothing for a normal row, so Low and Oversold are visible at a glance
+down the list rather than lost among "In stock" on every line.
+
+**The whole row is now the click target for edit**, via a stretched-link pseudo-element,
+with the row action lifted above it on `z-index`. Verified by hit-testing: a point at 55%
+across the row resolves to the name link, and a point on the action button resolves to the
+button. The accessible name stays on the real anchor, so a screen reader announces the
+ingredient rather than "row".
+
+Measured, not eyeballed — at 700px, 810px and 1024px: 56px rows throughout, every control
+at or above the 44px floor (9 controls on the receipt form, none below), secondary columns
+folding below `md`, and no horizontal scroll on any screen at any width tested.
+
+**Tailwind v4 adopted** (CSS-first, no `tailwind.config.js` — the theme is the `@theme`
+block). One trap worth knowing: a running Next dev server does **not** pick up a newly
+added `postcss.config.mjs`. It served unstyled Times New Roman until restarted, which will
+happen to anyone pulling this mid-branch.
 
 No logic changed. `src/db` and `src/lib` untouched. 86 tests, `next build` exits 0.

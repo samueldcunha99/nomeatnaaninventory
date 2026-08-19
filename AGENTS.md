@@ -6,7 +6,7 @@ file records what we decided that the spec does not say, and why.
 Current state: **Month 1 complete (steps 1–7).** Schema, migrations, seed, unit conversion,
 weighted-average cost, auth, role enforcement, ingredient CRUD, stock receipts /
 adjustments / wastage, movement history and low-stock views are in and tested against live
-Postgres (86 tests). A **UI styling pass is in flight** — 3 screens of 9, Tailwind v4.
+Postgres (86 tests). The **UI styling pass is complete** — all 9 internal screens, Tailwind v4.
 Month 2 — deploy pipeline, then the costing engine — has not started and is gated.
 
 See [PROGRESS.md](PROGRESS.md) for state, history and open blockers, and
@@ -610,20 +610,18 @@ Burnt orange rather than a brand colour on purpose: focus must not be mistakable
 status or a brand accent, and it is the one place in the UI where standing out beats
 fitting in.
 
-### Styling pass: where it stopped
+### Styling pass: complete
 
-**3 screens of 9 are styled.** Stopped after the ingredients list, which is where the
-**table vocabulary** was designed — six of the remaining screens are tables, so that was a
-real decision rather than a mechanical pass.
+**All 9 internal screens are styled** — login, home, ingredients list, new ingredient,
+edit ingredient, stock receipt, adjustment/wastage, movement history, low stock. No inline
+`style={{…}}` remains anywhere in `app/`.
 
-| Screen | State |
-|---|---|
-| `app/login/page.tsx` | ✅ styled — the reference implementation |
-| `app/page.tsx` (home) | ✅ styled — brandbar + nav cards |
-| `app/ingredients/page.tsx` | ✅ styled — the table reference |
-| `app/ingredients/new`, `[id]`, form | ⬜ still inline `style={{…}}` |
-| `app/stock/receipt/*`, `adjust/*` | ⬜ still inline `style={{…}}` |
-| `app/stock/history`, `app/stock/low` | ⬜ still inline `style={{…}}` |
+The table vocabulary was designed against the **ingredients list first**, deliberately: it
+is the hardest of the six table screens, carrying search, an include-inactive filter, a
+status column, a badge and a row action. The other five followed as a mechanical pass.
+
+Customer-facing screens (Month 4) are a separate tier and must not inherit these
+compromises — see the tier note above.
 
 **Tailwind v4 is installed and is the styling system.** Resolved after the reference
 screens: the spec named it, the rest of the client's work uses it, and Month 4's
@@ -638,7 +636,7 @@ Add a colour to `@theme` and nowhere else. `postcss.config.mjs` wires the plugin
 the whole setup. No Tailwind plugins, no component library, no icon pack — icons are inline
 SVG, because two shapes do not justify a dependency.
 
-### The class vocabulary so far
+### The class vocabulary
 
 Defined in `app/globals.css`, used by the two styled screens. Extend this rather than
 inventing per-screen classes:
@@ -670,6 +668,21 @@ Four rules it encodes, each measured at 700px and 810px viewports:
   column `.col-secondary` when it is reference detail rather than decision data.
   `.table-wrap` is the escape hatch, not the plan — at 700px the ingredients table
   drops to five columns and still does not scroll sideways.
+### Badge only the exceptions
+
+`StatusBadge` in `app/ui/status-badge.tsx` renders **nothing** for `kind: null`, and that
+is the point. A badge on every row is wallpaper — if everything is badged, nothing stands
+out, and standing out is the entire job of a status column.
+
+So in the **ingredients list**, only Low, Oversold and Inactive are badged; a normal row
+leaves the cell blank. The exceptions are then visible at a glance down the whole list.
+
+The **low stock screen** badges every row, correctly: there, every row *is* an exception.
+
+Two other rules the same component keeps: never colour alone (each badge is a glyph plus a
+word, so it survives greyscale and a sun-washed screen), and caps belong on headers and
+badges **only** — ingredient names are sentence case as stored, because caps measurably
+slow reading and that is the column staff scan most.
 ### Requested UI fixes — all three done
 
 1. ✅ **Ingredients list unit mismatch.** It showed quantity in base units (`20000 g`) while

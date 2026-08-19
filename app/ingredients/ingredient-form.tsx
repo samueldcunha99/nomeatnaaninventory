@@ -13,8 +13,6 @@ export type FormValues = {
   lowStockThreshold: string;
 };
 
-const row = { display: 'block', width: '100%', marginBottom: 12 } as const;
-
 export function IngredientForm({
   action,
   initial,
@@ -27,39 +25,92 @@ export function IngredientForm({
   const [state, formAction, pending] = useActionState(action, { error: null });
 
   return (
-    <form action={formAction}>
+    <form action={formAction} className="max-w-xl">
       {initial?.id ? <input type="hidden" name="id" value={initial.id} /> : null}
 
-      <label htmlFor="name">Name</label>
-      <input id="name" name="name" defaultValue={initial?.name} required maxLength={120} style={row} />
-
-      <label htmlFor="unitType">Measured in</label>
-      <select id="unitType" name="unitType" defaultValue={initial?.unitType ?? 'weight'} style={row}>
-        <option value="weight">Weight (grams)</option>
-        <option value="volume">Volume (millilitres)</option>
-        <option value="count">Count (units)</option>
-      </select>
-
-      <label htmlFor="purchaseUnit">Purchase unit</label>
-      <input id="purchaseUnit" name="purchaseUnit" defaultValue={initial?.purchaseUnit} placeholder="kg, litre, tray" required style={row} />
-
-      <label htmlFor="purchaseUnitInBase">Base units per purchase unit</label>
-      <input id="purchaseUnitInBase" name="purchaseUnitInBase" type="number" min={1} step={1} defaultValue={initial?.purchaseUnitInBase ?? 1000} required style={row} />
-      <p style={{ marginTop: -8, fontSize: 13, color: '#555' }}>
-        Buying in kg with grams as the base unit gives 1000. A tray of 30 eggs gives 30.
-      </p>
-
-      <label htmlFor="lowStockThreshold">Low stock threshold (in purchase units)</label>
-      <input id="lowStockThreshold" name="lowStockThreshold" defaultValue={initial?.lowStockThreshold ?? '0'} inputMode="decimal" style={row} />
-
       {state.error ? (
-        <p role="alert" style={{ color: '#b00' }}>
-          {state.error}
-        </p>
+        <div className="msg msg--error" role="alert">
+          <svg className="msg__icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path d="M10 1.7 19 18H1L10 1.7Zm0 5.3a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-1-1Zm0 8.2a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3Z" />
+          </svg>
+          <span>
+            <span className="msg__title">Not saved. </span>
+            {state.error}
+          </span>
+        </div>
       ) : null}
 
-      <button type="submit" disabled={pending}>
-        {pending ? 'Saving...' : submitLabel}
+      <div className="field">
+        <label className="label" htmlFor="name">
+          Name
+        </label>
+        <input className="input" id="name" name="name" defaultValue={initial?.name} required maxLength={120} />
+      </div>
+
+      <div className="field max-w-xs">
+        <label className="label" htmlFor="unitType">
+          Measured in
+        </label>
+        <select className="select" id="unitType" name="unitType" defaultValue={initial?.unitType ?? 'weight'}>
+          <option value="weight">Weight (grams)</option>
+          <option value="volume">Volume (millilitres)</option>
+          <option value="count">Count (units)</option>
+        </select>
+      </div>
+
+      <div className="field max-w-xs">
+        <label className="label" htmlFor="purchaseUnit">
+          Purchase unit
+        </label>
+        <input
+          className="input"
+          id="purchaseUnit"
+          name="purchaseUnit"
+          defaultValue={initial?.purchaseUnit}
+          placeholder="kg, litre, tray"
+          required
+        />
+      </div>
+
+      <div className="field max-w-xs">
+        <label className="label" htmlFor="purchaseUnitInBase">
+          Base units per purchase unit
+        </label>
+        <input
+          className="input tabular-nums"
+          id="purchaseUnitInBase"
+          name="purchaseUnitInBase"
+          type="number"
+          min={1}
+          step={1}
+          defaultValue={initial?.purchaseUnitInBase ?? 1000}
+          required
+          aria-describedby="puib-hint"
+        />
+        <p id="puib-hint" className="prose-note mt-1">
+          Buying in kg with grams as the base unit gives 1000. A tray of 30 eggs gives 30.
+        </p>
+      </div>
+
+      <div className="field max-w-xs">
+        <label className="label" htmlFor="lowStockThreshold">
+          Low stock threshold
+        </label>
+        <input
+          className="input tabular-nums"
+          id="lowStockThreshold"
+          name="lowStockThreshold"
+          defaultValue={initial?.lowStockThreshold ?? '0'}
+          inputMode="decimal"
+          aria-describedby="threshold-hint"
+        />
+        <p id="threshold-hint" className="prose-note mt-1">
+          In purchase units. The ingredient appears on the low stock list at or below this.
+        </p>
+      </div>
+
+      <button className="btn" type="submit" disabled={pending}>
+        {pending ? 'Saving…' : submitLabel}
       </button>
     </form>
   );

@@ -12,10 +12,17 @@ export default async function ReceiptPage() {
   ]);
 
   return (
-    <main className="page">
-      <p>
-        <Link href="/">&larr; Home</Link>
-      </p>
+    <>
+      <header className="brandbar">
+        <div className="brandbar__inner">
+          <Link className="brandbar__name text-on-navy no-underline" href="/">
+            NO MEAT NAAN
+          </Link>
+          <span className="text-sm opacity-85">Stock receipt</span>
+        </div>
+      </header>
+
+      <main className="page">
       <h1>Stock receipt</h1>
       <p className="prose-note">
         Enter quantities in the unit you buy in, and what was actually paid for that line.
@@ -31,5 +38,6 @@ export default async function ReceiptPage() {
         suppliers={suppliers}
       />
     </main>
+    </>
   );
 }

@@ -20,11 +20,10 @@ export type IngredientOption = {
 type Row = { ingredientId: string; quantity: string; totalCost: string };
 
 const blank = (): Row => ({ ingredientId: '', quantity: '', totalCost: '' });
-const cell = { padding: '4px 6px', verticalAlign: 'top' } as const;
 
 /**
- * The unit cost shown before saving uses the same helper the server uses to store it,
- * so what the operator checks is what gets written - not a separate approximation.
+ * The unit cost shown before saving uses the same helpers the server uses to store it,
+ * so what the operator checks against the delivery note is what gets written.
  */
 function preview(row: Row, ingredients: IngredientOption[]): string {
   const ing = ingredients.find((i) => i.id === row.ingredientId);
@@ -34,7 +33,6 @@ function preview(row: Row, ingredients: IngredientOption[]): string {
     if (qty <= 0n) return '—';
     const paise = rupeesToPaise(row.totalCost);
     const perBase = unitCostMillipaisePerBase(paise, qty);
-    // Shown per purchase unit, which is how anyone checking a delivery note thinks.
     return `${formatINR(costPerPurchaseUnitPaise(perBase, ing.purchaseUnitInBase))} / ${ing.purchaseUnit}`;
   } catch {
     return 'check entry';
@@ -59,95 +57,135 @@ export function ReceiptForm({
 
   return (
     <form action={formAction}>
-      <label htmlFor="supplierId">Supplier (optional)</label>
-      <select id="supplierId" name="supplierId" style={{ display: 'block', marginBottom: 12 }}>
-        <option value="">—</option>
-        {suppliers.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.name}
-          </option>
-        ))}
-      </select>
+      {state.error ? (
+        <div className="msg msg--error" role="alert">
+          <svg className="msg__icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path d="M10 1.7 19 18H1L10 1.7Zm0 5.3a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-1-1Zm0 8.2a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3Z" />
+          </svg>
+          <span>
+            <span className="msg__title">Receipt not saved. </span>
+            {state.error} Nothing was written — the whole receipt is one transaction.
+          </span>
+        </div>
+      ) : null}
 
-      <table style={{ borderCollapse: 'collapse', marginBottom: 12 }}>
-        <thead>
-          <tr>
-            <th style={cell}>Ingredient</th>
-            <th style={cell}>Quantity</th>
-            <th style={cell}>Total paid (₹)</th>
-            <th style={cell}>Unit cost</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => {
-            const ing = ingredients.find((x) => x.id === row.ingredientId);
-            return (
-              <tr key={i}>
-                <td style={cell}>
-                  <select
-                    name={`lines[${i}][ingredientId]`}
-                    value={row.ingredientId}
-                    onChange={(e) => set(i, { ingredientId: e.target.value })}
-                    aria-label={`Ingredient, line ${i + 1}`}
+      {state.ok ? (
+        <div className="msg msg--ok" role="status">
+          <svg className="msg__icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path d="M8 14.2 3.8 10l1.4-1.4L8 11.4l6.8-6.8L16.2 6 8 14.2Z" />
+          </svg>
+          <span>
+            <span className="msg__title">Saved. </span>
+            {state.ok}
+          </span>
+        </div>
+      ) : null}
+
+      <div className="field max-w-sm">
+        <label className="label" htmlFor="supplierId">
+          Supplier <span className="font-normal muted">(optional)</span>
+        </label>
+        <select className="select" id="supplierId" name="supplierId">
+          <option value="">—</option>
+          {suppliers.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th scope="col">Ingredient</th>
+              <th scope="col">Quantity</th>
+              <th scope="col">Total paid (₹)</th>
+              <th scope="col" className="num">
+                Works out at
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => {
+              const ing = ingredients.find((x) => x.id === row.ingredientId);
+              const cost = preview(row, ingredients);
+              return (
+                <tr key={i}>
+                  <td>
+                    <select
+                      className="select min-w-40"
+                      name={`lines[${i}][ingredientId]`}
+                      value={row.ingredientId}
+                      onChange={(e) => set(i, { ingredientId: e.target.value })}
+                      aria-label={`Ingredient, line ${i + 1}`}
+                    >
+                      <option value="">—</option>
+                      {ingredients.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.name}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+
+                  <td>
+                    <div className="flex items-center gap-2">
+                      <input
+                        className="input w-24 tabular-nums"
+                        name={`lines[${i}][quantity]`}
+                        value={row.quantity}
+                        onChange={(e) => set(i, { quantity: e.target.value })}
+                        inputMode="decimal"
+                        aria-label={`Quantity, line ${i + 1}`}
+                      />
+                      <span className="muted text-sm whitespace-nowrap">{ing?.purchaseUnit ?? ''}</span>
+                    </div>
+                  </td>
+
+                  <td>
+                    <input
+                      className="input w-28 tabular-nums"
+                      name={`lines[${i}][totalCost]`}
+                      value={row.totalCost}
+                      onChange={(e) => set(i, { totalCost: e.target.value })}
+                      inputMode="decimal"
+                      aria-label={`Total paid, line ${i + 1}`}
+                    />
+                  </td>
+
+                  {/* The number to check against the delivery note, so it is emphasised. */}
+                  <td
+                    className={`num whitespace-nowrap font-semibold ${
+                      cost === 'check entry' ? 'text-danger' : cost === '—' ? 'muted font-normal' : 'text-navy'
+                    }`}
+                    aria-live="polite"
                   >
-                    <option value="">—</option>
-                    {ingredients.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.name}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td style={cell}>
-                  <input
-                    name={`lines[${i}][quantity]`}
-                    value={row.quantity}
-                    onChange={(e) => set(i, { quantity: e.target.value })}
-                    inputMode="decimal"
-                    size={8}
-                    aria-label={`Quantity, line ${i + 1}`}
-                  />{' '}
-                  {ing?.purchaseUnit ?? ''}
-                </td>
-                <td style={cell}>
-                  <input
-                    name={`lines[${i}][totalCost]`}
-                    value={row.totalCost}
-                    onChange={(e) => set(i, { totalCost: e.target.value })}
-                    inputMode="decimal"
-                    size={10}
-                    aria-label={`Total paid, line ${i + 1}`}
-                  />
-                </td>
-                <td style={{ ...cell, whiteSpace: 'nowrap' }}>{preview(row, ingredients)}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                    {cost}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
-      <p>
-        <button type="button" onClick={() => setRows((rs) => [...rs, blank()])}>
+      <p className="mt-3">
+        <button className="btn btn--secondary" type="button" onClick={() => setRows((rs) => [...rs, blank()])}>
           + Add line
         </button>
       </p>
 
-      <label htmlFor="note">Note (optional)</label>
-      <input id="note" name="note" maxLength={500} style={{ display: 'block', width: '100%', marginBottom: 12 }} />
+      <div className="field max-w-xl">
+        <label className="label" htmlFor="note">
+          Note <span className="font-normal muted">(optional)</span>
+        </label>
+        <input className="input" id="note" name="note" maxLength={500} />
+      </div>
 
-      {state.error ? (
-        <p role="alert" style={{ color: '#b00' }}>
-          {state.error} Nothing was saved — the whole receipt is one transaction.
-        </p>
-      ) : null}
-      {state.ok ? (
-        <p role="status" style={{ color: '#070' }}>
-          {state.ok}
-        </p>
-      ) : null}
-
-      <button type="submit" disabled={pending}>
-        {pending ? 'Saving...' : 'Record receipt'}
+      <button className="btn" type="submit" disabled={pending}>
+        {pending ? 'Saving…' : 'Record receipt'}
       </button>
     </form>
   );

@@ -282,7 +282,7 @@
    */
   .table-wrap {
     /* The escape hatch for genuinely wide tables. Columns that matter are kept out of it
-       by hiding secondary ones at narrow widths — see .col-secondary. */
+       by folding secondary ones at narrow widths — see .col-secondary. */
     @apply w-full overflow-x-auto;
   }
 
@@ -290,9 +290,20 @@
     @apply w-full border-collapse text-left;
   }
 
-  .table th {
+  /*
+   * thead th ONLY. A bare `.table th` also hits <th scope="row"> in the body, which
+   * uppercased every ingredient name — caps are slower to read and this is the column
+   * staff scan most. Caps belong on the header row and on badges, nowhere else.
+   */
+  .table thead th {
     @apply px-3 py-2 text-sm font-semibold uppercase tracking-wide text-ink-muted
       border-b-2 border-mist align-bottom;
+  }
+
+  /* Row headers are content, not chrome: sentence case, full size, ink. */
+  .table tbody th {
+    @apply px-3 text-left font-semibold text-ink align-middle border-b border-mist;
+    height: var(--spacing-row);
   }
 
   .table td {
@@ -314,9 +325,50 @@
     @apply text-right tabular-nums;
   }
 
-  /* A row that is itself the tap target (whole-row link pattern). */
-  .table .row-link {
-    @apply flex items-center min-h-tap font-semibold no-underline;
+  /*
+   * Whole-row click target. The row is what staff aim at with a thumb, not a 60px link
+   * inside it. The overlay is a pseudo-element so the accessible name stays on the real
+   * anchor — screen readers announce "Maida", not "row".
+   */
+  .table tbody tr {
+    @apply relative;
+  }
+
+  .row-link {
+    @apply no-underline text-ink;
+  }
+
+  .row-link::after {
+    content: '';
+    @apply absolute inset-0;
+  }
+
+  .table tbody tr:hover .row-link {
+    @apply text-navy underline;
+  }
+
+  /*
+   * Anything else interactive in the row must sit above that overlay, or the row link
+   * swallows its clicks.
+   */
+  .row-action {
+    @apply relative z-10;
+  }
+
+  /*
+   * The rarest action on a screen should not be its heaviest element. A quiet navy text
+   * link, not a bordered button — but still 44px of tappable height.
+   */
+  .btn-quiet {
+    @apply inline-flex items-center justify-center min-h-tap px-2 text-sm font-semibold
+      text-navy bg-transparent border-0 underline cursor-pointer;
+    font-family: inherit;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+  }
+
+  .btn-quiet:hover {
+    @apply text-navy-dark;
   }
 
   /*
@@ -357,6 +409,34 @@
 
   .badge--muted {
     @apply text-ink-muted bg-mist;
+  }
+
+  /*
+   * A choice that changes the rest of the form deserves a target you cannot mis-tap
+   * during a rush. The real radio stays in the DOM (sr-only) so keyboard and screen
+   * reader behaviour is unchanged; only its presentation moves to the card.
+   */
+  .radiocard {
+    @apply flex flex-col justify-center gap-0.5 min-h-tap px-4 py-3 cursor-pointer
+      bg-surface border-2 border-mist rounded-md text-ink;
+  }
+
+  .radiocard:hover {
+    @apply border-sky;
+  }
+
+  .radiocard--on {
+    @apply border-navy bg-stripe;
+  }
+
+  /* The sr-only radio still drives focus, so the ring has to land on the card. */
+  .radiocard:has(input:focus-visible) {
+    @apply outline-focus outline-3 outline-offset-2;
+    box-shadow: 0 0 0 2px var(--color-surface);
+  }
+
+  .radiocard__hint {
+    @apply text-sm text-ink-muted;
   }
 
   /* ---- Toolbar (search + filters above a table) ---------------------------- */

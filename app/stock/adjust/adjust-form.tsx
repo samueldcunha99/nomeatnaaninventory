@@ -20,8 +20,6 @@ const WASTAGE_REASONS = [
   ['other', 'Other'],
 ] as const;
 
-const row = { display: 'block', marginBottom: 12 } as const;
-
 export function AdjustForm({ ingredients }: { ingredients: IngredientOption[] }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(recordCorrectionAction, {
     error: null,
@@ -31,7 +29,6 @@ export function AdjustForm({ ingredients }: { ingredients: IngredientOption[] })
   const [reason, setReason] = useState<string>('count_correction');
   const [ingredientId, setIngredientId] = useState('');
 
-  // Wastage only ever removes stock, so the direction choice would be a trap.
   const reasons = kind === 'wastage' ? WASTAGE_REASONS : ADJUSTMENT_REASONS;
   const unit = ingredients.find((i) => i.id === ingredientId)?.purchaseUnit ?? '';
 
@@ -41,80 +38,152 @@ export function AdjustForm({ ingredients }: { ingredients: IngredientOption[] })
   };
 
   return (
-    <form action={formAction}>
+    <form action={formAction} className="max-w-xl">
       <input type="hidden" name="kind" value={kind} />
 
-      <fieldset style={{ marginBottom: 12 }}>
-        <legend>What happened</legend>
-        <label style={{ marginRight: 16 }}>
-          <input type="radio" checked={kind === 'adjustment'} onChange={() => switchKind('adjustment')} /> Adjustment
-          — the count was wrong
-        </label>
-        <label>
-          <input type="radio" checked={kind === 'wastage'} onChange={() => switchKind('wastage')} /> Wastage — stock
-          was lost
-        </label>
+      {state.error ? (
+        <div className="msg msg--error" role="alert">
+          <svg className="msg__icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path d="M10 1.7 19 18H1L10 1.7Zm0 5.3a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-1-1Zm0 8.2a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3Z" />
+          </svg>
+          <span>
+            <span className="msg__title">Not recorded. </span>
+            {state.error}
+          </span>
+        </div>
+      ) : null}
+
+      {state.ok ? (
+        <div className="msg msg--ok" role="status">
+          <svg className="msg__icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path d="M8 14.2 3.8 10l1.4-1.4L8 11.4l6.8-6.8L16.2 6 8 14.2Z" />
+          </svg>
+          <span>
+            <span className="msg__title">Saved. </span>
+            {state.ok}
+          </span>
+        </div>
+      ) : null}
+
+      <fieldset className="field border-0 p-0 m-0 mb-4">
+        <legend className="label">What happened</legend>
+        <div className="flex flex-wrap gap-2">
+          {/*
+           * Two big targets rather than small radios. This is the first decision on the
+           * screen and it changes which reasons are valid, so it should be hard to
+           * mis-tap during a rush.
+           */}
+          <label className={`radiocard ${kind === 'adjustment' ? 'radiocard--on' : ''}`}>
+            <input
+              type="radio"
+              className="sr-only"
+              checked={kind === 'adjustment'}
+              onChange={() => switchKind('adjustment')}
+            />
+            <span className="font-semibold">Adjustment</span>
+            <span className="radiocard__hint">The count was wrong</span>
+          </label>
+
+          <label className={`radiocard ${kind === 'wastage' ? 'radiocard--on' : ''}`}>
+            <input
+              type="radio"
+              className="sr-only"
+              checked={kind === 'wastage'}
+              onChange={() => switchKind('wastage')}
+            />
+            <span className="font-semibold">Wastage</span>
+            <span className="radiocard__hint">Stock was lost</span>
+          </label>
+        </div>
       </fieldset>
 
-      <label htmlFor="ingredientId">Ingredient</label>
-      <select
-        id="ingredientId"
-        name="ingredientId"
-        value={ingredientId}
-        onChange={(e) => setIngredientId(e.target.value)}
-        required
-        style={row}
-      >
-        <option value="">—</option>
-        {ingredients.map((i) => (
-          <option key={i.id} value={i.id}>
-            {i.name}
-          </option>
-        ))}
-      </select>
+      <div className="field">
+        <label className="label" htmlFor="ingredientId">
+          Ingredient
+        </label>
+        <select
+          className="select"
+          id="ingredientId"
+          name="ingredientId"
+          value={ingredientId}
+          onChange={(e) => setIngredientId(e.target.value)}
+          required
+        >
+          <option value="">—</option>
+          {ingredients.map((i) => (
+            <option key={i.id} value={i.id}>
+              {i.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {kind === 'adjustment' ? (
-        <fieldset style={{ marginBottom: 12 }}>
-          <legend>Direction</legend>
-          <label style={{ marginRight: 16 }}>
-            <input type="radio" name="direction" value="remove" defaultChecked /> Remove stock
-          </label>
-          <label>
-            <input type="radio" name="direction" value="add" /> Add stock
-          </label>
+        <fieldset className="field border-0 p-0 m-0 mb-4">
+          <legend className="label">Direction</legend>
+          <div className="flex flex-wrap gap-4">
+            <label className="checkfield">
+              <input type="radio" name="direction" value="remove" defaultChecked className="size-5" />
+              Remove stock
+            </label>
+            <label className="checkfield">
+              <input type="radio" name="direction" value="add" className="size-5" />
+              Add stock
+            </label>
+          </div>
         </fieldset>
       ) : (
+        // Wastage only ever removes stock, so offering the choice would be a trap.
         <input type="hidden" name="direction" value="remove" />
       )}
 
-      <label htmlFor="quantity">Quantity {unit ? `(${unit})` : ''}</label>
-      <input id="quantity" name="quantity" inputMode="decimal" required style={row} />
+      <div className="field max-w-xs">
+        <label className="label" htmlFor="quantity">
+          Quantity {unit ? <span className="font-normal muted">({unit})</span> : null}
+        </label>
+        <input className="input tabular-nums" id="quantity" name="quantity" inputMode="decimal" required />
+      </div>
 
-      <label htmlFor="reason">Reason</label>
-      <select id="reason" name="reason" value={reason} onChange={(e) => setReason(e.target.value)} style={row}>
-        {reasons.map(([value, label]) => (
-          <option key={value} value={value}>
-            {label}
-          </option>
-        ))}
-      </select>
+      <div className="field max-w-xs">
+        <label className="label" htmlFor="reason">
+          Reason
+        </label>
+        <select
+          className="select"
+          id="reason"
+          name="reason"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+        >
+          {reasons.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      <label htmlFor="note">Note {reason === 'other' ? '(required)' : '(optional)'}</label>
-      <input id="note" name="note" maxLength={500} required={reason === 'other'} style={row} />
+      <div className="field">
+        <label className="label" htmlFor="note">
+          Note{' '}
+          {reason === 'other' ? (
+            <span className="text-danger">(required)</span>
+          ) : (
+            <span className="font-normal muted">(optional)</span>
+          )}
+        </label>
+        <input
+          className="input"
+          id="note"
+          name="note"
+          maxLength={500}
+          required={reason === 'other'}
+          aria-required={reason === 'other'}
+        />
+      </div>
 
-      {state.error ? (
-        <p role="alert" style={{ color: '#b00' }}>
-          {state.error}
-        </p>
-      ) : null}
-      {state.ok ? (
-        <p role="status" style={{ color: '#070' }}>
-          {state.ok}
-        </p>
-      ) : null}
-
-      <button type="submit" disabled={pending}>
-        {pending ? 'Saving...' : 'Record'}
+      <button className="btn" type="submit" disabled={pending}>
+        {pending ? 'Saving…' : `Record ${kind}`}
       </button>
     </form>
   );

@@ -3,13 +3,13 @@ import { requirePermission } from '../../src/auth/server.ts';
 import { hasPermission } from '../../src/lib/auth.ts';
 import { listIngredients } from '../../src/db/ingredients.ts';
 import { setActiveAction } from './actions.ts';
+import { StatusBadge } from '../ui/status-badge.tsx';
 import {
   formatQty,
   formatINR,
   costPerPurchaseUnitPaise,
   milliBaseToPurchaseUnits,
   isLowStock,
-  baseUnitLabel,
 } from '../../src/lib/units.ts';
 
 export default async function IngredientsPage({
@@ -81,9 +81,6 @@ export default async function IngredientsPage({
                   <th scope="col" className="num">
                     Avg cost
                   </th>
-                  <th scope="col" className="col-secondary">
-                    Bought by
-                  </th>
                   <th scope="col">Status</th>
                   {canManage ? (
                     <th scope="col">
@@ -98,9 +95,12 @@ export default async function IngredientsPage({
                   const oversold = r.qtyMilliBase < 0;
                   return (
                     <tr key={r.id}>
-                      <th scope="row" className="px-3 font-semibold text-left">
+                      {/* Sentence case as stored. This is the column staff scan. */}
+                      <th scope="row">
                         {canManage ? (
-                          <Link href={`/ingredients/${r.id}`}>{r.name}</Link>
+                          <Link className="row-link" href={`/ingredients/${r.id}`}>
+                            {r.name}
+                          </Link>
                         ) : (
                           r.name
                         )}
@@ -127,35 +127,23 @@ export default async function IngredientsPage({
                         <span className="block text-xs muted">per {r.purchaseUnit}</span>
                       </td>
 
-                      <td className="col-secondary muted text-sm">
-                        {r.purchaseUnit} = {r.purchaseUnitInBase} {baseUnitLabel(r.unitType)}
-                      </td>
-
+                      {/*
+                       * Exceptions only. A badge on every row is wallpaper - if everything
+                       * is badged, nothing stands out, which is the whole job of this column.
+                       */}
                       <td>
                         <div className="flex flex-wrap items-center gap-1">
-                          {oversold ? (
-                            <span className="badge badge--out">
-                              <Glyph kind="alert" /> Oversold
-                            </span>
-                          ) : low ? (
-                            <span className="badge badge--low">
-                              <Glyph kind="alert" /> Low
-                            </span>
-                          ) : (
-                            <span className="badge badge--ok">
-                              <Glyph kind="check" /> In stock
-                            </span>
-                          )}
+                          <StatusBadge kind={oversold ? 'oversold' : low ? 'low' : null} />
                           {!r.isActive ? <span className="badge badge--muted">Inactive</span> : null}
                         </div>
                       </td>
 
                       {canManage ? (
-                        <td>
-                          <form action={setActiveAction}>
+                        <td className="text-right">
+                          <form action={setActiveAction} className="row-action inline-block">
                             <input type="hidden" name="id" value={r.id} />
                             <input type="hidden" name="isActive" value={r.isActive ? 'false' : 'true'} />
-                            <button className="btn btn--secondary text-sm px-3" type="submit">
+                            <button className="btn-quiet" type="submit">
                               {r.isActive ? 'Deactivate' : 'Reactivate'}
                               <span className="sr-only"> {r.name}</span>
                             </button>
@@ -171,21 +159,5 @@ export default async function IngredientsPage({
         )}
       </main>
     </>
-  );
-}
-
-/**
- * Badges must never rely on colour alone, so each carries a glyph as well as a word.
- * Inline SVG rather than an icon pack - two shapes do not justify a dependency.
- */
-function Glyph({ kind }: { kind: 'alert' | 'check' }) {
-  return (
-    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" className="flex-none">
-      {kind === 'alert' ? (
-        <path d="M10 1.7 19 18H1L10 1.7Zm0 5.3a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-1-1Zm0 8.2a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3Z" />
-      ) : (
-        <path d="M8 14.2 3.8 10l1.4-1.4L8 11.4l6.8-6.8L16.2 6 8 14.2Z" />
-      )}
-    </svg>
   );
 }
