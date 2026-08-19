@@ -27,6 +27,8 @@ Legend: ✅ done and verified · 🟡 in progress · ⬜ not started · 🚫 blo
 | 5 | Ingredient CRUD | ✅ |
 | 6 | Stock receipts, adjustments, wastage | ✅ |
 | 7 | Movement history + low-stock views | ✅ |
+
+**Month 1 is COMPLETE and VERIFIED — 92 tests passing against live Postgres, 0 skipped.**
 | — | UI styling pass (post-Month-1) | ✅ all 9 screens, Tailwind v4 |
 
 ### Month 2 — deploy pipeline, then the costing engine
@@ -690,3 +692,101 @@ and comparing bodies. A first pass appeared to show 22 rewritten entries; that w
 check counting CRLF conversion as a change, not a real edit.
 
 92 tests, 0 failures. `next build` exits 0.
+
+### 2026-08-19 — Handover session: origin/main reconciled, pagination bug fixed, guards extended
+
+#### origin/main was nine commits stale
+
+Reported to me as "trunk at 22775cd with full history". It was not. PR #1 had merged only
+up to `a19e5d2` (Month 1 step 6), and the PR merge commit's tree was byte-identical to it.
+Remote main was missing step 7, the numeric-as-string sweep, the Month 2 decisions, the
+handover docs, Tailwind adoption and the entire styling pass — 4,206 lines.
+
+Anyone branching from `main` for Month 2 would have started from step 6.
+
+Reconciled by merging `origin/main` into local main, which changed **no files** because the
+PR merge introduced no content — it only joined the histories. Nothing rewritten, nothing
+force-pushed. `main` is now the only branch; `month1-step6-stock-movements` was verified
+fully merged and deleted.
+
+**The lesson, not the incident:** when an instruction does not match what the repository
+shows, check before acting. This was found by running `git merge-base --is-ancestor` rather
+than accepting the description.
+
+#### `src/db/stock.ts` was diffing as binary
+
+Residue from the NUL-byte incident: the initial-commit blob genuinely contains 2 NUL bytes,
+and git calls a path binary if **any** blob in the comparison does. So the file holding the
+weighted-average arithmetic rendered as `Bin 3728 -> 5294 bytes` — no reviewable diff on the
+costing code, which is a review problem rather than a cosmetic one.
+
+**`text eol=lf` alone does NOT fix this, and that cost a round trip.** `text` governs
+checkin/checkout normalisation only. The attribute that forces a *text diff* is bare `diff`.
+A first attempt also used `diff=typescript`, which is not a driver git has.
+
+`.gitattributes` now sets `text eol=lf diff` on source. The file renders 51 insertions / 7
+deletions, and no path anywhere in history is treated as binary. The working tree was
+renormalised to LF at the same time (34 files), which is what the new CRLF guard demands.
+
+#### ⚠️ Receipt-group ordering broke pagination — DO NOT REVERT THIS
+
+**A future agent will be tempted to reorder before slicing again. It is wrong, and here is
+why.**
+
+`listMovements()` fetches `HISTORY_PAGE_SIZE + 1` rows — the extra row exists only to detect
+`hasNextPage`. `orderGroupLines()` was being applied to that fetched set **before** slicing to
+the page. Because reordering permutes rows across the page boundary, a receipt group
+straddling the boundary caused one line to appear on **both** pages and another to
+**disappear from the ledger view entirely**:
+
+```
+buggy   page1=[10,9,8,6]  page2=[5,6,4,3]   -> 6 duplicated, 7 never shown
+fixed   page1=[10,9,8,7]  page2=[5,6,4,3]   -> every row exactly once
+```
+
+**The fix is to slice to the page first, then reorder only what is on it.** Page membership
+must stay decided by the query's `seq` ordering, because that is what `OFFSET` agrees with.
+Reordering is a *display* concern and must not influence which rows a page contains.
+
+On an append-only audit trail, a movement you cannot see is the worst class of wrong — the
+ledger is the thing the whole system is trusted for.
+
+Guarded by 5 pure tests in `src/db/history.test.ts`, including the straddling case. Verified
+by reverting the fix and confirming they fail. The pre-existing database test could not have
+caught this: it paginates a single ingredient with no multi-line groups.
+
+Method worth repeating: the defect was **proved with a worked example before any code was
+changed**. A first attempt at that example put the group inside one page and showed no
+problem — the boundary case had to be constructed deliberately.
+
+#### A UTF-8 BOM, and the guard extended
+
+A BOM sat immediately before `'use client'` in `app/ui/auto-submit-checkbox.tsx`. A BOM ahead
+of a directive prologue can stop the directive being recognised, silently turning a client
+component into a server one. `tsc` said nothing.
+
+`src/lib/source-integrity.test.ts` now fails on **NULs, BOMs, zero-width and non-breaking
+characters, and CRLF** where LF is required — the whole invisible-but-breaking class. All
+four checks were verified by planting each defect in turn and watching the guard go red.
+
+#### Independent verification of the previous session
+
+The six styling fixes were checked against the repository rather than accepted on report.
+Four claims held exactly: no inline styles anywhere in `app/`, all 19 hex literals inside
+the `@theme` block, movement-history quantities going through the shared helpers with no
+ad-hoc conversion, and `AutoSubmitCheckbox` being a genuine client component whose no-JS
+path still works. The pagination bug and the BOM above were the two that did not.
+
+**PROGRESS.md append-only integrity confirmed** — all 22 prior entries present, none dropped
+or rewritten, checked by extracting every entry from every historical version and comparing
+bodies. A first pass appeared to show 22 rewritten entries; that was my check counting CRLF
+conversion as a change, not a real edit. Nothing needed restoring.
+
+#### Handover documentation
+
+README.md now opens with a HANDOVER section for a successor with no memory of this work:
+where the project stands, what is verified against a live database versus merely built, what
+is gated and on what, the working rules, the failure mode to fear, and the eight Month 2
+decisions already made. AGENTS.md gained the seven non-negotiables as an explicit list.
+
+92 tests, 0 failures, 0 skipped against live Postgres. `next build` exits 0.

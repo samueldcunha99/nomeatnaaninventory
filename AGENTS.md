@@ -3,14 +3,16 @@
 Conventions for the cafe management system. Read `files/PROJECT-SPEC.md` first — this
 file records what we decided that the spec does not say, and why.
 
-Current state: **Month 1 complete (steps 1–7).** Schema, migrations, seed, unit conversion,
-weighted-average cost, auth, role enforcement, ingredient CRUD, stock receipts /
-adjustments / wastage, movement history and low-stock views are in and tested against live
-Postgres (87 tests). The **UI styling pass is complete** — all 9 internal screens, Tailwind v4.
-Month 2 — deploy pipeline, then the costing engine — has not started and is gated.
+**Month 1 is complete and verified: 92 tests passing against a live PostgreSQL, 0
+skipped.** Schema, migrations, seed, unit conversion, weighted-average cost, auth, role
+enforcement, ingredient CRUD, stock receipts / adjustments / wastage, movement history,
+low-stock views, and a completed UI styling pass across all 9 internal screens.
 
-See [PROGRESS.md](PROGRESS.md) for state, history and open blockers, and
-[README.md](README.md) for setup.
+**Month 2 has not started and is gated** on the client creating the E2E Networks account.
+
+Read [README.md](README.md) first — it carries the handover, the working rules and the
+Month 2 decisions already made. [PROGRESS.md](PROGRESS.md) carries state, blockers and
+the dated log. **This file carries the rules you must not break.**
 
 ---
 
@@ -46,6 +48,37 @@ level compared lexicographically. All three occurred. None threw.
 
 ---
 
+## The seven non-negotiables
+
+From PROJECT-SPEC § 2. These are the most expensive things to retrofit, and every one of
+them is already load-bearing. Breaking one is not a style disagreement.
+
+1. **Money is integer paise.** Never a float, never a JS `number` holding rupees. Columns
+   are named `*_paise`. Convert and round exactly once, at the display boundary, through
+   `formatINR()`. *(Extended in practice: per-unit rates are millipaise-per-base — see
+   deviation 1. Money that changed hands is still whole paise.)*
+2. **Quantities are stored in a canonical base unit** — grams, millilitres, or a count.
+   Never "2 kg"; store the number with a `unit_type`. Conversion happens only at the input
+   and display boundary. *(Extended: milli-base — see deviation 2.)*
+3. **Every business table carries `tenant_id`.** Every table, every query, every index. No
+   exceptions and no "we will add it later". This codebase is built for resale; cross-tenant
+   mixing is the one failure that cannot be cleaned up afterwards.
+4. **Nothing is hard deleted.** `deleted_at timestamptz`. Stock and cost history must stay
+   reconstructable indefinitely.
+5. **Stock is an append-only ledger.** Current stock is *derived*, never overwritten.
+   Application code must never issue `UPDATE ingredients SET qty = …`. All change flows
+   through `stock_movements` inserts, and the derived cache is recomputed inside the same
+   transaction.
+6. **Cost is snapshotted at sale time.** Every order line stores the ingredient cost as it
+   was at the moment of sale (Month 3). Historical reports read the snapshot and never
+   recompute — otherwise updating a butter price silently rewrites last month's profit.
+7. **All timestamps are `timestamptz`**, stored UTC, displayed Asia/Kolkata.
+
+Two more that are not in that list but have the same standing here: **Zod validation on
+every mutation, server-side, including role checks**, and **stock decrements are atomic
+single statements, never read-then-write**.
+
+---
 ## Numeric scales
 
 Three integer scales. Nothing else. No floats, no decimals, anywhere.
@@ -718,20 +751,43 @@ This runs in a kitchen. Minimum **44px** tap targets on every button and form co
 that never rely on colour alone** — every message carries an icon and a bold lead word, so
 it still reads in greyscale and on a washed-out screen.
 
-## Source integrity
+## Source integrity — invisible characters that break things
 
-`src/lib/source-integrity.test.ts` fails if any file under `src/`, `app/` or `scripts/`
-contains a NUL byte.
+`src/lib/source-integrity.test.ts` fails the build if any file under `src/`, `app/` or
+`scripts/` contains a **NUL byte**, a **UTF-8 BOM**, a **zero-width or non-breaking
+character**, or **CRLF** where LF is required.
 
-This exists because a scripted edit once wrote NUL bytes into `src/db/stock.ts`, and a
-later search-and-replace against that file then matched nothing, changed nothing, reported
-nothing, and left `tsc` passing — an audit-log insert shipped as absent rather than as
-broken. A NUL also makes git treat the file as binary, so the diff stops being readable
-exactly when you need it.
+Every one of those is in the guard because it actually happened here, and in each case the
+build stayed green while the code was wrong:
 
-Prefer the editing tools over scripted string surgery on source files. When a script is
-genuinely the right tool, have it assert that its replacement actually matched.
+- **NUL.** A scripted edit wrote two into `src/db/stock.ts`. A *later* search-and-replace
+  against that file then matched nothing, changed nothing, reported nothing, and `tsc`
+  passed — an audit-log insert shipped as **absent** rather than as broken. The NUL also
+  made git diff the file as binary, so the weighted-average arithmetic became unreviewable.
+- **BOM.** One sat immediately before `'use client'` in a component. A BOM ahead of a
+  directive prologue can stop the directive being recognised, silently turning a client
+  component into a server one.
+- **Zero-width characters.** Paste artefacts. They survive review because nobody can see
+  them, and they corrupt identifiers and string comparisons.
+- **CRLF.** `.gitattributes` declares `eol=lf` for source. A CRLF file makes a scripted edit
+  searching for `\n` silently fail to match — which is how the NUL incident became a
+  missing feature rather than a syntax error.
 
+**If this test goes red, fix the file. Do not weaken the guard.**
+
+### Two habits that follow from it
+
+**Prefer the editing tools to scripted string surgery on source files.** If a script really
+is the right tool, make it assert that its replacement actually matched — a replace that
+silently matches nothing is the failure mode this whole section exists for.
+
+**Prove a guard fails before trusting it.** Plant the defect, watch the test go red, remove
+it, watch it go green. All four checks above were verified that way. A guard nobody has
+watched fail is not yet a guard.
+
+`.gitattributes` forces `text eol=lf diff` on source. Note that `text eol=lf` alone does
+**not** make git diff a NUL-bearing file as text — `text` governs checkin/checkout
+normalisation; the attribute that forces a text *diff* is bare `diff`.
 ## Invariants enforced in the database, not just in code
 
 Application code is expected to uphold these too — the constraints are there for the day
