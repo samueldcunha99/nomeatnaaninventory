@@ -27,6 +27,7 @@ Legend: ✅ done and verified · 🟡 in progress · ⬜ not started · 🚫 blo
 | 5 | Ingredient CRUD | ✅ |
 | 6 | Stock receipts, adjustments, wastage | ✅ |
 | 7 | Movement history + low-stock views | ✅ |
+| — | UI styling pass (post-Month-1) | 🚫 2 of 9 screens, blocked |
 
 ### Month 2 — deploy pipeline, then the costing engine
 
@@ -57,6 +58,43 @@ by hand, and the deploy target is provisioned.**
 ---
 
 ## Open questions and blockers
+
+### 🚫 IN FLIGHT — UI styling pass, blocked on the Tailwind question
+
+**2 screens of 9 styled. There is uncommitted work in the tree.** Stopped deliberately
+after the reference implementation so one screen could be agreed rather than nine reviewed.
+
+**The blocker.** PROJECT-SPEC § 3 names Tailwind in the stack and the styling brief said
+"Tailwind is already there — use it". It is not: no Tailwind in `package.json`, no
+`postcss.config`, no `tailwind.config`. It was never installed, because steps 4–7 used
+inline styles. The same brief also said "no new dependencies". **The two instructions
+conflict and the client has not chosen.**
+
+Built so far with plain CSS + custom properties, which satisfies every other constraint —
+tokens in one place, no hardcoded hex outside `:root`, zero new dependencies. Recommendation
+on record: **stay with plain CSS.** Nine internal screens of tables and forms is not where
+Tailwind earns its keep, and the token requirement was literally "define these as CSS
+variables in one place". If Tailwind is adopted, only `app/globals.css` and two screens need
+reworking.
+
+**Do not install Tailwind without asking.**
+
+Done: `app/globals.css` (tokens), `app/layout.tsx` (Poppins via `next/font`, self-hosted),
+`app/login/page.tsx`, `app/page.tsx`.
+Not done: ingredients (3 pages + form), receipt, adjust, history, low stock — all still
+inline `style={{…}}`. No table class vocabulary exists yet; designing it is the next real
+decision.
+
+Three requested fixes also outstanding — ingredients list unit mismatch, receipt text
+overflow, table behaviour on a narrow tablet. All listed in AGENTS.md § Styling pass.
+
+### Open — awaiting the client, not the code
+
+Month 2 does not start until both are confirmed:
+
+1. The owner exercises the **multi-line receipt form by hand** and reports findings. The UI
+   is the part nothing has exercised and is where undiscovered defects are.
+2. The **deploy target is provisioned** (Month 2 step 0 needs somewhere to deploy to).
 
 ### 🚫 BLOCKER on Module 4 — snapshotting must land before order confirmation goes live
 
@@ -432,3 +470,57 @@ shipped — `next build` on a 4 GB VPS will OOM (PROJECT-SPEC § 3).
 Month 2 does not start until the owner has exercised the multi-line receipt form by hand
 and reported findings, and the deploy target is provisioned. The UI is the part nothing has
 exercised and is where the undiscovered defects are.
+
+### 2026-08-19 — UI styling pass started; tokens and two reference screens
+
+Brand book supplied. Internal screens are **brand-adjacent, not brand-faithful**: counter and
+kitchen staff, cheap tablets, glare, a rush. Legibility and tap-target size beat aesthetics.
+
+Design tokens live in `app/globals.css` and nowhere else — every hex literal in the codebase
+is inside that one `:root` block. Poppins self-hosted via `next/font` (9 local `.woff2`,
+zero runtime references to fonts.gstatic.com), because this runs on a VPS in India and text
+must not wait on an external CDN.
+
+**Two state colours added, because the brand palette cannot supply them.** The book is
+entirely cool blues and greens; nothing in it can say "LOW STOCK" or "receipt refused".
+Chosen with measured contrast rather than by eye:
+
+- `--danger: #8c2f39` claret, 7.28:1 on bone. Hue 354° leans blue-red rather than
+  orange-red, keeping the palette's cool temperature; lightness 37% sits between navy (27%)
+  and fern (44%), so it reads grave rather than borrowed from another design system.
+- `--warn: #96591a` burnt amber, 5.02:1. The only amber tested that clears 4.5:1 as text —
+  ochre `#a8641b` gives 4.17:1 and fails.
+
+**Two findings that constrain the palette:**
+
+- **`--fern` cannot carry text.** 3.63:1 on bone, below the floor. It is a fill; text needs
+  `--fern-ink` (5.53:1). Same for `--sky` and `--sage`.
+- **The focus ring cannot be one colour.** Bone and navy are 8.98:1 apart, so nothing is
+  simultaneously 3:1 from both. It is two-tone — coloured outline with a white band filling
+  the outline offset — so it reads on a navy button and on the bone page alike.
+
+Verified by measuring the live DOM rather than by eye (the browser pane would not
+composite, so no screenshot): no horizontal overflow at 768px, and every real control
+exactly 44px. The four 0px inputs an audit finds are React's `$ACTION_REF` hidden fields,
+not controls.
+
+Copperplate is **used nowhere** and flagged in AGENTS.md: it ships with macOS and Adobe but
+web embedding is a separate licence, unverified, and it is an all-caps display face with no
+lowercase. Poppins is not in the brand book either — a deliberate legibility substitution,
+recorded so it is not mistaken for an oversight.
+
+Home page was restyled after feedback that it was still raw: brandbar with sign-out, and nav
+**cards** at 80px minimum rather than a row of text links 12px apart, because during a rush
+it is tapped by someone holding a tray.
+
+Not visually confirmed: the home page needs a session, and entering a password into a form
+was declined. The client has a live session and can eyeball it.
+
+### 2026-08-19 — Handover: documentation brought up to date for another agent
+
+README rewritten as the entry point — reading order, current state, setup, and the fact that
+40 of 86 tests skip loudly without Postgres. AGENTS.md gained a "read these five first"
+header naming the sections that each record a real defect, plus the styling-pass status and
+class vocabulary. This file gained the styling blocker and the client-side gates.
+
+No code changed in this update.

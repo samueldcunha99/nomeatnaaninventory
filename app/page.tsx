@@ -3,35 +3,82 @@ import { requireSession } from '../src/auth/server.ts';
 import { hasPermission } from '../src/lib/auth.ts';
 import { logoutAction } from './login/actions.ts';
 
-// Minimal landing page - somewhere for login to redirect to. The real screens are
-// step 5 onward; nothing is scaffolded here for them.
+// Landing page - somewhere for login to redirect to, and the way into each screen.
+// Styling only; the permission checks and the sign-out action are unchanged.
 export default async function HomePage() {
   const user = await requireSession();
+  const canView = hasPermission(user.role, 'ingredients.view');
+  const canRecord = hasPermission(user.role, 'stock.record');
+
   return (
-    <main>
-      <h1>Cafe Management</h1>
-      <p>
-        Signed in as <strong>{user.name}</strong> ({user.role})
-      </p>
-      {hasPermission(user.role, 'ingredients.view') ? (
-        <p>
-          <Link href="/ingredients">Ingredients</Link>
-          {' · '}
-          <Link href="/stock/history">Movement history</Link>
-          {' · '}
-          <Link href="/stock/low">Low stock</Link>
+    <>
+      <header className="brandbar">
+        <div className="brandbar__inner">
+          <span className="brandbar__name">NO MEAT NAAN</span>
+          <span className="small" style={{ opacity: 0.85 }}>
+            Management
+          </span>
+          <span className="brandbar__spacer" />
+          <form action={logoutAction}>
+            <button className="btn btn--on-navy" type="submit">
+              Sign out
+            </button>
+          </form>
+        </div>
+      </header>
+
+      <main className="page">
+        <h1>Today</h1>
+        <p className="muted" style={{ marginTop: '-0.5rem' }}>
+          Signed in as <strong>{user.name}</strong> · {user.role}
         </p>
-      ) : null}
-      {hasPermission(user.role, 'stock.record') ? (
-        <p>
-          <Link href="/stock/receipt">Stock receipt</Link>
-          {' · '}
-          <Link href="/stock/adjust">Adjustment / wastage</Link>
-        </p>
-      ) : null}
-      <form action={logoutAction}>
-        <button type="submit">Sign out</button>
-      </form>
-    </main>
+
+        {canView ? (
+          <>
+            <h2 className="section-title">Stock</h2>
+            <ul className="navgrid">
+              <li>
+                <Link className="navcard" href="/ingredients">
+                  Ingredients
+                  <span className="navcard__hint">Master list, stock on hand and cost</span>
+                </Link>
+              </li>
+              <li>
+                <Link className="navcard" href="/stock/low">
+                  Low stock
+                  <span className="navcard__hint">What needs reordering, worst first</span>
+                </Link>
+              </li>
+              <li>
+                <Link className="navcard" href="/stock/history">
+                  Movement history
+                  <span className="navcard__hint">Every receipt, adjustment and sale</span>
+                </Link>
+              </li>
+            </ul>
+          </>
+        ) : null}
+
+        {canRecord ? (
+          <>
+            <h2 className="section-title">Record</h2>
+            <ul className="navgrid">
+              <li>
+                <Link className="navcard navcard--write" href="/stock/receipt">
+                  Stock receipt
+                  <span className="navcard__hint">Enter a delivery that has arrived</span>
+                </Link>
+              </li>
+              <li>
+                <Link className="navcard navcard--write" href="/stock/adjust">
+                  Adjustment / wastage
+                  <span className="navcard__hint">Correct a count, or record what was lost</span>
+                </Link>
+              </li>
+            </ul>
+          </>
+        ) : null}
+      </main>
+    </>
   );
 }

@@ -6,9 +6,43 @@ file records what we decided that the spec does not say, and why.
 Current state: **Month 1 complete (steps 1–7).** Schema, migrations, seed, unit conversion,
 weighted-average cost, auth, role enforcement, ingredient CRUD, stock receipts /
 adjustments / wastage, movement history and low-stock views are in and tested against live
-Postgres (85 tests, none skipped). Month 2 — the costing engine — has not started.
+Postgres (86 tests). A **UI styling pass is in flight and incomplete** — 2 screens of 9.
+Month 2 — deploy pipeline, then the costing engine — has not started and is gated.
 
-See [PROGRESS.md](PROGRESS.md) for state, history and open blockers.
+See [PROGRESS.md](PROGRESS.md) for state, history and open blockers, and
+[README.md](README.md) for setup.
+
+---
+
+## Read these five before writing anything
+
+This file is long because the reasoning is the valuable part. If you read nothing else,
+read these, because each one records a bug that shipped or was caught late:
+
+1. **§ Numeric scales** — three integer scales, no floats anywhere. Getting this wrong
+   makes a margin figure quietly wrong rather than throwing.
+2. **§ Aggregates come back as strings** — `sum()` over a `bigint` arrives as a JS string.
+   `'900' > '4850000'` is `true`. This already happened once.
+3. **§ Costing takes its cost lookups as a parameter** — the seam Month 2 is built on. Do
+   not "simplify" it.
+4. **§ Missing cost data is an error, never zero** — the highest-priority rule for Month 2.
+5. **§ One implementation of the cost arithmetic** — there is exactly one fold. Do not add
+   a second path.
+
+### Three habits that caught most of the defects on this project
+
+- **Write the test that proves the fix, after finding the bug in your own code.** Every
+  significant defect here was found by testing behaviour, not by reading types.
+- **Prove a guard fails.** A guard nobody has watched fail is not yet a guard. The NUL-byte
+  and numeric-as-string tests were both verified by deliberately breaking the code.
+- **Read generated output.** The migration DDL-ordering bug was invisible to `tsc` and
+  would have failed on first run.
+
+### The failure mode to fear
+
+Not a crash. A confident, plausible, wrong number. A recipe costed against an ingredient
+with no purchase history; a running balance that restarts inside a date filter; a stock
+level compared lexicographically. All three occurred. None threw.
 
 ---
 
@@ -497,6 +531,124 @@ permanently and the list stops being read.
 Dates typed into a filter form are Asia/Kolkata calendar days, converted to UTC instants at
 the page boundary. Timestamps are stored UTC and formatted for display with an explicit
 `timeZone: 'Asia/Kolkata'`.
+
+## Brand: two tiers, and the Copperplate licence
+
+**Internal screens are brand-adjacent, not brand-faithful.** Ingredients, receipts,
+adjustments, movement history, low stock, login and users are used by counter and kitchen
+staff during a rush, on cheap tablets, under glare. Legibility and tap-target size beat
+aesthetics every time. Customer-facing screens (Month 4) get the full brand treatment and
+must not inherit these compromises.
+
+All tokens live in `app/globals.css`, in `:root`, and nowhere else. **No hardcoded hex in a
+component.** A second source of colour is how a palette stops being one.
+
+### ⚠️ Copperplate is not cleared for web use
+
+The brand book names **Copperplate** as the primary typeface. It is **not used anywhere in
+this codebase** and must not be until its licence is verified.
+
+Two separate problems:
+
+1. **Licensing.** Copperplate ships with macOS and with Adobe software, but desktop bundling
+   does **not** grant webfont embedding rights. That is a separate licence and it has not
+   been checked. **Verify before Month 4**, when customer-facing screens are built and the
+   face would actually be wanted.
+2. **Legibility.** It is an all-caps display face with no lowercase. It is unreadable at
+   body size and has no place on an internal screen regardless of licensing.
+
+Internal screens use **Poppins** (400 / 600 / 700), self-hosted via `next/font`. Note that
+Poppins is *not* in the brand book — it is a deliberate substitution for legibility, made
+with the client's agreement.
+
+`next/font` downloads at build time and serves from our own origin. Do not switch to a
+`<link>` tag pointing at fonts.googleapis.com: this runs on a VPS in India and text must not
+depend on an external CDN being reachable at page load.
+
+### State colours, and why the brand palette cannot supply them
+
+The book is entirely cool blues and greens. Nothing in it can say "LOW STOCK" or "receipt
+refused" — `--fern` reads as success and every other colour reads as decoration. Two were
+added:
+
+| Token | Value | Contrast on bone | Reasoning |
+|---|---|---|---|
+| `--danger` | `#8c2f39` claret | 7.28:1 | Hue 354° leans blue-red rather than orange-red, keeping it in the palette's cool temperature. Lightness 37% sits between navy (27%) and fern (44%), so it reads as grave rather than as an alarm bell from another design system. A browser-default red at hue 0° and 100% saturation would be the only saturated thing on screen. |
+| `--warn` | `#96591a` burnt amber | 5.02:1 | The only amber tested that clears 4.5:1 as text on bone — ochre `#a8641b` gives 4.17:1 and fails. Dark and muted enough not to be confused with `--sage`, which is a light yellow-green. |
+
+### Contrast findings that constrain use
+
+- **`--fern` is a fill, not a text colour.** 3.63:1 on bone, below the 4.5:1 floor. Use
+  `--fern-ink` (`#3f6a53`, 5.53:1) for any text. The same applies to `--sky` and `--sage`:
+  both are light fills and neither can carry text on bone.
+- **The focus ring cannot be a single colour.** Bone and navy are 8.98:1 apart, so nothing
+  is simultaneously 3:1 from both. The ring is two-tone: `--focus` outline with a white
+  band filling the outline offset, which reads on a navy button and on the bone page alike.
+
+### Styling pass: where it stopped
+
+**2 screens of 9 are styled.** The pass was stopped deliberately after the reference
+implementation, so one screen could be agreed rather than nine reviewed.
+
+| Screen | State |
+|---|---|
+| `app/login/page.tsx` | ✅ styled — the reference implementation |
+| `app/page.tsx` (home) | ✅ styled — brandbar + nav cards |
+| `app/ingredients/*` (3 files + form) | ⬜ still inline `style={{…}}` |
+| `app/stock/receipt/*`, `adjust/*` | ⬜ still inline `style={{…}}` |
+| `app/stock/history`, `app/stock/low` | ⬜ still inline `style={{…}}` |
+
+**⚠️ Unresolved: Tailwind is not installed.** PROJECT-SPEC § 3 names Tailwind in the stack,
+and the styling brief said to use it — but `package.json` has no Tailwind, no
+`postcss.config`, no `tailwind.config`, and the same brief said "no new dependencies".
+The two instructions conflict and the client has not yet chosen.
+
+The work so far is **plain CSS with custom properties**, which satisfies every other
+constraint (tokens in one place, no hardcoded hex, zero new dependencies). If Tailwind is
+adopted later, only `app/globals.css` and the two styled screens need reworking — which is
+exactly why the pass stopped at one reference screen. **Do not install Tailwind without
+asking.**
+
+### The class vocabulary so far
+
+Defined in `app/globals.css`, used by the two styled screens. Extend this rather than
+inventing per-screen classes:
+
+`.page` / `.page--narrow` · `.brandbar` / `.brandbar__inner` / `.brandbar__name` /
+`.brandbar__spacer` · `.field` / `.label` / `.input` / `.select` ·
+`.btn` / `.btn--secondary` / `.btn--on-navy` / `.btn--block` ·
+`.msg` / `.msg--error` / `.msg--warn` / `.msg--ok` / `.msg__icon` / `.msg__title` ·
+`.navgrid` / `.navcard` / `.navcard--write` / `.navcard__hint` ·
+`.section-title` / `.muted` / `.small`
+
+There is **no table class yet** — the three table screens are unstyled, so the table
+vocabulary is still to be designed. That is the next real decision in this pass.
+
+### Outstanding UI fixes, requested and not yet done
+
+1. **Ingredients list mixes units.** It shows quantity in base units (`20000 g`) but cost
+   per purchase unit (`₹515.00 / kg`). Show quantity in purchase units too (`20 kg`) using
+   the existing `milliBaseToPurchaseUnits()` helper — **no ad-hoc conversion in a
+   component.**
+2. **Stock receipt instruction text overflows** the right edge of the viewport. The `.page`
+   class fixes this (`width: min(100% - 2rem, …)`); the receipt page has not been converted
+   to it yet.
+3. **Tables must survive a narrow tablet viewport** without horizontal scroll on the columns
+   that matter.
+
+### Styling-pass rules
+
+- **No logic changes.** `src/db` and `src/lib` are off-limits during a styling pass. If a
+  screen seems to need a logic change to style, stop and ask.
+- Every test must still pass and `next build` must still exit 0.
+- No component libraries, icon packs, or animation libraries. Icons are inline SVG.
+
+### Accessibility floor — operational, not box-ticking
+
+This runs in a kitchen. Minimum **44px** tap targets on every button and form control
+(`--tap`), 4.5:1 on all text, visible focus on everything interactive, and **error messages
+that never rely on colour alone** — every message carries an icon and a bold lead word, so
+it still reads in greyscale and on a washed-out screen.
 
 ## Source integrity
 

@@ -1,0 +1,354 @@
+/*
+ * Design tokens and internal-tier base styles.
+ *
+ * TIER: internal. These screens are brand-ADJACENT, not brand-faithful. They are used by
+ * counter and kitchen staff during a rush, on cheap tablets, under glare. Legibility and
+ * tap-target size beat aesthetics every time. Customer-facing screens (Month 4) get the
+ * full brand treatment and do not share this file.
+ *
+ * Every colour in the app comes from here. No hardcoded hex in a component, ever - a
+ * second source of colour is how a palette stops being a palette.
+ */
+
+:root {
+  /* ---- Brand palette, from the brand book ---------------------------------- */
+  --navy: #194373; /* primary: headers, buttons */
+  --bone: #f4f2ef; /* page background */
+  --mist: #cad9e0; /* borders, table stripes */
+  --sky: #8bb7c7; /* secondary accents */
+  --sage: #becd9f; /* subtle highlight */
+  --fern: #59886f; /* success, in stock */
+
+  /* ---- State colours, added: the brand book has none ----------------------- */
+  /*
+   * The book is entirely cool blues and greens. Nothing in it can say "LOW STOCK" or
+   * "receipt refused". These two were chosen to sit alongside navy rather than shout
+   * over it - see AGENTS.md for the full reasoning and the measured contrast.
+   */
+  --danger: #8c2f39; /* claret. 7.28:1 on bone */
+  --danger-surface: #f9edee; /* wash behind an error message */
+  --warn: #96591a; /* burnt amber. 5.02:1 on bone */
+  --warn-surface: #faf1e4;
+
+  /* ---- Derived text colours ------------------------------------------------ */
+  /*
+   * --fern is a FILL, not a text colour: 3.63:1 on bone, below the 4.5:1 floor.
+   * --fern-ink is the darkened variant for text. Same for any light brand colour.
+   */
+  --fern-ink: #3f6a53; /* 5.53:1 on bone */
+  --ink: #14202e; /* body text. 14.73:1 on bone - deliberately high for glare */
+  --ink-muted: #4a5b6b; /* secondary text. 6.26:1 - still passes, unlike true grey */
+  --on-navy: #ffffff; /* 10.04:1 on navy */
+
+  /* ---- Surfaces ------------------------------------------------------------ */
+  --surface: #ffffff;
+  --stripe: #e9eff2; /* table zebra; ink on it is 14.18:1 */
+  --border: var(--mist);
+  --navy-dark: #12345c; /* button hover. white on it is 12.56:1 */
+  --ok-surface: #eef3ee; /* fern-ink on it is 5.50:1 */
+  /*
+   * No single colour can be 3:1 against both bone and navy - they are 8.98:1 apart, so
+   * anything dark enough for bone is too dark for navy and vice versa. The ring is
+   * therefore two-tone: this colour, with a white band inside it (see :focus-visible).
+   * 4.47:1 on bone, 5.00:1 against that white band.
+   */
+  --focus: #b3541e;
+
+  /* ---- Scale --------------------------------------------------------------- */
+  /*
+   * 44px is the accessibility floor for a tap target and it is not negotiable here:
+   * this runs on a tablet, one-handed, by someone holding a tray.
+   */
+  --tap: 44px;
+  --radius: 6px;
+  --gap: 12px;
+  --page-max: 72rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Stops iOS inflating text in landscape, which breaks table layouts on a tablet. */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bone);
+  color: var(--ink);
+  font-family: var(--font-poppins), system-ui, -apple-system, sans-serif;
+  font-size: 16px; /* never smaller: this is read at arm's length under glare */
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--navy);
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 0 0 var(--gap);
+}
+
+h1 {
+  font-size: 1.75rem;
+}
+
+a {
+  color: var(--navy);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+/*
+ * Visible focus everywhere, on every interactive thing, no exceptions.
+ * The white box-shadow fills the outline-offset gap, so the ring reads on a navy button
+ * and on the bone page alike.
+ */
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--surface);
+  border-radius: 2px;
+}
+
+/* ---- Layout --------------------------------------------------------------- */
+
+.page {
+  max-width: var(--page-max);
+  /* min() rather than a fixed padding: this is what stops long instruction text
+     running off the right edge of a narrow tablet. */
+  width: min(100% - 2rem, var(--page-max));
+  margin-inline: auto;
+  padding-block: 1.5rem 3rem;
+}
+
+.page--narrow {
+  width: min(100% - 2rem, 26rem);
+}
+
+/* ---- Controls -------------------------------------------------------------- */
+
+.field {
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.label {
+  display: block;
+  font-weight: 600;
+  color: var(--navy);
+  margin-bottom: 0.25rem;
+}
+
+.input,
+.select {
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.input:hover,
+.select:hover {
+  border-color: var(--sky);
+}
+
+.input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: var(--tap);
+  min-width: var(--tap);
+  padding: 0.5rem 1.25rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--on-navy);
+  background: var(--navy);
+  border: 2px solid var(--navy);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--navy-dark);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  /* Dimming alone would drop below 4.5:1, so the label carries the state too. */
+  opacity: 0.75;
+}
+
+.btn--secondary {
+  color: var(--navy);
+  background: transparent;
+}
+
+.btn--secondary:hover:not(:disabled) {
+  background: var(--mist);
+}
+
+.btn--block {
+  width: 100%;
+}
+
+/* ---- Messages -------------------------------------------------------------- */
+
+/*
+ * Never colour alone. Each message carries an icon and a bold word, so it still reads
+ * correctly in greyscale, to a colour-blind user, and on a washed-out tablet screen.
+ */
+.msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: var(--radius);
+  border-left: 4px solid;
+}
+
+.msg__icon {
+  flex: none;
+  margin-top: 0.125rem;
+}
+
+.msg--error {
+  color: var(--danger);
+  background: var(--danger-surface);
+  border-color: var(--danger);
+}
+
+.msg--warn {
+  color: var(--warn);
+  background: var(--warn-surface);
+  border-color: var(--warn);
+}
+
+.msg--ok {
+  color: var(--fern-ink);
+  background: var(--ok-surface);
+  border-color: var(--fern);
+}
+
+.msg__title {
+  font-weight: 700;
+}
+
+/* ---- Brand bar ------------------------------------------------------------- */
+
+.brandbar {
+  background: var(--navy);
+  color: var(--on-navy);
+  padding: 1rem 0;
+}
+
+.brandbar__inner {
+  width: min(100% - 2rem, var(--page-max));
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.brandbar__name {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.brandbar__spacer {
+  margin-left: auto;
+}
+
+/* Sits on navy, so it inverts. White on navy is 10.04:1. */
+.btn--on-navy {
+  color: var(--on-navy);
+  background: transparent;
+  border-color: var(--on-navy);
+}
+
+.btn--on-navy:hover:not(:disabled) {
+  color: var(--navy);
+  background: var(--on-navy);
+}
+
+/* ---- Navigation cards ------------------------------------------------------ */
+
+/*
+ * Cards rather than a row of links. During a rush this is tapped by someone holding a
+ * tray, so the target is the whole card - not a line of text with 12px between links,
+ * which is what it was before.
+ */
+.navgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: var(--gap);
+  padding: 0;
+  margin: 0 0 2rem;
+  list-style: none;
+}
+
+.navcard {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.125rem;
+  min-height: 5rem;
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-left: 6px solid var(--sky);
+  border-radius: var(--radius);
+  color: var(--navy);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.navcard:hover {
+  border-color: var(--navy);
+  border-left-color: var(--navy);
+  background: var(--stripe);
+}
+
+.navcard__hint {
+  font-weight: 400;
+  font-size: 0.875rem;
+  color: var(--ink-muted);
+}
+
+/* A group of cards that write to the ledger, marked apart from the read-only ones. */
+.navcard--write {
+  border-left-color: var(--sage);
+}
+
+.section-title {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+  margin-bottom: 0.5rem;
+}
+
+.muted {
+  color: var(--ink-muted);
+}
+
+.small {
+  font-size: 0.875rem;
+}
