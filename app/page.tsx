@@ -16,6 +16,10 @@ export default async function HomePage() {
       {hasPermission(user.role, 'ingredients.view') ? (
         <p>
           <Link href="/ingredients">Ingredients</Link>
+          {' · '}
+          <Link href="/stock/history">Movement history</Link>
+          {' · '}
+          <Link href="/stock/low">Low stock</Link>
         </p>
       ) : null}
       {hasPermission(user.role, 'stock.record') ? (

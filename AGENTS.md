@@ -3,10 +3,12 @@
 Conventions for the cafe management system. Read `files/PROJECT-SPEC.md` first — this
 file records what we decided that the spec does not say, and why.
 
-Current state: **Month 1, step 6 complete.** Schema, migrations, seed, unit conversion,
-weighted-average cost, auth, role enforcement, ingredient CRUD, and stock receipts /
-adjustments / wastage are in and tested against live Postgres (74 tests, none skipped).
-Movement history and low-stock views are not started.
+Current state: **Month 1 complete (steps 1–7).** Schema, migrations, seed, unit conversion,
+weighted-average cost, auth, role enforcement, ingredient CRUD, stock receipts /
+adjustments / wastage, movement history and low-stock views are in and tested against live
+Postgres (85 tests, none skipped). Month 2 — the costing engine — has not started.
+
+See [PROGRESS.md](PROGRESS.md) for state, history and open blockers.
 
 ---
 
@@ -356,6 +358,54 @@ refuses to run without it rather than defaulting. That account holds every permi
 the system, and "we'll change it after go-live" is how it stays `changeme-dev-only`.
 `NODE_ENV` unset counts as not-development — the server is the place least likely to have
 it set deliberately.
+
+## Reading the ledger
+
+`src/db/history.ts` is read-only and must stay that way. There is no update and no delete
+in it; a correction is a new movement (PROJECT-SPEC § 2.5). If a screen ever appears to
+need to "fix" a movement, it wants `recordCorrection()` instead.
+
+**The running balance is computed over the whole ledger, with the date filter applied
+outside the window.** Putting the filter alongside the window restarts the balance at the
+beginning of the filtered range — the number then reads like a stock level while actually
+being a subtotal, which is worse than showing nothing. This is the load-bearing test in
+`history.db.test.ts`.
+
+**A balance is only shown when one ingredient is selected.** Across a mixed list it would
+be adding grams of salt to millilitres of milk. Skipping the window in that case also
+avoids scanning the whole tenant ledger for a column nobody can use.
+
+**`sum()` over a `bigint` returns `numeric`, which postgres.js hands back as a string.**
+Any raw aggregate has to be normalised in the query layer, or it will be typed `number`,
+be a string at runtime, and get compared lexicographically at every call site. Watch for
+this on every new aggregate — Drizzle only converts columns it knows the type of.
+
+Aggregate output columns need an explicit `.as()` alias, and so do joined columns that
+collide: three tables here each expose `name`, which makes an enclosing subquery ambiguous.
+
+**Low-stock severity is proportional, not absolute.** The shortfall as a share of the
+threshold, so 2 kg short of a 3 kg threshold outranks 2 kg short of a 50 kg one. Sorting by
+the raw gap would bury the urgent one. Ingredients with no threshold set appear only once
+actually oversold — otherwise every ingredient nobody has configured sits in the list
+permanently and the list stops being read.
+
+Dates typed into a filter form are Asia/Kolkata calendar days, converted to UTC instants at
+the page boundary. Timestamps are stored UTC and formatted for display with an explicit
+`timeZone: 'Asia/Kolkata'`.
+
+## Source integrity
+
+`src/lib/source-integrity.test.ts` fails if any file under `src/`, `app/` or `scripts/`
+contains a NUL byte.
+
+This exists because a scripted edit once wrote NUL bytes into `src/db/stock.ts`, and a
+later search-and-replace against that file then matched nothing, changed nothing, reported
+nothing, and left `tsc` passing — an audit-log insert shipped as absent rather than as
+broken. A NUL also makes git treat the file as binary, so the diff stops being readable
+exactly when you need it.
+
+Prefer the editing tools over scripted string surgery on source files. When a script is
+genuinely the right tool, have it assert that its replacement actually matched.
 
 ## Invariants enforced in the database, not just in code
 

@@ -3,13 +3,13 @@
 Internal management system for a single-outlet cafe and bakery. See
 `files/PROJECT-SPEC.md` for scope and [AGENTS.md](AGENTS.md) for conventions.
 
-**Status: Month 1, step 6 complete.** Schema, migrations, Docker Compose, seed, unit
-conversion, weighted-average cost, auth, role enforcement, ingredient CRUD, and stock
-receipts / adjustments / wastage are in. Movement history and low-stock views are not
-started.
+**Status: Month 1 complete (steps 1–7).** Schema, migrations, Docker Compose, seed, unit
+conversion, weighted-average cost, auth, role enforcement, ingredient CRUD, stock receipts /
+adjustments / wastage, movement history and low-stock views are all in.
 
-`npm test` runs 74 tests. They need Postgres (`npm run db:up`); without it the database
-tests **skip loudly** rather than passing quietly.
+`npm test` runs 85 tests. They need Postgres (`npm run db:up`); without it the database
+tests **skip loudly** rather than passing quietly. See [PROGRESS.md](PROGRESS.md) for state
+and history.
 
 ## Local setup
 
@@ -55,6 +55,7 @@ middleware.ts       redirect only. NOT access control - see src/auth/server.ts
 src/db/ingredients.ts  ingredient master, guards enforced server-side
 src/db/movements.ts  receipts, adjustments, wastage - all via recordMovements()
 src/db/errors.ts     driver-error translation (constraint name -> operator message)
+src/db/history.ts    movement history + low stock. Read-only, always.
 app/                login, home, ingredient and stock screens
 src/db/seed-data.ts seed data, no DB dependency, unit-tested
 src/db/seed.ts      the seeding script

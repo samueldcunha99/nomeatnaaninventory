@@ -74,7 +74,13 @@ test('a tampered token resolves to nobody', async (t) => {
   const user = await makeUser('counter');
   const { token } = (await login(user.email, PASSWORD))!;
 
-  for (const tampered of [token + 'x', token.slice(0, -1), 'A' + token.slice(1), generateSessionToken()]) {
+  // Flip the first character to one it definitely is not. A fixed replacement such as
+  // 'A' + token.slice(1) is not a tamper at all when the token already starts with 'A' -
+  // a 1-in-64 chance on base64url, which is exactly the intermittent failure this test
+  // produced before.
+  const flipped = (token[0] === 'z' ? 'q' : 'z') + token.slice(1);
+
+  for (const tampered of [token + 'x', token.slice(0, -1), flipped, generateSessionToken()]) {
     assert.equal(await getSessionUser(tampered), null, 'a forged token must not resolve');
   }
   assert.equal(await getSessionUser(undefined), null);
