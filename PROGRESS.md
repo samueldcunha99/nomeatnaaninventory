@@ -28,6 +28,20 @@ Legend: ✅ done and verified · 🟡 in progress · ⬜ not started · 🚫 blo
 | 6 | Stock receipts, adjustments, wastage | ✅ |
 | 7 | Movement history + low-stock views | ✅ |
 
+### Month 2 — deploy pipeline, then the costing engine
+
+| Step | What | Status |
+|---|---|---|
+| 0 | Dockerfile, app service in compose, CI image build, deploy to a real VPS | ⬜ |
+| 1 | Recipes and recipe_lines schema (with tenant_id) | ⬜ |
+| 2 | Cost lookup seam + missing-cost errors | ⬜ |
+| 3 | Sub-recipes: yield, cycle and depth rejection, unit compatibility | ⬜ |
+| 4 | Wastage multiplier + sign-safe quantity rounder | ⬜ |
+| 5 | Cost breakdown and margin views | ⬜ |
+
+**Gate: Month 2 does not start until the owner has exercised the multi-line receipt form
+by hand, and the deploy target is provisioned.**
+
 ### Later months
 
 | Module | What | Status |
@@ -58,7 +72,7 @@ cost is linear beyond that (171 ms at 100k). Measured end-to-end against Postgre
 Snapshotting does not introduce a second arithmetic path — it changes the fold's *starting
 state*, so `applyMovement` stays the only implementation.
 
-### 🚫 BLOCKER on Month 2 — "change the butter purchase price" does not map onto the current design
+### ✅ RESOLVED — "change the butter purchase price": build the what-if (see log)
 
 PROJECT-SPEC § 1 defines success as: *"Change the butter purchase price. Every item using
 butter recosts."* There is no such operation, and by design there cannot be a simple one.
@@ -84,30 +98,31 @@ recommendation is (2): it keeps the ledger sacred, matches the demo's wording, a
 out naturally if the costing function takes cost lookups as a parameter rather than reaching
 for the cache itself.
 
-### Open — Month 2 schema and arithmetic risks
+### Month 2 schema and arithmetic risks — all decided, none built
 
-Recorded before Month 2 starts, so none of these is discovered in week three.
+Recorded before Month 2 starts, so none of these is discovered in week three. Every item
+below has been reviewed and approved; the decisions are logged. **None is implemented.**
 
-- **An ingredient with no movements costs zero, silently.** There is no `ingredient_stock`
+- ✅ **DECIDED, highest priority — an ingredient with no movements costs zero, silently.** There is no `ingredient_stock`
   row until the first movement, and the list query defaults the missing row to 0. A recipe
   costed against a never-received ingredient would produce a plausible, confidently wrong
   total. Month 2 must treat "no cost data" as an **error**, not as zero. This is exactly the
   failure mode PROJECT-SPEC § 6.1 warns about.
-- **`recipe_lines` needs `tenant_id`,** even though the spec's data model in § 5 omits it.
+- ✅ **DECIDED — `recipe_lines` needs `tenant_id`,** (deviation 9 in AGENTS.md) even though the spec's data model in § 5 omits it.
   Our convention is every business table carries it with composite FKs; without that a
   recipe line can reference another tenant's ingredient, which is the one failure that
   cannot be cleaned up afterwards.
-- **No historical cost lookup exists.** `replayLedger()` folds the whole ledger; there is no
+- ✅ **DECIDED, build now while the fold is pure — no historical cost lookup exists.** `replayLedger()` folds the whole ledger; there is no
   "as at seq N" variant. Month 3's cost snapshot needs one, and Month 2's re-runnable
   recalculation probably does too. Cheap to add now (the fold is already pure), invisible
   until it is urgently needed.
-- **Nothing enforces unit compatibility between a sub-recipe's yield and the line that
+- ✅ **DECIDED, validate at save time — nothing enforces unit compatibility between a sub-recipe's yield and the line that
   consumes it.** A recipe yielding 4.2 kg (weight) consumed as millilitres would be accepted.
   A foreign key cannot express it; it needs save-time validation alongside the cycle and
   depth checks.
-- **Cycle and depth rejection is real work, not a footnote.** Postgres cannot express "no
+- ✅ **DECIDED, scoped as real work with its own tests — cycle and depth rejection.** Postgres cannot express "no
   cycles" declaratively. It needs a recursive CTE at save time, and it needs its own tests.
-- **`divRoundHalfUp` refuses negative numerators by design.** The wastage-percent multiplier
+- ✅ **DECIDED, a separate sign-safe rounder — `divRoundHalfUp` refuses negative numerators by design and stays that way.** The wastage-percent multiplier
   is the first arithmetic that produces a fractional *quantity*, and quantities are signed.
   Month 2 needs a separate sign-safe rounder: round the magnitude, reapply the sign. Do not
   relax the existing guard — it is what keeps costs from being rounded wrongly.
@@ -364,3 +379,56 @@ precisely where this produces a margin figure nobody questions.
 
 Month 2 risks recorded below under open questions. The largest is not a defect but a
 design tension in the spec's own success demo — see "changing a purchase price".
+
+### 2026-08-19 — Success-demo contradiction resolved: build the what-if (supersedes the Month 2 blocker above)
+
+Decision taken. The sentence in PROJECT-SPEC § 1 — *"change the butter purchase price and
+every item recosts"* — was written as a sales demo, not a specification. Weighted average
+cost over an append-only ledger is correct and does not bend to it.
+
+**Option 2 chosen: the what-if price.** The costing function takes its cost lookups as a
+parameter and never reaches into `ingredient_stock` itself. The demo becomes a lookup with
+butter overridden: margins move on screen, nothing is written, the ledger stays sacred.
+
+The same seam serves two other things that would otherwise each need their own mechanism —
+historical "as at seq N" costing for Month 3's order-line snapshots, and re-runnable
+catalogue recalculation. Recorded in AGENTS.md § Costing takes its cost lookups as a
+parameter, with an explicit warning against later "simplifying" it by having the costing
+function fetch its own costs. That change would look like a tidy-up and would silently
+remove all three capabilities.
+
+### 2026-08-19 — Zero-cost ingredients: missing cost must throw
+
+Raised to the highest-priority item of the Month 2 risk list and settled before any costing
+code exists.
+
+An ingredient with no purchase history has an **unknown** cost, not a zero one. A recipe
+costed against it would otherwise produce a total that is confident, plausible and wrong,
+which is the failure mode that destroys trust in every other figure the system shows.
+
+The cost lookup throws rather than returning zero or null. It must be impossible to view or
+save a recipe cost where any input lacks a cost basis, transitively through sub-recipes.
+The failure is surfaced by name — "3 ingredients have no purchase history: cardamom powder,
+vanilla essence, butter paper sheet" — because an operator can act on a list of names and
+cannot act on a wrong total they have no reason to doubt.
+
+A genuinely zero cost (a free sample, a write-off) is recorded as a `purchase` movement with
+`total_cost_paise = 0`. That has a cost basis. Never having been received does not.
+
+Recorded in AGENTS.md § Missing cost data is an error, never zero.
+
+### 2026-08-19 — Deploy pipeline scheduled as Month 2 step 0
+
+The deploy pipeline slipped out of Month 1 and was sitting unscheduled. It is now the
+**first** task of Month 2, ahead of the costing engine: Dockerfile, app service in
+`docker-compose.yml`, CI image build, and a deploy to a real VPS.
+
+The reasoning is that the first deploy always surfaces something, and that surprise belongs
+in Month 2 week one rather than week two of Month 5. The image must be built in CI and
+shipped — `next build` on a 4 GB VPS will OOM (PROJECT-SPEC § 3).
+
+### 2026-08-19 — Month 2 gated on two external confirmations
+
+Month 2 does not start until the owner has exercised the multi-line receipt form by hand
+and reported findings, and the deploy target is provisioned. The UI is the part nothing has
+exercised and is where the undiscovered defects are.

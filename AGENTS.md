@@ -171,7 +171,70 @@ make the T11 invariant flake rather than fail, which is worse.
 
 Always `ORDER BY seq` when replaying. Never `created_at`.
 
+### 9. `recipe_lines` carries `tenant_id` (Month 2)
+
+**Spec:** PROJECT-SPEC § 5 lists `recipe_lines` as
+`id, recipe_id, ingredient_id, sub_recipe_id, quantity_base, wastage_percent` — no
+`tenant_id`.
+**Decision:** it carries `tenant_id`, with composite foreign keys to `recipes` and
+`ingredients`, like every other business table.
+
+The spec is a working document and its § 2.3 rule ("every business table carries
+`tenant_id`, every table, no exceptions") is the stronger statement. Without it a recipe
+line can reference another tenant's ingredient, and cross-tenant mixing is the one failure
+that cannot be cleaned up after the fact.
+
+Approved before Month 2 began.
+
 ---
+
+## Costing takes its cost lookups as a parameter
+
+**The costing function must never reach into `ingredient_stock` itself.** It receives a
+cost lookup — a function or map from ingredient to cost — and asks that. This seam is
+deliberate. Do not "simplify" it later by having the costing function fetch its own costs;
+that change looks like a tidy-up and silently removes three capabilities at once:
+
+1. **The what-if price.** PROJECT-SPEC § 1 defines success as *"change the butter purchase
+   price and every item recosts"*. That sentence was written as a sales demo, not a
+   specification: cost is the weighted average over an append-only ledger, and nothing
+   edits a price, because editing one would rewrite history. With this seam the demo is a
+   lookup with butter overridden — margins move on screen, **nothing is written**, and the
+   ledger stays sacred.
+2. **Historical costing, "as at seq N".** Month 3 must snapshot the cost onto every order
+   line at the moment of sale, and historical reports read the snapshot rather than
+   recomputing. Replaying the ledger to a cutoff produces a lookup for any point in time.
+3. **Re-runnable catalogue recalculation.** PROJECT-SPEC § 3 requires recosting to be
+   re-runnable across the whole catalogue, so an early arithmetic bug can be fixed and
+   reprocessed. That is the same function with a different lookup.
+
+All three are the same shape. One parameter buys all of them; hard-wiring the fetch costs
+all three and the loss is not obvious at the call site.
+
+## Missing cost data is an error, never zero
+
+**If an ingredient has no purchase history, its cost is unknown — not zero.**
+
+There is no `ingredient_stock` row until an ingredient's first movement, and a naive join
+defaults the absent row to `0`. A recipe costed against a never-received ingredient would
+then produce a total that is confident, plausible, and wrong — precisely the failure mode
+PROJECT-SPEC § 6.1 warns about, and the one that destroys trust in every other number the
+system shows.
+
+So:
+
+- The cost lookup **throws** on an ingredient with no cost basis. It does not return zero,
+  it does not return null for the caller to coalesce.
+- It must be **impossible to view or save a recipe cost** where any input lacks a cost
+  basis, transitively through sub-recipes.
+- The failure is surfaced **by name**: "3 ingredients have no purchase history: cardamom
+  powder, vanilla essence, butter paper sheet" — not a silent zero, and not an opaque error.
+  The operator can act on a list of names; they cannot act on a wrong total they have no
+  reason to doubt.
+
+A zero cost that is genuinely correct — a free sample, something written off — is recorded
+the same way as anything else: a `purchase` movement with `total_cost_paise = 0`. That has
+a cost basis. Never having been received does not.
 
 ## One implementation of the cost arithmetic
 
