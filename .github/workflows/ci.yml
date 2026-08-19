@@ -96,8 +96,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Image metadata
-        id: meta
+      - name: Image metadata (app)
+        id: meta-app
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
@@ -113,10 +113,19 @@ jobs:
           context: .
           target: runtime
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta-app.outputs.tags }}
+          labels: ${{ steps.meta-app.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Image metadata (migrate)
+        id: meta-migrate
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}-migrate
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=sha-
 
       - name: Build and push migration image
         uses: docker/build-push-action@v6
@@ -124,9 +133,8 @@ jobs:
           context: .
           target: migrate
           push: true
-          tags: |
-            ghcr.io/${{ github.repository }}-migrate:latest
-            ghcr.io/${{ github.repository }}-migrate:sha-${{ github.sha }}
+          tags: ${{ steps.meta-migrate.outputs.tags }}
+          labels: ${{ steps.meta-migrate.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
