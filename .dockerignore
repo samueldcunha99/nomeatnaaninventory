@@ -1,0 +1,13 @@
+# Keep the build context small and the image free of local state.
+node_modules
+.next
+.git
+.github
+.claude
+.env
+.env.*.local
+*.log
+npm-debug.log*
+files.zip
+# Local-only tooling and docs the image never needs.
+Caddyfile.example

@@ -1,25 +1,86 @@
+# The whole stack: Postgres, a one-shot migration runner, the app, and Caddy in front.
+#
+#   npm run stack:up     build and start everything, migrations first
+#   npm run db:up        Postgres only — the day-to-day loop with `npm run dev`
+#
+# Nothing here is production deployment. The VPS compose file will differ in exactly two
+# ways, both noted in deploy/README.md: it pulls a published image instead of building,
+# and SITE_ADDRESS is a real hostname so Caddy provisions TLS.
+
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: cafe
-      POSTGRES_PASSWORD: cafe
-      POSTGRES_DB: cafe
+      POSTGRES_USER: ${POSTGRES_USER:-cafe}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cafe}
+      POSTGRES_DB: ${POSTGRES_DB:-cafe}
       # Server clock is UTC. Display in Asia/Kolkata is the app's job.
       TZ: UTC
     ports:
+      # Exposed for `npm run dev` and the test suite on the host. On the VPS this port
+      # publication is removed: only the app needs to reach the database.
       - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U cafe -d cafe']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-cafe} -d ${POSTGRES_DB:-cafe}']
       interval: 5s
       timeout: 5s
       retries: 10
 
+  # One-shot. Applies migrations, then exits 0. The app waits for it to complete, so a
+  # container can never serve traffic against a schema older than its own code.
+  migrate:
+    build:
+      context: .
+      target: migrate
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-cafe}:${POSTGRES_PASSWORD:-cafe}@db:5432/${POSTGRES_DB:-cafe}
+      # Not used by the migrator, but src/lib/env.ts refuses to start without it outside
+      # development, and that check is deliberately the same everywhere.
+      SEED_OWNER_PASSWORD: ${SEED_OWNER_PASSWORD:?set SEED_OWNER_PASSWORD in .env}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: 'no'
+
+  app:
+    build:
+      context: .
+      target: runtime
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # `db` is the compose service name. localhost inside a container is the container.
+      DATABASE_URL: postgres://${POSTGRES_USER:-cafe}:${POSTGRES_PASSWORD:-cafe}@db:5432/${POSTGRES_DB:-cafe}
+      SEED_OWNER_PASSWORD: ${SEED_OWNER_PASSWORD:?set SEED_OWNER_PASSWORD in .env}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    expose:
+      - '3000'
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '${HTTP_PORT:-8080}:80'
+      - '${HTTPS_PORT:-8443}:443'
+    environment:
+      # `:80` locally. A real hostname in production makes Caddy provision TLS itself.
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
 volumes:
   pgdata:
-# The `app` service lands here once there is a Next.js app to put in it (step 5+).
-# A Dockerfile that builds a non-existent app would only fail. Note for then:
-# build the image in CI and ship it - never run `next build` on the 4 GB VPS.
+  caddy_data:
+  caddy_config:
