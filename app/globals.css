@@ -380,6 +380,41 @@
     @apply hidden md:table-cell;
   }
 
+  /* ---- Combobox ------------------------------------------------------------ */
+
+  /*
+   * A styled listbox, because a native <datalist> popup is browser chrome: on Chrome it
+   * renders as a black full-height overlay that no CSS can touch. This is the same shape
+   * in our own palette.
+   *
+   * Fixed, not absolute: the receipt table sets overflow-x for narrow viewports, which
+   * would clip a dropdown escaping its cell. Position comes from the input's viewport rect
+   * (see ingredient-combobox.tsx).
+   */
+  .combo-list {
+    @apply fixed z-50 m-0 p-1 list-none bg-surface border-2 border-navy rounded-md
+      shadow-lg overflow-y-auto;
+    max-height: 18rem;
+  }
+
+  .combo-option {
+    /* 44px: this is tapped with a thumb, not clicked with a mouse. */
+    @apply flex items-center min-h-tap px-3 py-2 rounded cursor-pointer text-ink;
+  }
+
+  /*
+   * One highlight for both hover and keyboard. aria-activedescendant already tells a
+   * screen reader which option is current; the visual state must not disagree with it,
+   * so pointer and keyboard drive the same `active` index rather than separate styles.
+   */
+  .combo-option--active {
+    @apply bg-navy text-on-navy font-semibold;
+  }
+
+  .combo-empty {
+    @apply px-3 py-2 text-sm text-ink-muted;
+  }
+
   /* ---- Badges -------------------------------------------------------------- */
 
   /*

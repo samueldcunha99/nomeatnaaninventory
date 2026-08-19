@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react';
 import { recordReceiptAction, type FormState } from '../actions.ts';
+import { IngredientCombobox } from '../../ui/ingredient-combobox.tsx';
 import {
   unitCostMillipaisePerBase,
   purchaseUnitsToMilliBase,
@@ -17,9 +18,14 @@ export type IngredientOption = {
   purchaseUnitInBase: number;
 };
 
-type Row = { ingredientId: string; quantity: string; totalCost: string };
+/**
+ * `ingredientText` is what the operator typed; `ingredientId` is the resolved match, or
+ * '' when the text names nothing. Both are kept so the field can be typed into freely
+ * without losing the resolution — only the id is ever submitted.
+ */
+type Row = { ingredientId: string; ingredientText: string; quantity: string; totalCost: string };
 
-const blank = (): Row => ({ ingredientId: '', quantity: '', totalCost: '' });
+const blank = (): Row => ({ ingredientId: '', ingredientText: '', quantity: '', totalCost: '' });
 
 /**
  * The unit cost shown before saving uses the same helpers the server uses to store it,
@@ -114,20 +120,14 @@ export function ReceiptForm({
               return (
                 <tr key={i}>
                   <td>
-                    <select
-                      className="select min-w-40"
-                      name={`lines[${i}][ingredientId]`}
+                    <IngredientCombobox
+                      fieldName={`lines[${i}][ingredientId]`}
+                      ingredients={ingredients}
                       value={row.ingredientId}
-                      onChange={(e) => set(i, { ingredientId: e.target.value })}
-                      aria-label={`Ingredient, line ${i + 1}`}
-                    >
-                      <option value="">—</option>
-                      {ingredients.map((o) => (
-                        <option key={o.id} value={o.id}>
-                          {o.name}
-                        </option>
-                      ))}
-                    </select>
+                      text={row.ingredientText}
+                      onChange={({ id, text }) => set(i, { ingredientId: id, ingredientText: text })}
+                      ariaLabel={`Ingredient, line ${i + 1}`}
+                    />
                   </td>
 
                   <td>

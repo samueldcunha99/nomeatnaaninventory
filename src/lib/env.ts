@@ -29,7 +29,13 @@ const REQUIRED = ['DATABASE_URL'] as const;
  */
 const REQUIRED_IN_PRODUCTION = ['SEED_OWNER_PASSWORD'] as const;
 
-export function checkEnv(env: EnvLike = process.env): EnvReport {
+/**
+ * `deployment: true` adds checks that only make sense for a process about to serve or
+ * migrate, not for a build. `next build` imports every page on a developer machine whose
+ * `.env` legitimately points at localhost, so the container heuristic below would be a
+ * false positive there. Runtime entry points opt in; module-load checks do not.
+ */
+export function checkEnv(env: EnvLike = process.env, opts: { deployment?: boolean } = {}): EnvReport {
   const missing: string[] = [];
   const problems: string[] = [];
   const isDev = env.NODE_ENV === 'development';
@@ -54,7 +60,7 @@ export function checkEnv(env: EnvLike = process.env): EnvReport {
 
   // A production container pointing at localhost is almost always a compose wiring
   // mistake: the database is a sibling service, not the same network namespace.
-  if (url && env.NODE_ENV === 'production' && /@(localhost|127\.0\.0\.1)[:/]/.test(url)) {
+  if (opts.deployment && url && env.NODE_ENV === 'production' && /@(localhost|127\.0\.0\.1)[:/]/.test(url)) {
     problems.push(
       'DATABASE_URL points at localhost in production. Inside a container that is the ' +
         'container itself, not the database — use the compose service name (e.g. @db:5432).',
@@ -82,7 +88,7 @@ export function formatEnvReport(report: EnvReport): string {
 }
 
 /** Throws unless the environment is complete. Call once, at startup. */
-export function assertEnv(env: EnvLike = process.env): void {
-  const report = checkEnv(env);
+export function assertEnv(env: EnvLike = process.env, opts: { deployment?: boolean } = {}): void {
+  const report = checkEnv(env, opts);
   if (!report.ok) throw new Error(formatEnvReport(report));
 }
