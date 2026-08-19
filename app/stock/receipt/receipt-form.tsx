@@ -95,14 +95,14 @@ export function ReceiptForm({
         </select>
       </div>
 
-      <div className="table-wrap">
+      <div className="table-wrap max-w-3xl">
         <table className="table">
           <thead>
             <tr>
-              <th scope="col">Ingredient</th>
-              <th scope="col">Quantity</th>
-              <th scope="col">Total paid (₹)</th>
-              <th scope="col" className="num">
+              <th scope="col" className="w-56">Ingredient</th>
+              <th scope="col" className="w-40">Quantity</th>
+              <th scope="col" className="w-36">Total paid (₹)</th>
+              <th scope="col" className="num whitespace-nowrap">
                 Works out at
               </th>
             </tr>
@@ -140,7 +140,9 @@ export function ReceiptForm({
                         inputMode="decimal"
                         aria-label={`Quantity, line ${i + 1}`}
                       />
-                      <span className="muted text-sm whitespace-nowrap">{ing?.purchaseUnit ?? ''}</span>
+                      <span className="text-sm font-medium text-ink whitespace-nowrap">
+                        {ing?.purchaseUnit ?? ''}
+                      </span>
                     </div>
                   </td>
 

@@ -28,6 +28,7 @@ export type MovementRow = {
   ingredientId: string;
   ingredientName: string;
   unitType: UnitType;
+  purchaseUnit: string;
   purchaseUnitInBase: number;
   userName: string | null;
   supplierName: string | null;
@@ -61,6 +62,7 @@ const MOVEMENT_COLUMNS = {
   // make the enclosing subquery ambiguous.
   ingredientName: raw<string>`${ingredients.name}`.as('ingredient_name'),
   unitType: ingredients.unitType,
+  purchaseUnit: ingredients.purchaseUnit,
   purchaseUnitInBase: ingredients.purchaseUnitInBase,
   userName: raw<string | null>`${users.name}`.as('user_name'),
   supplierName: raw<string | null>`${suppliers.name}`.as('supplier_name'),
@@ -170,14 +172,43 @@ export async function listMovements(actor: Actor, filter: HistoryFilter = {}) {
     rows = plain.map((r) => ({ ...r, balanceMilliBase: 0 })) as MovementRow[];
   }
 
+  // Newest-first is right for the ledger overall, but within a single multi-line receipt
+  // (shared referenceId), lines read in entry order (ascending seq).
+  const ordered = orderGroupLines(rows);
+
   return {
-    rows: rows.slice(0, HISTORY_PAGE_SIZE),
+    rows: ordered.slice(0, HISTORY_PAGE_SIZE),
     page,
     pageSize: HISTORY_PAGE_SIZE,
     hasNextPage: rows.length > HISTORY_PAGE_SIZE,
     hasPreviousPage: page > 1,
     showBalance,
   };
+}
+
+/**
+ * Preserves newest-first ordering for the ledger overall, but within a single
+ * multi-line receipt (shared referenceId), orders lines in ascending entry order (seq).
+ */
+function orderGroupLines(rows: MovementRow[]): MovementRow[] {
+  const result: MovementRow[] = [];
+  let i = 0;
+  while (i < rows.length) {
+    const ref = rows[i].referenceId;
+    if (!ref) {
+      result.push(rows[i]);
+      i++;
+      continue;
+    }
+    let j = i;
+    while (j < rows.length && rows[j].referenceId === ref) {
+      j++;
+    }
+    const group = rows.slice(i, j).sort((a, b) => a.seq - b.seq);
+    result.push(...group);
+    i = j;
+  }
+  return result;
 }
 
 export type LowStockRow = {

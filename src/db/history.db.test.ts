@@ -137,6 +137,29 @@ test('multi-line receipts share a reference_id so they can be grouped', async (t
   assert.ok(group.every((r) => r.referenceType === 'receipt'));
 });
 
+test('lines within a single receipt group display in entry order (ascending seq)', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const first = await makeIngredient('First');
+  const second = await makeIngredient('Second');
+  const third = await makeIngredient('Third');
+  const { referenceId } = await recordReceipt(owner, {
+    lines: [
+      { ingredientId: first, quantityMilliBase: 1_000_000n, totalCostPaise: 10_000n },
+      { ingredientId: second, quantityMilliBase: 2_000_000n, totalCostPaise: 20_000n },
+      { ingredientId: third, quantityMilliBase: 3_000_000n, totalCostPaise: 30_000n },
+    ],
+  });
+
+  const { rows } = await listMovements(owner, {});
+  const group = rows.filter((r) => r.referenceId === referenceId);
+  assert.equal(group.length, 3);
+  assert.equal(group[0].ingredientId, first, 'first entered line displays first');
+  assert.equal(group[1].ingredientId, second, 'second entered line displays second');
+  assert.equal(group[2].ingredientId, third, 'third entered line displays third');
+  assert.ok(group[0].seq < group[1].seq && group[1].seq < group[2].seq, 'lines within receipt group are ascending seq');
+  assert.equal(group[0].purchaseUnit, 'kg', 'purchaseUnit is populated');
+});
+
 test('history pages rather than fetching an unbounded ledger', async (t) => {
   if (!reachable) return t.skip('no database');
   const ing = await makeIngredient('Paged');

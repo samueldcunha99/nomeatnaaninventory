@@ -602,3 +602,32 @@ added `postcss.config.mjs`. It served unstyled Times New Roman until restarted, 
 happen to anyone pulling this mid-branch.
 
 No logic changed. `src/db` and `src/lib` untouched. 86 tests, `next build` exits 0.
+
+### 2026-08-19 — Styling polish: table widths, unit consistency, entry ordering, and filter UX
+
+Six final polish fixes applied across the styled screens:
+
+- **Ingredients list STATUS column tightened & Deactivate link repositioned**: Added `w-28` to
+  the status column and action column so the Deactivate text link sits close to data rather than
+  floating far right.
+- **"Include inactive" checkbox auto-applies on change**: Created `app/ui/auto-submit-checkbox.tsx`
+  (`'use client'`) so toggling immediately triggers form submission via `requestSubmit()`,
+  removing the need to click "Apply" just for the checkbox.
+- **Movement history quantity & balance units**: Updated `app/stock/history/page.tsx` so
+  quantity and running balance lead with purchase units (`+25 kg`) and keep base units
+  subordinate (`+25000 g`), using `milliBaseToPurchaseUnits()`, matching the ingredients table.
+  `purchaseUnit` added to `MOVEMENT_COLUMNS` and `MovementRow`.
+- **Receipt group line entry order**: Newest-first (`desc(seq)`) is preserved for the ledger
+  overall, but lines within a single multi-line receipt (`shared referenceId`) are sorted in
+  ascending entry order (`seq ASC`) via `orderGroupLines()`.
+- **Receipt form column tightness**: Added `max-w-3xl` container constraint to the receipt table
+  so the "Works out at" unit cost preview sits directly adjacent to the line inputs rather than
+  nearly a full screen width away.
+- **Receipt form quantity unit label**: Added explicit purchase unit label next to the quantity
+  input once an ingredient is selected (`kg`, `pack of 50`, `tray`), preventing operator entry errors.
+- **Data check verified**: Confirmed that identical figures for Dark chocolate (54%) and
+  Active dry yeast (₹185.17 / kg from 12 kg @ ₹2,222.00) in history were manual test entries,
+  verifying that `recordReceiptAction` and `recordMovements` process each line independently with
+  no cross-line value duplication.
+
+87 tests passing against live Postgres, none skipped. `next build` exits 0.

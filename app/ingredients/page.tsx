@@ -4,6 +4,7 @@ import { hasPermission } from '../../src/lib/auth.ts';
 import { listIngredients } from '../../src/db/ingredients.ts';
 import { setActiveAction } from './actions.ts';
 import { StatusBadge } from '../ui/status-badge.tsx';
+import { AutoSubmitCheckbox } from '../ui/auto-submit-checkbox.tsx';
 import {
   formatQty,
   formatINR,
@@ -54,10 +55,12 @@ export default async function IngredientsPage({
             <input className="input" id="q" name="q" defaultValue={q ?? ''} placeholder="Ingredient name" />
           </div>
 
-          <label className="checkfield">
-            <input type="checkbox" name="all" value="1" defaultChecked={!activeOnly} className="size-5" />
-            Include inactive
-          </label>
+          <AutoSubmitCheckbox
+            name="all"
+            value="1"
+            defaultChecked={!activeOnly}
+            label="Include inactive"
+          />
 
           <button className="btn btn--secondary" type="submit">
             Apply
@@ -81,9 +84,9 @@ export default async function IngredientsPage({
                   <th scope="col" className="num">
                     Avg cost
                   </th>
-                  <th scope="col">Status</th>
+                  <th scope="col" className="w-28">Status</th>
                   {canManage ? (
-                    <th scope="col">
+                    <th scope="col" className="w-28 text-right">
                       <span className="sr-only">Actions</span>
                     </th>
                   ) : null}
@@ -111,7 +114,7 @@ export default async function IngredientsPage({
                        * figure stays as a subordinate line because recipes are written in
                        * it. Both come from the shared helpers; no conversion happens here.
                        */}
-                      <td className="num">
+                      <td className="num whitespace-nowrap">
                         <span className={oversold ? 'text-danger font-semibold' : ''}>
                           {milliBaseToPurchaseUnits(r.qtyMilliBase, r.purchaseUnitInBase)} {r.purchaseUnit}
                         </span>
@@ -120,7 +123,7 @@ export default async function IngredientsPage({
                         </span>
                       </td>
 
-                      <td className="num">
+                      <td className="num whitespace-nowrap">
                         {formatINR(
                           costPerPurchaseUnitPaise(r.weightedAvgCostMillipaisePerBase, r.purchaseUnitInBase),
                         )}
@@ -131,7 +134,7 @@ export default async function IngredientsPage({
                        * Exceptions only. A badge on every row is wallpaper - if everything
                        * is badged, nothing stands out, which is the whole job of this column.
                        */}
-                      <td>
+                      <td className="w-28">
                         <div className="flex flex-wrap items-center gap-1">
                           <StatusBadge kind={oversold ? 'oversold' : low ? 'low' : null} />
                           {!r.isActive ? <span className="badge badge--muted">Inactive</span> : null}
@@ -139,7 +142,7 @@ export default async function IngredientsPage({
                       </td>
 
                       {canManage ? (
-                        <td className="text-right">
+                        <td className="w-28 text-right">
                           <form action={setActiveAction} className="row-action inline-block">
                             <input type="hidden" name="id" value={r.id} />
                             <input type="hidden" name="isActive" value={r.isActive ? 'false' : 'true'} />

@@ -6,7 +6,7 @@ file records what we decided that the spec does not say, and why.
 Current state: **Month 1 complete (steps 1–7).** Schema, migrations, seed, unit conversion,
 weighted-average cost, auth, role enforcement, ingredient CRUD, stock receipts /
 adjustments / wastage, movement history and low-stock views are in and tested against live
-Postgres (86 tests). The **UI styling pass is complete** — all 9 internal screens, Tailwind v4.
+Postgres (87 tests). The **UI styling pass is complete** — all 9 internal screens, Tailwind v4.
 Month 2 — deploy pipeline, then the costing engine — has not started and is gated.
 
 See [PROGRESS.md](PROGRESS.md) for state, history and open blockers, and
@@ -683,18 +683,27 @@ Two other rules the same component keeps: never colour alone (each badge is a gl
 word, so it survives greyscale and a sun-washed screen), and caps belong on headers and
 badges **only** — ingredient names are sentence case as stored, because caps measurably
 slow reading and that is the column staff scan most.
-### Requested UI fixes — all three done
+### Requested UI fixes — all completed
 
-1. ✅ **Ingredients list unit mismatch.** It showed quantity in base units (`20000 g`) while
-   showing cost per purchase unit (`₹515.00 / kg`). Quantity now leads in purchase units
-   (`20 kg`) via `milliBaseToPurchaseUnits()`, with the base-unit figure kept as a
-   subordinate line because recipes are written in it. Both come from the shared helpers —
-   no conversion happens in the component.
-2. ✅ **Stock receipt instruction text overflowed the viewport.** The `<main>` had no width
-   constraint. It now uses `.page` (`width: min(100% - 2rem, 72rem)`) and the note uses
-   `.prose-note`, which caps the measure at 60ch rather than running edge to edge.
-3. ✅ **Tables survive a narrow tablet.** Verified at 700px and 810px: secondary columns fold,
-   five columns remain, and nothing scrolls sideways.
+1. ✅ **Ingredients list unit mismatch.** Quantity leads in purchase units (`20 kg`) via
+   `milliBaseToPurchaseUnits()`, with the base-unit figure kept as a subordinate line
+   (`20000 g`) because recipes are written in it. Both come from shared helpers.
+2. ✅ **Stock receipt instruction text overflowed the viewport.** Constrained with `.page`
+   and `.prose-note`.
+3. ✅ **Tables survive a narrow tablet.** Secondary columns fold with `.col-secondary`,
+   maintaining compact legible tables without horizontal scroll.
+4. ✅ **Ingredients list STATUS column & Deactivate link.** Status column tightened (`w-28`)
+   and Deactivate action positioned closer to the data.
+5. ✅ **"Include inactive" auto-applies on change.** Powered by `AutoSubmitCheckbox` client
+   component so toggling immediately re-filters without waiting for "Apply".
+6. ✅ **Movement history quantity & balance units.** Quantity and running balance now lead
+   with purchase units (`+25 kg`) and keep base units subordinate (`+25000 g`), matching the
+   ingredients table.
+7. ✅ **Receipt line entry order.** Ledger is newest-first overall, but within a single
+   receipt group (`shared referenceId`), lines display in ascending entry order (`seq`).
+8. ✅ **Receipt form column tightness & unit label.** Table width capped (`max-w-3xl`) so
+   the "Works out at" unit cost preview sits adjacent to line inputs. Selected ingredient's
+   purchase unit (`kg`, `tray`, `pack of 50`) is explicitly displayed next to the quantity input.
 ### Styling-pass rules
 
 - **No logic changes.** `src/db` and `src/lib` are off-limits during a styling pass. If a

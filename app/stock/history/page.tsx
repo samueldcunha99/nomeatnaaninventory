@@ -2,7 +2,12 @@ import Link from 'next/link';
 import { requirePermission } from '../../../src/auth/server.ts';
 import { listMovements } from '../../../src/db/history.ts';
 import { listIngredients } from '../../../src/db/ingredients.ts';
-import { formatQty, formatINR, costPerPurchaseUnitPaise } from '../../../src/lib/units.ts';
+import {
+  formatQty,
+  formatINR,
+  costPerPurchaseUnitPaise,
+  milliBaseToPurchaseUnits,
+} from '../../../src/lib/units.ts';
 
 const TYPE_LABEL: Record<string, string> = {
   purchase: 'Receipt',
@@ -190,15 +195,24 @@ export default async function HistoryPage({
                       {!params.ingredientId ? <td>{r.ingredientName}</td> : null}
 
                       <td className={`num whitespace-nowrap ${out ? 'text-danger font-semibold' : ''}`}>
-                        {r.quantityMilliBase > 0 ? '+' : ''}
-                        {formatQty(r.quantityMilliBase, r.unitType)}
+                        <span>
+                          {r.quantityMilliBase > 0 ? '+' : ''}
+                          {milliBaseToPurchaseUnits(r.quantityMilliBase, r.purchaseUnitInBase)} {r.purchaseUnit}
+                        </span>
+                        <span className="block text-xs muted tabular-nums">
+                          {r.quantityMilliBase > 0 ? '+' : ''}
+                          {formatQty(r.quantityMilliBase, r.unitType)}
+                        </span>
                       </td>
 
                       {result.showBalance ? (
                         <td
                           className={`num whitespace-nowrap ${r.balanceMilliBase < 0 ? 'text-danger font-semibold' : ''}`}
                         >
-                          {formatQty(r.balanceMilliBase, r.unitType)}
+                          {milliBaseToPurchaseUnits(r.balanceMilliBase, r.purchaseUnitInBase)} {r.purchaseUnit}
+                          <span className="block text-xs muted tabular-nums">
+                            {formatQty(r.balanceMilliBase, r.unitType)}
+                          </span>
                         </td>
                       ) : null}
 
