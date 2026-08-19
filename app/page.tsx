@@ -18,6 +18,13 @@ export default async function HomePage() {
           <Link href="/ingredients">Ingredients</Link>
         </p>
       ) : null}
+      {hasPermission(user.role, 'stock.record') ? (
+        <p>
+          <Link href="/stock/receipt">Stock receipt</Link>
+          {' · '}
+          <Link href="/stock/adjust">Adjustment / wastage</Link>
+        </p>
+      ) : null}
       <form action={logoutAction}>
         <button type="submit">Sign out</button>
       </form>

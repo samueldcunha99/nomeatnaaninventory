@@ -3,9 +3,10 @@
 Conventions for the cafe management system. Read `files/PROJECT-SPEC.md` first — this
 file records what we decided that the spec does not say, and why.
 
-Current state: **Month 1, step 5 complete.** Schema, migrations, seed, unit conversion,
-weighted-average cost, auth, role enforcement and ingredient CRUD are in and tested.
-Stock receipts and adjustments are not started.
+Current state: **Month 1, step 6 complete.** Schema, migrations, seed, unit conversion,
+weighted-average cost, auth, role enforcement, ingredient CRUD, and stock receipts /
+adjustments / wastage are in and tested against live Postgres (74 tests, none skipped).
+Movement history and low-stock views are not started.
 
 ---
 
@@ -267,12 +268,94 @@ regression (an accidental O(n²), a per-movement allocation), not to police a sl
 A second test asserts the growth stays linear, because a quadratic rewrite would pass a
 wall-clock budget long after it became the wrong shape.
 
-**What this does NOT measure:** fetching 50,000 rows out of Postgres, which is the larger
-cost and needs a live database. Treat the number above as a floor. If replay ever does
-become the problem, snapshot periodically and replay from the last snapshot - see the
-`ponytail:` comment in `src/db/stock.ts`.
+### End-to-end, against live Postgres
+
+The fold was never the cost. Fetching the rows is. Measured with `npm run bench:replay`
+(Postgres 16 in Docker, same machine, median of 5):
+
+| ledger size | fetch + fold | per movement | in-memory fold alone |
+|---|---|---|---|
+| 1,000 | 7 ms | 6.6 µs | — |
+| 10,000 | 18 ms | 1.8 µs | 0.7 ms |
+| 50,000 | **87 ms** | 1.7 µs | 2.0 ms |
+| 100,000 | 171 ms | 1.7 µs | 3.2 ms |
+
+Still linear, but **~43x the in-memory figure at 50,000**. The 2 ms number was a floor,
+and a misleading one to plan against.
+
+### This changes the snapshotting decision
+
+87 ms is paid *per movement insert*, inside the transaction, holding locks. It does not
+matter yet - Month 1 ledgers are empty. It matters in Month 3, when confirming an order
+writes a consumption movement per ingredient:
+
+- A high-frequency ingredient (maida, butter, sugar) takes a movement on most orders. At
+  150 orders/day that is ~50,000 movements in roughly **11 months**.
+- An order touching 5 such ingredients then costs 5 x 87 ms = **~0.4 s of replay** added
+  to confirmation, and ~0.9 s a year later at 100,000.
+
+That is a counter staff member waiting on a till during a rush, which is the exact
+failure mode section 6.5 of the spec warns about.
+
+**Conclusion: snapshotting needs to land before Month 3 order confirmation goes live**,
+not "if it ever gets slow". It is not needed now and is deliberately not built.
+
+It does not reintroduce a second arithmetic path: a snapshot changes the *starting
+state* of the same fold, so the invariant becomes "cache = snapshot + replay of
+movements after it" and `applyMovement` stays the only implementation.
 
 ---
+
+## Recording stock movements
+
+Every write goes through `recordMovements()` in `src/db/stock.ts`. It is the only place
+that inserts into `stock_movements`, and it does three things in one transaction: insert
+the rows, refresh the cache for each affected ingredient, and write the audit entry.
+`src/db/movements.ts` builds and validates the lines; it contains no arithmetic beyond
+deriving a purchase's unit cost with the shared helper.
+
+**A receipt is one transaction.** All lines share one `reference_id`, so the delivery can
+be read back as a single event, and a bad line rolls the whole receipt back. The form
+says so explicitly when it fails — "nothing was saved" — because a half-recorded delivery
+the operator believes succeeded is worse than an outright error.
+
+**Audit is one entry per operation, not per line.** `stock_movements` already records who
+and when for every row, so a per-line audit copy would add volume without adding
+information; the lines are carried in `afterJson`. The action is *derived* from the
+movement types present (`stock.receipt`, `stock.wastage`, `stock.adjustment`, …) rather
+than passed in, so no caller can forget it or label it wrongly.
+
+**Sign is applied from an explicit direction choice**, never by asking an operator to
+type a minus sign — they will forget it half the time, and an adjustment with the wrong
+sign doubles the error it was meant to fix. Wastage has no direction control at all: it
+only ever removes stock, so offering the choice would be a trap.
+
+The unit-cost preview shown before saving calls the same helpers the server uses to store
+it, so what the operator checks against the delivery note is what gets written.
+
+## Translating driver errors
+
+`src/db/errors.ts`. Drizzle wraps the driver failure in a `DrizzleQueryError` and hangs
+the postgres.js error off `.cause`, so a naive `err.code === '23505'` never matches —
+which is exactly how a raw "duplicate key value violates unique constraint
+ingredients_tenant_name_uq" once reached a form field. Walk the cause chain instead.
+
+**Always match on the constraint name as well as the code.** A bare code check would
+mislabel some future unrelated unique violation as "that name is taken", which is worse
+than the raw error because it is confidently wrong. Anything unrecognised is rethrown
+untouched: a surprise must stay a surprise.
+
+Translated today: `ingredients_tenant_name_uq` and `users_tenant_email_uq` — the two
+unique constraints reachable from a form. Add a translation whenever a new one becomes
+reachable from user input.
+
+## Seeding outside development
+
+`SEED_OWNER_PASSWORD` is **required** whenever `NODE_ENV` is not `development`; the seed
+refuses to run without it rather than defaulting. That account holds every permission in
+the system, and "we'll change it after go-live" is how it stays `changeme-dev-only`.
+`NODE_ENV` unset counts as not-development — the server is the place least likely to have
+it set deliberately.
 
 ## Invariants enforced in the database, not just in code
 
