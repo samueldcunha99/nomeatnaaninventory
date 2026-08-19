@@ -237,3 +237,78 @@ test('history and low stock do not leak across tenants', async (t) => {
   const targeted = await listMovements(otherOwner, { ingredientId: mine });
   assert.deepEqual(targeted.rows, []);
 });
+
+/**
+ * Postgres returns sum()/count()/avg() over a bigint as `numeric`, and postgres.js hands
+ * `numeric` back as a STRING. A field declared `number` that is really a string compares
+ * lexicographically: '900' > '4850000' is true. A margin figure built on that is quietly
+ * wrong, and nothing throws.
+ *
+ * Drizzle converts columns whose type it knows. It cannot convert a raw SQL expression,
+ * so every aggregate has to be normalised by hand - and this test is what notices when a
+ * new one is not.
+ */
+test('every numeric field crossing the driver boundary is a number, not a string', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const ing = await makeIngredient('TypeCheck', 10_000_000);
+  await recordReceipt(owner, {
+    lines: [{ ingredientId: ing, quantityMilliBase: 5_000_000n, totalCostPaise: 250_000n }],
+  });
+  await recordCorrection(owner, 'wastage', { ingredientId: ing, quantityMilliBase: -200_000n, reason: 'burnt' });
+
+  const numericField = (row: Record<string, unknown>, key: string, where: string) => {
+    const value = row[key];
+    if (value === null) return; // nullable columns are allowed to be null
+    assert.equal(
+      typeof value,
+      'number',
+      `${where}.${key} is a ${typeof value} (${JSON.stringify(value)}). ` +
+        `A numeric aggregate needs Number() in the query layer - see AGENTS.md.`,
+    );
+    assert.ok(Number.isFinite(value as number), `${where}.${key} must be finite`);
+  };
+
+  const history = await listMovements(owner, { ingredientId: ing });
+  assert.ok(history.rows.length > 0, 'need rows to check');
+  for (const row of history.rows as unknown as Record<string, unknown>[]) {
+    for (const key of [
+      'seq',
+      'quantityMilliBase',
+      'balanceMilliBase',
+      'unitCostMillipaisePerBase',
+      'totalCostPaise',
+      'purchaseUnitInBase',
+    ]) {
+      numericField(row, key, 'listMovements');
+    }
+  }
+
+  // The one that actually regressed: a running total, not a plain column.
+  assert.equal(typeof history.rows[0].balanceMilliBase, 'number', 'the window sum must be normalised');
+
+  const low = await listLowStock(owner);
+  assert.ok(low.length > 0, 'the seeded ingredient is below its threshold');
+  for (const row of low as unknown as Record<string, unknown>[]) {
+    for (const key of [
+      'qtyMilliBase',
+      'lowStockThresholdMilliBase',
+      'weightedAvgCostMillipaisePerBase',
+      'purchaseUnitInBase',
+    ]) {
+      numericField(row, key, 'listLowStock');
+    }
+  }
+
+  // And prove the sort is numeric rather than lexicographic, which is how a
+  // string-typed number shows up in behaviour rather than in a type error.
+  const balances = history.rows.map((r) => r.balanceMilliBase);
+  assert.deepEqual(
+    [...balances].sort((a, b) => a - b),
+    [...balances].sort((a, b) => a - b),
+    'sanity',
+  );
+  assert.ok(
+    balances.every((b) => typeof b === 'number'),
+    'a string here would make every comparison lexicographic: "900" > "4850000" is true',
+  );
+});

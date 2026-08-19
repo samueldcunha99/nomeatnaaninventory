@@ -58,6 +58,63 @@ cost is linear beyond that (171 ms at 100k). Measured end-to-end against Postgre
 Snapshotting does not introduce a second arithmetic path — it changes the fold's *starting
 state*, so `applyMovement` stays the only implementation.
 
+### 🚫 BLOCKER on Month 2 — "change the butter purchase price" does not map onto the current design
+
+PROJECT-SPEC § 1 defines success as: *"Change the butter purchase price. Every item using
+butter recosts."* There is no such operation, and by design there cannot be a simple one.
+
+Cost comes from the **weighted average over the stock ledger**. It moves only when a
+`purchase` movement is recorded. Nothing edits a price, because editing one would rewrite
+history — which is the whole reason for the append-only ledger.
+
+So the demo means one of three different things, and they need different builds:
+
+1. **"Record a delivery at the new price"** — already works. The WAC moves, recipes recost.
+   Honest, but it is not what the sentence says and the owner may not accept it.
+2. **A what-if price** — the owner types a hypothetical butter price and sees margins move
+   *without* writing anything. This is a genuinely useful tool and a different feature:
+   costing has to accept an override map rather than always reading `ingredient_stock`.
+3. **A "current buying price" field on the ingredient**, separate from the weighted average,
+   used for forward-looking costing while WAC stays for historical reporting. Two cost
+   numbers with two meanings, and every screen must say which it is showing.
+
+**Resolve before designing the costing engine.** Getting this wrong means either rebuilding
+the cost API in week three or shipping a demo that does not do what was promised. My
+recommendation is (2): it keeps the ledger sacred, matches the demo's wording, and falls
+out naturally if the costing function takes cost lookups as a parameter rather than reaching
+for the cache itself.
+
+### Open — Month 2 schema and arithmetic risks
+
+Recorded before Month 2 starts, so none of these is discovered in week three.
+
+- **An ingredient with no movements costs zero, silently.** There is no `ingredient_stock`
+  row until the first movement, and the list query defaults the missing row to 0. A recipe
+  costed against a never-received ingredient would produce a plausible, confidently wrong
+  total. Month 2 must treat "no cost data" as an **error**, not as zero. This is exactly the
+  failure mode PROJECT-SPEC § 6.1 warns about.
+- **`recipe_lines` needs `tenant_id`,** even though the spec's data model in § 5 omits it.
+  Our convention is every business table carries it with composite FKs; without that a
+  recipe line can reference another tenant's ingredient, which is the one failure that
+  cannot be cleaned up afterwards.
+- **No historical cost lookup exists.** `replayLedger()` folds the whole ledger; there is no
+  "as at seq N" variant. Month 3's cost snapshot needs one, and Month 2's re-runnable
+  recalculation probably does too. Cheap to add now (the fold is already pure), invisible
+  until it is urgently needed.
+- **Nothing enforces unit compatibility between a sub-recipe's yield and the line that
+  consumes it.** A recipe yielding 4.2 kg (weight) consumed as millilitres would be accepted.
+  A foreign key cannot express it; it needs save-time validation alongside the cycle and
+  depth checks.
+- **Cycle and depth rejection is real work, not a footnote.** Postgres cannot express "no
+  cycles" declaratively. It needs a recursive CTE at save time, and it needs its own tests.
+- **`divRoundHalfUp` refuses negative numerators by design.** The wastage-percent multiplier
+  is the first arithmetic that produces a fractional *quantity*, and quantities are signed.
+  Month 2 needs a separate sign-safe rounder: round the magnitude, reapply the sign. Do not
+  relax the existing guard — it is what keeps costs from being rounded wrongly.
+- **Bulk recatalogue recosting meets the replay blocker.** "Recalculation must be re-runnable
+  across the whole catalogue" multiplies by the per-ingredient replay cost already recorded
+  above. Consider the two together rather than separately.
+
 ### Open — aggregator split, resolve before Month 3
 
 Per PROJECT-SPEC § 10.1. If 60–70% of orders arrive via Swiggy/Zomato, those never touch
@@ -282,3 +339,28 @@ matches the observed rate.
 The tamper now flips the first character to one it demonstrably is not. 30 consecutive
 clean full-suite runs since. **No security defect: session lookup was behaving correctly
 throughout.**
+
+### 2026-08-19 — Numeric-as-string swept across the codebase
+
+Every SQL aggregate and raw expression in non-test code was enumerated. There are exactly
+two, both in `src/db/history.ts`:
+
+- the running-balance `sum()` window — **selected**, so it crosses the driver boundary, and
+  it is normalised with `Number()` in the query layer;
+- the low-stock severity expression — used **only in `ORDER BY`**, never selected, so it
+  never crosses the boundary and Postgres compares it in `numeric`, which is correct.
+
+No other aggregate exists yet. Nothing else needed fixing.
+
+Added a test asserting the runtime `typeof` of every numeric field the query layer returns,
+verified by deleting the `Number()` conversion and confirming it fails with
+`listMovements.balanceMilliBase is a string ("4800000")`. Recorded in AGENTS.md § Aggregates
+come back as strings, because the costing engine is aggregation over recipe lines and is
+precisely where this produces a margin figure nobody questions.
+
+### 2026-08-19 — Month 1 closed
+
+85 tests passing against live Postgres, none skipped. `next build` exits 0. Steps 1–7 done.
+
+Month 2 risks recorded below under open questions. The largest is not a defect but a
+design tension in the spec's own success demo — see "changing a purchase price".

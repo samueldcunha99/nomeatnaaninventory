@@ -359,6 +359,48 @@ the system, and "we'll change it after go-live" is how it stays `changeme-dev-on
 `NODE_ENV` unset counts as not-development — the server is the place least likely to have
 it set deliberately.
 
+## Aggregates come back as strings
+
+**Postgres returns `sum()`, `count()` and `avg()` over a `bigint` as `numeric`, and
+postgres.js hands `numeric` back as a JavaScript string.** Drizzle converts columns whose
+type it declares; it cannot convert a raw SQL expression. So a field typed `number` in the
+select shape is simply a lie unless you convert it yourself.
+
+Nothing throws. What happens instead is that every comparison becomes lexicographic:
+
+```js
+'900' > '4850000'   // true
+ 900  >  4850000    // false
+```
+
+A stock level, a running balance, a food-cost percentage or a margin built on that is
+**quietly wrong**, and it looks plausible. This has already happened once, on the movement
+history's running balance.
+
+**The rule.** Every aggregate that is *selected* must be normalised in the query layer,
+once, at the point it crosses the boundary:
+
+```ts
+rows = rows.map((r) => ({ ...r, balanceMilliBase: Number(r.balanceMilliBase) }));
+```
+
+An aggregate used only in `ORDER BY` or `WHERE` never crosses the boundary and needs no
+conversion — Postgres compares it in `numeric`, which is correct. `listLowStock`'s severity
+expression is that case.
+
+Milli-base and millipaise values are far inside `Number`'s exact range, so `Number()` is
+safe here. If a future aggregate could exceed 2⁵³ — a lifetime total across a whole
+catalogue, say — use `BigInt` instead and keep it out of `number` entirely.
+
+**This matters most in Month 2.** The costing engine is aggregation over recipe lines:
+`sum()` of ingredient contributions, counts of sub-recipe depth, food-cost percentages. It
+is exactly the place where a string-typed number produces a margin figure nobody questions.
+
+`src/db/history.db.test.ts` has a test that asserts the runtime `typeof` of every numeric
+field the query layer returns. Copy that pattern for every new query module rather than
+trusting the declared types — it was verified by removing the conversion and confirming the
+test fails.
+
 ## Reading the ledger
 
 `src/db/history.ts` is read-only and must stay that way. There is no update and no delete
