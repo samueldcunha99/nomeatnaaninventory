@@ -35,7 +35,8 @@ Legend: ✅ done and verified · 🟡 in progress · ⬜ not started · 🚫 blo
 
 | Step | What | Status |
 |---|---|---|
-| 0 | Dockerfile, app service in compose, CI image build, deploy to a real VPS | ⬜ |
+| 0 | Dockerfile, app service in compose, CI image build | ✅ **done** |
+| 0b | Deploy to a real VPS | 🚫 **gated** — written and stubbed, awaiting the E2E account |
 | 1 | Recipes and recipe_lines schema (with tenant_id) | ⬜ |
 | 2 | Cost lookup seam + missing-cost errors | ⬜ |
 | 3 | Sub-recipes: yield, cycle and depth rejection, unit compatibility | ⬜ |
@@ -790,3 +791,56 @@ is gated and on what, the working rules, the failure mode to fear, and the eight
 decisions already made. AGENTS.md gained the seven non-negotiables as an explicit list.
 
 92 tests, 0 failures, 0 skipped against live Postgres. `next build` exits 0.
+
+### 2026-08-19 — Month 2 step 0: containerisation and CI (deploy stubbed)
+
+Everything except the deploy itself, which needs a server that does not exist yet.
+
+**`Dockerfile` — two targets, one source tree.** `runtime` is the app: multi-stage,
+standalone output, non-root (`node`, uid 1000), no dev dependencies, no source. `migrate`
+is a one-shot that applies migrations and exits. Separate on purpose — **the app container
+cannot alter the schema**, and the runtime image does not carry a migration runner it never
+invokes. `libc6-compat` is installed because @node-rs/argon2 ships a prebuilt binary
+expecting glibc symbols.
+
+**Compose** now runs Postgres, migrations, the app and Caddy. Migrations gate the app via
+`service_completed_successfully`, so a container can never serve traffic against a schema
+older than its own code. From a clean checkout with no volumes: **one command, ~16 seconds,
+all services healthy.** Verified end to end — 8 tables created, both migrations recorded,
+seed applied, CSS and self-hosted fonts served through Caddy with no CDN reference, and the
+full suite of 103 tests passing against that database.
+
+**CI** (`.github/workflows/ci.yml`) runs typecheck, migrations and tests against a real
+Postgres service container, then builds, then pushes both images to GHCR on merge to main.
+It includes a check that **fails the run if any database test skipped** — the suite skips
+loudly rather than failing when Postgres is absent, so without that check CI could silently
+degrade to unit-tests-only and still look green.
+
+#### Two problems found by building rather than assuming
+
+1. **The env check broke `next build`.** Asserting configuration at module load in
+   `src/db/client.ts` meant page-data collection failed on a build machine with no
+   database credentials — which it should not need. Resolved by giving the build stage a
+   clearly-labelled placeholder DATABASE_URL (it never reaches the runtime stage, a
+   separate `FROM`) and moving the real check to `instrumentation.ts`, which runs once at
+   server start.
+
+2. **The app container hung instead of exiting when misconfigured.** Throwing from
+   `instrumentation.ts` surfaces as an unhandledRejection, which Next 16 logs but does not
+   die on: the container stayed alive, never served a request, and never restarted — the
+   exact half-configured boot the check exists to prevent. Found by running the image with
+   `DATABASE_URL` unset and watching it hang for two minutes. Now `process.exit(1)` after
+   printing the report; verified it exits 1 with a clean message.
+
+**The env check** (`src/lib/env.ts`) names every missing variable at once rather than one
+per restart, and rejects a `localhost` database URL in production because inside a
+container that is the container itself. 7 unit tests, and both failure modes demonstrated
+against the real images.
+
+**Deploy is written and stubbed.** The job in `ci.yml` is commented out with the four
+secrets it needs named; `deploy/README.md` carries the target, the hardening steps, and the
+two ways the production compose file differs (pulls a published image; SITE_ADDRESS is a
+real hostname so Caddy provisions TLS). **Nothing is provisioned.** The E2E Networks account
+must be created by the client, in the client's name — contractual, not a preference.
+
+103 tests, 0 failures, 0 skipped. `next build` exits 0. Stack verified from clean.

@@ -19,7 +19,8 @@ repository. Nothing important lives in a chat log.
 |---|---|
 | Month 1 — foundations & inventory | ✅ **complete**, steps 1–7, verified against live Postgres |
 | UI styling pass | ✅ complete, all 9 internal screens, Tailwind v4 |
-| Month 2 — deploy pipeline, then costing engine | ⬜ **not started, gated** |
+| Month 2 step 0 — containerisation & CI | ✅ **done**, deploy-to-server stubbed |
+| Month 2 — costing engine | ⬜ **not started, gated** |
 | Trunk | `main` — the only branch. Everything is merged. |
 | Tests | **92, all passing** against live Postgres |
 | `next build` | exits 0 |
@@ -150,6 +151,47 @@ npm test
 the database tests skip loudly rather than passing quietly, and a green run full of skips
 is not a pass.
 
+## Running the whole stack in containers
+
+The dev loop above runs the app on the host against Postgres in Docker. To run
+everything the way production will — app, Caddy, and a one-shot migration container:
+
+```bash
+npm run stack:up
+```
+
+From a clean checkout with no volumes this takes about **16 seconds** and ends with all
+services healthy. Migrations run **before** the app starts (compose enforces it with
+`service_completed_successfully`), so a container can never serve traffic against a
+schema older than its own code.
+
+Then browse to **http://localhost:8080** — Caddy, not the app directly.
+
+Two build targets in one `Dockerfile`: `runtime` (the app — standalone output, non-root,
+no dev dependencies) and `migrate` (one-shot, applies migrations and exits). They are
+separate on purpose: **the app container cannot alter the schema.**
+
+### Configuration fails loudly
+
+`src/lib/env.ts` names every missing variable at once, and the container **exits non-zero**
+rather than serving a half-configured app. Verified by running the image with
+`DATABASE_URL` unset:
+
+```
+Configuration is incomplete; refusing to start.
+
+Missing environment variables:
+  - DATABASE_URL
+```
+
+It also rejects a `localhost` database URL in production, because inside a container
+that is the container itself — the classic compose wiring mistake.
+
+### Deploying
+
+**Not done, and gated.** See [deploy/README.md](deploy/README.md). The deploy job in
+`.github/workflows/ci.yml` is written and commented out, waiting on the client to create
+the E2E Networks account in their own name.
 ## Traps
 
 - **Restart the dev server after a PostCSS or `.env` config change.** A running Next
@@ -157,6 +199,11 @@ is not a pass.
   Times New Roman until restarted. This wastes twenty minutes if you do not know it.
 - **`npm run db:reset` destroys the database volume.** All local data goes. It is the
   right tool for a clean slate and the wrong one if you have entered anything you want.
+- **`npm run stack:reset` destroys the database volume**, same as `db:reset`.
+- **The build stage passes a placeholder `DATABASE_URL`.** `next build` imports every page
+  to collect its data and would otherwise fail with no database configured. The
+  placeholder never reaches the runtime image — that is a separate stage — and
+  `instrumentation.ts` checks the real value when the server starts.
 - **Never run `next build` on the VPS.** 4 GB will OOM. Build the image in CI and ship it
   (PROJECT-SPEC § 3).
 - **Read generated migration SQL before committing it.** drizzle-kit emits
@@ -186,6 +233,10 @@ is not a pass.
 | `npm run db:seed` | Seed tenant, owner, suppliers, ingredients + opening stock |
 | `npm run db:reset` | **Destroys the volume**, recreates, migrates, seeds |
 | `npm run bench:replay` | Ledger replay cost against the live database |
+| `npm run stack:up` | **Whole stack**: Postgres + migrations + app + Caddy, one command |
+| `npm run stack:down` | Stop the stack |
+| `npm run stack:reset` | **Destroys volumes**, rebuilds, restarts |
+| `npm run stack:logs` | Follow all container logs |
 
 ## Layout
 
