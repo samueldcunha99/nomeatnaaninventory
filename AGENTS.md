@@ -3,14 +3,20 @@
 Conventions for the cafe management system. Read `files/PROJECT-SPEC.md` first — this
 file records what we decided that the spec does not say, and why.
 
-**Month 1 is complete and verified: 92 tests passing against a live PostgreSQL, 0
-skipped.** Schema, migrations, seed, unit conversion, weighted-average cost, auth, role
-enforcement, ingredient CRUD, stock receipts / adjustments / wastage, movement history,
-low-stock views, and a completed UI styling pass across all 9 internal screens.
+**139 tests passing against a live PostgreSQL, 0 skipped.**
 
-**Month 2 is starting. It is no longer gated on the VPS** (changed 2026-08-21): the deploy
-step stays stubbed, and everything else runs locally against our own Postgres. Do not
-re-introduce the provisioning gate.
+**Month 1 is complete and verified.** Schema, migrations, seed, unit conversion,
+weighted-average cost, auth, role enforcement, ingredient CRUD, stock receipts /
+adjustments / wastage, movement history, low-stock views, and a UI styling pass across all
+9 internal screens.
+
+**Month 2 is well under way, and is NOT gated on the VPS** (changed 2026-08-21): the deploy
+step stays stubbed and everything else runs locally against our own Postgres. Do not
+re-introduce the provisioning gate. Built so far: the recipe / sub-recipe / menu-item
+schema, the pure costing engine against paper cases P1-P22, the ledger-backed cost lookup,
+save-time cycle / depth / unit validators, and the recipe list and cost breakdown screens
+including the what-if price. **The editors are not built** - no recipe form, no menu-item
+form.
 
 Read [README.md](README.md) first — it carries the handover, the working rules and the
 Month 2 decisions already made. [PROGRESS.md](PROGRESS.md) carries state, blockers and
