@@ -14,7 +14,17 @@
 import { hash } from '@node-rs/argon2';
 import { eq } from 'drizzle-orm';
 import { db, sql } from './client.ts';
-import { tenants, users, suppliers, ingredients, stockMovements, ingredientStock } from './schema.ts';
+import {
+  tenants,
+  users,
+  suppliers,
+  ingredients,
+  stockMovements,
+  ingredientStock,
+  recipes,
+  recipeLines,
+  menuItems,
+} from './schema.ts';
 import { SEED_INGREDIENTS, SEED_SUPPLIERS, unitCostMillipaisePerBase } from './seed-data.ts';
 
 const TENANT_NAME = 'Nomeatnaan Cafe & Bakery';
@@ -65,6 +75,9 @@ await db.transaction(async (tx) => {
     supplierIds[key] = row.id;
   }
 
+  // Names are unique per tenant, so they are a safe key for the demo recipe below.
+  const ingredientIds: Record<string, string> = {};
+
   for (const i of SEED_INGREDIENTS) {
     const unitCost = unitCostMillipaisePerBase(i);
     const qtyMilliBase = i.openingQty * i.purchaseUnitInBase * 1000;
@@ -100,8 +113,75 @@ await db.transaction(async (tx) => {
       qtyMilliBase,
       weightedAvgCostMillipaisePerBase: unitCost,
     });
+
+    ingredientIds[i.name] = ing.id;
   }
+
+  /* -------------------------------------------------------------------------
+   * The demo recipe, so the costing screens have something real to show.
+   *
+   * P3's dough and P7's cinnamon roll from the paper cases, at the SEEDED prices rather
+   * than the paper ones. Every figure below is reproducible by hand from this file:
+   *
+   *   dough batch  2500x4200 + 800x52000 + 400x5800 + 600x6200 + 20x2200
+   *                = 58,184,000 millipaise (Rs 581.84) / 4200 g = 13853 millipaise/g
+   *   roll batch   2160x13853 + 60x88000 + 240x9500 + 120x52000
+   *                = 43,722,480 millipaise (Rs 437.22) / 12 = 3,643,540 per roll
+   *   one roll     Rs 36.44 against Rs 350.00 -> margin Rs 313.56, food cost 10.4%
+   *
+   * Note the roll uses the ROUNDED dough rate, 13853, which is why the breakdown adds up.
+   * ----------------------------------------------------------------------- */
+  const line = (
+    source: { ingredientId: string } | { subRecipeId: string },
+    quantityMilliBase: number,
+  ) => ({ tenantId: tenant.id, quantityMilliBase, ...source });
+
+  const [dough] = await tx
+    .insert(recipes)
+    .values({
+      tenantId: tenant.id,
+      name: 'Cinnamon roll dough',
+      yieldUnitType: 'weight',
+      yieldQtyMilliBase: 4_200_000,
+      notes: 'One batch. Proof, knock back, roll out.',
+    })
+    .returning();
+
+  await tx.insert(recipeLines).values([
+    { recipeId: dough.id, ...line({ ingredientId: ingredientIds['Maida (refined flour)'] }, 2_500_000) },
+    { recipeId: dough.id, ...line({ ingredientId: ingredientIds['Butter (unsalted)'] }, 800_000) },
+    { recipeId: dough.id, ...line({ ingredientId: ingredientIds['Castor sugar'] }, 400_000) },
+    { recipeId: dough.id, ...line({ ingredientId: ingredientIds['Milk (full cream)'] }, 600_000) },
+    { recipeId: dough.id, ...line({ ingredientId: ingredientIds['Salt'] }, 20_000) },
+  ]);
+
+  const [roll] = await tx
+    .insert(recipes)
+    .values({
+      tenantId: tenant.id,
+      name: 'Cinnamon roll batch',
+      yieldUnitType: 'count',
+      yieldQtyMilliBase: 12_000,
+      notes: 'Twelve rolls from one tray.',
+    })
+    .returning();
+
+  await tx.insert(recipeLines).values([
+    { recipeId: roll.id, ...line({ subRecipeId: dough.id }, 2_160_000) },
+    { recipeId: roll.id, ...line({ ingredientId: ingredientIds['Cinnamon powder'] }, 60_000) },
+    { recipeId: roll.id, ...line({ ingredientId: ingredientIds['Brown sugar'] }, 240_000) },
+    { recipeId: roll.id, ...line({ ingredientId: ingredientIds['Butter (unsalted)'] }, 120_000) },
+  ]);
+
+  await tx.insert(menuItems).values({
+    tenantId: tenant.id,
+    name: 'Cinnamon roll',
+    recipeId: roll.id,
+    portionQtyMilliBase: 1_000, // one roll out of the batch of twelve
+    sellingPricePaise: 35_000, // Rs 350.00
+  });
 });
+
 
 await sql.end();
 console.log(`seeded ${SEED_INGREDIENTS.length} ingredients, 3 suppliers, owner ${ownerEmail}`);

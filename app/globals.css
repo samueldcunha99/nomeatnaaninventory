@@ -474,6 +474,116 @@
     @apply text-sm text-ink-muted;
   }
 
+
+  /* ---- Stat blocks (NEW in Month 2) ---------------------------------------- */
+
+  /*
+   * The headline figures above a breakdown. Same card shape as .navcard so the two read
+   * as one family — border, radius and 6px left rule are identical; only the type scale
+   * differs, because these are numbers to be read across a room rather than links to be
+   * tapped.
+   */
+  .statgrid {
+    @apply grid gap-3 mb-6 p-0 list-none;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  }
+
+  .stat {
+    @apply flex flex-col gap-0.5 px-4 py-3 bg-surface border-2 border-mist rounded-md;
+    border-left-width: 6px;
+    @apply border-l-sky;
+  }
+
+  /* The number the screen exists for. */
+  .stat--headline {
+    @apply border-l-navy;
+  }
+
+  /* Selling below cost. Never colour alone: the label says so in words too. */
+  .stat--bad {
+    @apply border-l-danger bg-danger-surface;
+  }
+
+  .stat__label {
+    @apply text-xs uppercase tracking-widest text-ink-muted;
+  }
+
+  .stat__value {
+    @apply text-2xl font-semibold text-navy tabular-nums leading-tight;
+  }
+
+  .stat--bad .stat__value {
+    @apply text-danger;
+  }
+
+  .stat__hint {
+    @apply text-sm text-ink-muted;
+  }
+
+  /* ---- Cost share bar (NEW in Month 2) ------------------------------------- */
+
+  /*
+   * "Which ingredient dominates this cost" answered without reading a single number.
+   * The bar is decoration on top of the percentage beside it, never instead of it — a
+   * screen reader and a greyscale print both still get the figure.
+   *
+   * Sky and navy are FILLS here, carrying no text, which is what the palette constraint
+   * requires of them.
+   */
+  .costbar {
+    @apply block h-2 w-full min-w-16 bg-mist rounded-sm overflow-hidden;
+  }
+
+  .costbar__fill {
+    @apply block h-full bg-sky;
+  }
+
+  /* The single biggest line. One emphasis per table, or it is not an emphasis. */
+  .costbar__fill--top {
+    @apply bg-navy;
+  }
+
+  /* ---- Expandable sub-recipe (NEW in Month 2) ------------------------------ */
+
+  /*
+   * <details>, not a click handler. The whole breakdown is a server-rendered page and
+   * this keeps it that way: no client component, no hydration, works with JS off, and
+   * the browser handles the keyboard and the accessible expanded state for free.
+   *
+   * It sits in a full-width row beneath its parent line, because a <tr> cannot be
+   * wrapped in <details> and stay valid HTML.
+   */
+  .subrow > td {
+    @apply p-0;
+    height: auto;
+  }
+
+  .subdetails > summary {
+    @apply flex items-center gap-2 min-h-tap px-3 text-sm font-semibold text-navy cursor-pointer;
+  }
+
+  .subdetails > summary:hover {
+    @apply bg-mist;
+  }
+
+  .subdetails[open] > summary {
+    @apply bg-stripe;
+  }
+
+  .subdetails__body {
+    @apply px-3 py-3 bg-stripe border-t border-mist;
+  }
+
+  /*
+   * Nested rows are read, not tapped, so they drop the 56px fingertip floor. Everything
+   * else about the table pattern is unchanged.
+   */
+  .table--nested td,
+  .table--nested tbody th {
+    @apply py-2;
+    height: auto;
+  }
+
   /* ---- Toolbar (search + filters above a table) ---------------------------- */
 
   .toolbar {
