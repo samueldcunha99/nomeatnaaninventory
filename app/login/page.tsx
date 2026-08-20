@@ -24,7 +24,7 @@ export default function LoginPage() {
 
       <main className="page page--narrow">
         <h1>Sign in</h1>
-        <p className="prose-note -mt-2">
+        <p className="prose-note">
           Staff access only.
         </p>
 
