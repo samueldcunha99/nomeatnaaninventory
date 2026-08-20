@@ -9,6 +9,7 @@ export default async function HomePage() {
   const user = await requireSession();
   const canView = hasPermission(user.role, 'ingredients.view');
   const canRecord = hasPermission(user.role, 'stock.record');
+  const canCost = hasPermission(user.role, 'recipes.view');
 
   return (
     <>
@@ -53,6 +54,20 @@ export default async function HomePage() {
                 <Link className="navcard" href="/stock/history">
                   Movement history
                   <span className="navcard__hint">Every receipt, adjustment and sale</span>
+                </Link>
+              </li>
+            </ul>
+          </>
+        ) : null}
+
+        {canCost ? (
+          <>
+            <h2 className="section-title">Costing</h2>
+            <ul className="navgrid">
+              <li>
+                <Link className="navcard" href="/recipes">
+                  Recipes
+                  <span className="navcard__hint">What each item costs to make, and why</span>
                 </Link>
               </li>
             </ul>

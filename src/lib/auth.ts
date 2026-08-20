@@ -28,6 +28,10 @@ export const PERMISSIONS = {
   'ingredients.manage': ['owner', 'manager'],
   // Counter staff receive deliveries and correct counts; that is the job.
   'stock.record': ['owner', 'manager', 'counter'],
+  // Recipes are costed, and a cost is the owner's margin working backwards. Counter and
+  // kitchen do not see them. Month 3's kitchen board shows what to make, not what it cost.
+  'recipes.view': ['owner', 'manager'],
+  'recipes.manage': ['owner', 'manager'],
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Permission = keyof typeof PERMISSIONS;

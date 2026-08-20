@@ -8,7 +8,9 @@ skipped.** Schema, migrations, seed, unit conversion, weighted-average cost, aut
 enforcement, ingredient CRUD, stock receipts / adjustments / wastage, movement history,
 low-stock views, and a completed UI styling pass across all 9 internal screens.
 
-**Month 2 has not started and is gated** on the client creating the E2E Networks account.
+**Month 2 is starting. It is no longer gated on the VPS** (changed 2026-08-21): the deploy
+step stays stubbed, and everything else runs locally against our own Postgres. Do not
+re-introduce the provisioning gate.
 
 Read [README.md](README.md) first — it carries the handover, the working rules and the
 Month 2 decisions already made. [PROGRESS.md](PROGRESS.md) carries state, blockers and
@@ -302,6 +304,94 @@ So:
 A zero cost that is genuinely correct — a free sample, something written off — is recorded
 the same way as anything else: a `purchase` movement with `total_cost_paise = 0`. That has
 a cost basis. Never having been received does not.
+
+## Wastage is a multiplier on quantity, and the direction is `1 + w`
+
+`recipe_lines.wastage_millipercent` is thousandths of a percent: 3% is `3000`. The
+quantity actually issued is
+
+```
+issued = line_quantity * (1 + w/100000)      180 g at 3% -> 185.4 g
+```
+
+**The other reading was considered and rejected.** If wastage were taken as "the yield
+shrinks", the multiplier would be `1 / (1 - w)` — 3% would give ×1.0309 rather than
+×1.03, and 100% would be a division by zero rather than a doubling. Both readings are
+defensible in the abstract; they are not interchangeable in the arithmetic, and a later
+"correction" from one to the other would silently move every cost in the catalogue by a
+fraction of a percent — the size of error nobody notices and nobody can explain
+afterwards.
+
+Wastage multiplies **quantity only, never cost**. Cost follows from quantity, so applying
+the multiplier to both counts the loss twice.
+
+Batch-level loss is not a wastage percentage at all: it is a smaller
+`recipes.yield_qty_milli_base`. If the bowl keeps 300 g, the batch yields 4.2 kg, not
+4.5 kg. There is deliberately no wastage column on `recipes` — two places to record one
+loss are two places to double-count it.
+
+## Nested rounding: a sub-recipe's rate is rounded before its parent uses it
+
+This looks like a violation of "round once, at the end". It is not, and the reason is not
+arithmetic — it is that **the displayed breakdown has to add up**.
+
+The rule:
+
+> Round half-up **once per recipe**, at the point the batch cost is divided by the yield.
+> A parent recipe consumes its child's **already-rounded** millipaise-per-base-unit rate,
+> not an exact rational carried down the tree.
+
+Inside a single recipe nothing is rounded early: line contributions are accumulated as an
+exact rational (`Σ qty_milli x rate x (100000 + w)` over `100000 x yield_milli`) and the
+single half-up division happens at the end. The rounding boundary is the recipe, not the
+line.
+
+**Why the exact-rational alternative is worse.** If the dough row on the cost breakdown
+shows ₹13.622/g and the roll uses 180 g, the owner will multiply those two numbers on the
+screen in front of them. Carry an exact rational and the total will not match what the
+displayed rows multiply out to — the breakdown lines will not sum to the total. That
+destroys trust in the one screen this whole project exists for, and an owner who stops
+believing the cost screen has no reason to believe any other number the system shows.
+
+**The error this trades away is bounded and tiny.** Truncation is under 0.001 paise per
+base unit at each level, depth is limited (see `MAX_RECIPE_DEPTH`), and a finished item
+never approaches a whole paise of drift. Paper case P7 is the concrete size of it: the
+cinnamon roll costs 3,581,960 millipaise per unit with the rounded dough rate and
+3,582,029 with the exact one — 69 millipaise, or 0.0069 paise, on a ₹35 item.
+
+**P7 is in the test suite specifically to pin this down.** If someone "fixes" the rounding
+to carry exact rationals, P7 fails with 3,582,029 and the failure message says why. Do not
+adjust that expectation to match an implementation.
+
+**Money rounds separately, and last.** A rate is millipaise per base unit and stays a rate.
+The conversion to whole paise happens once, at the portion, when the number becomes money
+somebody hands over (P10: 3,581,960 millipaise -> 3581.96 paise -> 3582 paise).
+
+**Costing never materialises a wastage-adjusted quantity**, so it never needs the sign-safe
+quantity rounder. The wastage factor stays inside the numerator as `(100000 + w)`. Month 3
+will need that rounder when it writes consumption movements, because those are real signed
+quantities in the ledger; costing does not.
+
+## One loader for recipe lines
+
+`recipe_lines` is soft-deleted, and a costing query that forgets `deleted_at is null`
+returns a line that was removed from the recipe. The cost comes back higher, plausible,
+and wrong — the undetectable failure class this whole file exists to prevent, and worse
+than the missing-cost case because there is no error to surface.
+
+So the filter does not live in the callers:
+
+- **Exactly one function loads recipe lines**, and the `deleted_at is null` filter is
+  inside it. Every costing path goes through that function.
+- **No costing code queries `recipe_lines` directly.** Not a join in a report, not a
+  one-off count, not "just this once because it's a different shape". If a new shape is
+  needed, it is a parameter on the one loader.
+- It carries **a test proving a soft-deleted line never reaches the fold**, written when
+  the fold exists.
+
+The rule is structural on purpose. "Remember to filter" is not a control — it works until
+the one query where somebody forgets, and that query is indistinguishable from a correct
+one by looking at its output.
 
 ## One implementation of the cost arithmetic
 
@@ -803,6 +893,14 @@ it doesn't.
 - `ingredient_stock.qty_milli_base` **may go negative** (spec 6.2). The cafe sells the
   last croissant regardless of what the system thinks. Flag it in the UI; never block the
   sale.
+- A `recipe_lines` row references **exactly one** of `ingredient_id` or `sub_recipe_id` —
+  never both, never neither. XOR check constraint, not application code.
+- A recipe line cannot reference **itself** as its own sub-recipe. Deeper cycles are not
+  expressible as a constraint and stay save-time work with their own tests.
+- Recipe yields and line quantities are **positive**; wastage is 0-100%.
+- Every `recipe_lines` reference is **composite on (tenant_id, id)**, so a line cannot
+  reach another tenant's ingredient or sub-recipe. Verified by probe, both directions.
+- `menu_items.selling_price_paise` is non-negative — zero is legal (staff meals, samples).
 
 ## Other conventions
 

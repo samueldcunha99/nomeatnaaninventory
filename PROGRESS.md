@@ -36,15 +36,16 @@ Legend: ✅ done and verified · 🟡 in progress · ⬜ not started · 🚫 blo
 | Step | What | Status |
 |---|---|---|
 | 0 | Dockerfile, app service in compose, CI image build | ✅ **done** |
-| 0b | Deploy to a real VPS | 🚫 **gated** — written and stubbed, awaiting the E2E account |
-| 1 | Recipes and recipe_lines schema (with tenant_id) | ⬜ |
-| 2 | Cost lookup seam + missing-cost errors | ⬜ |
-| 3 | Sub-recipes: yield, cycle and depth rejection, unit compatibility | ⬜ |
-| 4 | Wastage multiplier + sign-safe quantity rounder | ⬜ |
-| 5 | Cost breakdown and margin views | ⬜ |
+| 0b | Deploy to a real VPS | ⏸️ **deferred, does not block** — written and stubbed, awaiting the E2E account |
+| 1 | Recipes, recipe_lines and menu_items schema (with tenant_id) | ✅ |
+| 2 | Cost lookup seam + missing-cost errors | ✅ |
+| 3 | Sub-recipes: yield, cycle and depth rejection, unit compatibility | ✅ reachable through `saveRecipe` |
+| 4 | Wastage multiplier + sign-safe quantity rounder | ✅ multiplier done; the rounder is Month 3's, see the superseded risk item |
+| 5 | Cost breakdown and margin views | 🟡 list + breakdown + what-if done; editors not built |
 
-**Gate: Month 2 does not start until the owner has exercised the multi-line receipt form
-by hand, and the deploy target is provisioned.**
+**Gate (revised 2026-08-21): the owner exercises the multi-line receipt form by hand.
+Provisioning is no longer a gate.** Steps 1-5 run locally against our own Postgres exactly
+as Month 1 did. See the log entry for 2026-08-21.
 
 ### Later months
 
@@ -75,11 +76,13 @@ verified. 87 tests passing, `next build` exits 0.
 
 ### Open — awaiting the client, not the code
 
-Month 2 does not start until both are confirmed:
+One confirmation is outstanding. It no longer holds up the schema work:
 
 1. The owner exercises the **multi-line receipt form by hand** and reports findings. The UI
    is the part nothing has exercised and is where undiscovered defects are.
-2. The **deploy target is provisioned** (Month 2 step 0 needs somewhere to deploy to).
+
+~~2. The deploy target is provisioned.~~ **Dropped as a gate on 2026-08-21** — the client
+account is a week or two out, and blocking a month of work on it is the wrong trade.
 
 ### 📌 DECIDED — deployment target (blocks nothing, but read before Month 2 step 0)
 
@@ -110,8 +113,10 @@ keep when the warranty ends.
 4 GB is why the image is built in CI and shipped: `next build` on the VPS will OOM
 (PROJECT-SPEC § 3).
 
-**Nothing is provisioned and no deploy scripts exist.** Month 2 step 0 stays gated until
-the client has created the account.
+**Nothing is provisioned.** The deploy step stays stubbed until the client creates the
+account; as of 2026-08-21 that is a deferred step, not a gate on the rest of Month 2. A
+production compose file now exists (`deploy/docker-compose.prod.yml`) and has never been
+run against a server.
 ### 🚫 BLOCKER on Module 4 — snapshotting must land before order confirmation goes live
 
 Snapshotting must land before Month 3 order confirmation goes live. 87 ms fetch+fold at
@@ -176,10 +181,21 @@ below has been reviewed and approved; the decisions are logged. **None is implem
   depth checks.
 - ✅ **DECIDED, scoped as real work with its own tests — cycle and depth rejection.** Postgres cannot express "no
   cycles" declaratively. It needs a recursive CTE at save time, and it needs its own tests.
-- ✅ **DECIDED, a separate sign-safe rounder — `divRoundHalfUp` refuses negative numerators by design and stays that way.** The wastage-percent multiplier
-  is the first arithmetic that produces a fractional *quantity*, and quantities are signed.
-  Month 2 needs a separate sign-safe rounder: round the magnitude, reapply the sign. Do not
-  relax the existing guard — it is what keeps costs from being rounded wrongly.
+- ✅ **SUPERSEDED 2026-08-21 — costing needs no sign-safe rounder, because it never
+  materialises a wastage-adjusted quantity.** The original entry read: Month 2 needs a
+  separate sign-safe rounder, round the magnitude and reapply the sign, because the
+  wastage multiplier is the first arithmetic producing a fractional quantity.
+
+  What was built is stronger. The wastage factor stays inside the numerator as
+  `(100000 + w)`, so the adjusted quantity is never a number in the code — P8's 2224.8 g
+  does not exist as a value anywhere. **There is nothing to round, which beats rounding it
+  carefully.**
+
+  **The Month 3 half of the entry still stands.** Consumption movements put real signed
+  quantities in the ledger, and `divRoundHalfUp` refuses negative numerators by design and
+  stays that way. Month 3 needs the sign-safe rounder — round the magnitude, reapply the
+  sign — and must not relax the existing guard, which is what keeps costs from being
+  rounded wrongly.
 - **Bulk recatalogue recosting meets the replay blocker.** "Recalculation must be re-runnable
   across the whole catalogue" multiplies by the per-ingredient replay cost already recorded
   above. Consider the two together rather than separately.
@@ -189,6 +205,22 @@ below has been reviewed and approved; the decisions are logged. **None is implem
 Per PROJECT-SPEC § 10.1. If 60–70% of orders arrive via Swiggy/Zomato, those never touch
 inventory, stock drifts and the costing becomes decorative. Not yet asked. Must be resolved
 before Month 3 planning because it could reshape scope.
+
+### Open — resale items with no recipe, ASKED 2026-08-21, needed before step 2
+
+`menu_items.recipe_id` is `NOT NULL`. A cafe almost certainly sells bottled water, canned
+drinks and packaged snacks that have no recipe at all — they are bought and resold.
+
+**The answer decides whether costing needs a second branch.** With every menu item backed
+by a recipe, cost is one path: recipe -> lines -> ingredients. Allow recipe-less items and
+their cost has to come from somewhere else (the ingredient weighted average directly, most
+likely), which is a second code path through every margin view and every Month 3 order
+snapshot.
+
+**Nothing is built for it speculatively.** The column stays `NOT NULL` until the client
+answers. Note that `menu_items` deliberately keeps its direct FK to `tenants` — which
+deviation 6 drops elsewhere — precisely because a composite FK is MATCH SIMPLE and stops
+being enforced the moment `recipe_id` is allowed to be null.
 
 ### Open — recipe data quality, needed for Month 2
 
@@ -844,3 +876,344 @@ real hostname so Caddy provisions TLS). **Nothing is provisioned.** The E2E Netw
 must be created by the client, in the client's name — contractual, not a preference.
 
 103 tests, 0 failures, 0 skipped. `next build` exits 0. Stack verified from clean.
+
+### 2026-08-21 — Provisioning dropped as a Month 2 gate; demo box built but unprovisioned
+
+**The gate is gone, the requirement is not.** Month 2 steps 1–5 no longer wait on a server.
+The client's E2E Networks account is a week or two out and blocking a month of schema and
+costing work on it is the wrong trade. Everything runs locally against our own Postgres,
+exactly as Month 1 did. The deploy job in `ci.yml` stays commented out with its four
+secrets named, and PROJECT-SPEC § 13 is untouched: the production account is still created
+by the client, in the client's name, on the client's card.
+
+**Demo box: built, not provisioned.** `deploy/docker-compose.prod.yml` now exists — it
+pulls published images rather than building, publishes no Postgres port, and refuses to
+start unless every secret is set and `IMAGE_TAG` is a pinned `sha-` tag. CI publishes both
+images for `linux/amd64` and `linux/arm64` so a free ARM host is an option later.
+`deploy/README.md` carries a free-tier path (Oracle Always Free, Mumbai/Hyderabad).
+
+**None of it has ever run against a server, and no free-tier account was created.** For
+demos we use a Cloudflare Tunnel against localhost: no account, nothing persistent, and no
+implication that a demo URL is a deployment.
+
+**The rule that outlives this entry: real cafe data never goes on the demo box.** It has no
+backups and no tested restore, so PROJECT-SPEC § 10.5 is deliberately unmet there. A host
+whose restore has never been exercised holds nothing anyone would miss.
+
+**One styling regression fixed.** The login page's "Staff access only." note carried a
+`-mt-2` from the styling pass — an 8px negative margin that pulled it into the descenders
+of the "Sign in" heading. `h1` has no bottom margin under Tailwind's preflight, so there
+was nothing to pull back. Removed; the note now sits flush like the other eight screens
+that never had the override. Measured before and after in the browser: gap −8px → 0px.
+
+### 2026-08-21 — Month 2 step 1: recipes, recipe_lines, menu_items (schema only)
+
+Reviewed line by line before anything was written, and written exactly as reviewed bar the
+two rulings below. **No costing arithmetic exists** — the paper test cases for sub-recipe
+costing come first.
+
+**Three tables.** `recipes` carries the yield (quantity + unit type), so a dough batch
+yielding 4.2 kg can be drawn on 180 g at a time. `recipe_lines` references **exactly one**
+of an ingredient or a sub-recipe, enforced as an XOR check constraint rather than in
+application code. `menu_items` carries `selling_price_paise` in whole paise and
+`portion_qty_milli_base` — how much of the recipe's yield one sold portion takes, which is
+what lets a batch recipe (12 rolls) price a single item without being rewritten per-portion.
+
+**Two rulings changed the proposal.** The duplicate-line unique indexes were dropped: butter
+in the dough and butter in the topping is a normal recipe, and blocking a legitimate entry
+is a worse failure than permitting a duplicate that costs the same either way — accidental
+double entry is a UI concern. And batch-level wastage was rejected as a column on `recipes`,
+because a smaller yield says the same thing with one fewer place to double-count it.
+
+**Wastage direction is recorded in AGENTS.md, with the rejected alternative.** `1 + w`, so
+180 g at 3% issues 185.4 g. The "yield shrinks, divide by `1 - w`" reading gives ×1.0309 for
+the same input and a division by zero at 100%. Written down because a later "correction"
+between the two would move every cost in the catalogue by a fraction of a percent, which is
+the size of error nobody notices and nobody can explain afterwards.
+
+**The soft-delete hole on `recipe_lines` is closed structurally, not by discipline.** A
+costing query that forgets `deleted_at is null` returns a removed line and reports a higher,
+plausible, wrong cost — worse than a missing-cost error, because there is nothing to
+surface. AGENTS.md § One loader for recipe lines now requires exactly one loader function
+with the filter inside it, no direct queries from any costing path, and a test proving a
+soft-deleted line never reaches the fold. **The loader is not written yet** — the test it
+must carry is a test about the fold, and the fold does not exist.
+
+#### Read the generated SQL before running it, and it earned its keep again
+
+Migration `0002_faithful_hydra.sql`. DDL ordering is correct: all three `CREATE TABLE`s
+precede the `ALTER TABLE ... ADD FOREIGN KEY` block, and `recipes_tenant_id_uq` is emitted
+inline as a UNIQUE **constraint**, so the composite FKs that target it have something to
+point at — the same trap as migration 0000.
+
+Two things the read turned up, neither of them a change to the migration:
+
+1. **The composite FKs are `MATCH SIMPLE`, and that is load-bearing.** A sub-recipe line has
+   a null `ingredient_id`, so its ingredient FK is simply not enforced — which is exactly
+   what the XOR design needs. The same rule is why `menu_items` keeps its direct FK to
+   `tenants` where deviation 6 drops it elsewhere: that redundancy becomes the only tenant
+   guarantee the day `recipe_id` is allowed to be null for resale items.
+2. **No index on `recipe_lines.ingredient_id`,** deliberately. The butter-price demo scans
+   by ingredient, but a catalogue is hundreds of lines and Postgres seq-scans that in
+   microseconds. Recorded as a decision rather than left as an oversight for someone to
+   "fix" without a measurement.
+
+#### Verified against the real database
+
+`db:reset` from clean, all three migrations applied, seed applied. **103 tests, 0 failures,
+0 skipped.**
+
+A throwaway probe (in a rolled-back transaction, nothing persisted) confirmed the database
+refuses all ten of: zero yield, a line with both an ingredient and a sub-recipe, a line with
+neither, a one-step self reference, zero quantity, wastage above 100%, a cross-tenant
+ingredient, a cross-tenant sub-recipe, a negative selling price, and a zero portion. It also
+confirmed the accepted cases, including **the same ingredient twice in one recipe** — the
+case the dropped unique index would have blocked.
+
+Those ten are proven by probe, not by a committed test. Turning them into a
+`recipes.db.test.ts` belongs with the loader, when there is something to load.
+
+### 2026-08-21 — The costing engine, pure functions only (paper cases P1-P19)
+
+**The paper cases were verified independently before anything was implemented**, the same
+method as the WAC cases T1-T12: every value re-derived from the stated rules in a throwaway
+script, then compared. All eighteen numeric answers agreed, including the discriminators —
+P4's 6254.5 tie (6255 half-up, 6254 under banker's) and P7's 3,581,960 against the
+3,582,029 an exact-rational implementation would produce. **No stated value was adjusted.**
+
+**Nested rounding is now written down in AGENTS.md, with the reasoning**, because it looks
+like a violation of "round once at the end" to anyone reading only that rule. Inside one
+recipe nothing rounds early: contributions accumulate as an exact rational
+(`Σ qty_milli × rate × (100000 + w)` over `100000 × yield_milli`) and there is one half-up
+division where the batch cost meets the yield. A parent then consumes its child's
+already-rounded rate. The justification is not arithmetic — **it is that the displayed
+breakdown has to add up.** An owner who multiplies ₹13.622/g by 180 g on the screen in
+front of them must get the total the screen shows, and exact rationals mean the rows do not
+sum to the total. P7 exists to fail loudly if someone "corrects" this.
+
+#### What is built
+
+`src/lib/costing.ts` — pure, **no database access anywhere in the file**, which is what
+makes P15's "assert nothing was written" structural rather than a promise. It takes its
+cost lookup as a parameter (the seam AGENTS.md requires), so the what-if price is the same
+function with a different lookup, and catalogue recalculation is the same function with a
+shared cache. P16 asserts the catalogue and the individual answers agree.
+
+`src/db/recipes.ts` — **the one loader**, with `deleted_at is null` inside it. Nothing else
+queries `recipe_lines`.
+
+Missing cost data throws `MissingCostError` naming **every** uncosted ingredient in one
+pass, each with the recipe path that reached it ("vanilla (in top > middle > bottom)"),
+rather than one name per attempt. An ingredient whose only purchase cost nothing is a
+different case and correctly costs through as 0 — it has a basis, and the basis is zero.
+
+#### Two findings worth keeping
+
+1. **The sign-safe quantity rounder is not needed for costing, and that is not a shortcut.**
+   The wastage factor stays inside the numerator as `(100000 + w)`, so costing never
+   materialises a wastage-adjusted quantity to round. P8's 2224.8 g never exists as a
+   number in the code. Month 3 still needs the rounder, when consumption movements put real
+   signed quantities in the ledger — the risk list entry stands, it just belongs to a
+   different month than expected.
+2. **`MAX_RECIPE_DEPTH` is 5, and I chose it.** Nothing specified a limit. Dough → filled
+   dough → roll is three levels; five leaves room without letting a mis-entered graph become
+   a thousand-deep walk. Not derived from anything, and cheap to raise if a real recipe
+   needs it.
+
+#### Verified
+
+124 tests, 0 failures, 0 skipped against live Postgres — 103 before, plus P1-P13 and
+P15-P19 pure, and P14 against a real database. P14 inserts a sixth line that moves the cost,
+asserts it moved, soft-deletes it, and asserts the cost returns to exactly 13622 with the
+row still present. A test where the deleted line would not have changed the answer would
+prove nothing.
+
+#### Deliberately not built
+
+The **DB-backed cost lookup** that reads `ingredient_stock` and throws by ingredient name.
+Every test supplies its own lookup, which is what the seam is for, but nothing yet costs a
+real recipe against real purchase history. That is the next thing, and it is the piece that
+makes the missing-cost error reach an operator rather than a test.
+
+The validators are **not wired to any save path**, because there is no save path — no
+recipe screens, no server actions. `assertAcyclicWithinDepth` and
+`assertLineUnitCompatible` are tested and unused, waiting for the code that will call them.
+
+### 2026-08-21 — The ledger-backed cost lookup, and the validators wired to a save path
+
+**A real recipe now costs from real purchase history.** Until this, every test supplied its
+own lookup and nothing had ever costed against the ledger.
+
+#### Having a cost basis is "a purchase movement exists"
+
+Not "an `ingredient_stock` row exists", and not "stock is above zero". Those three come
+apart, and the differences are the whole point:
+
+- **Stock counted down to zero still has a basis.** The weighted average survives an empty
+  shelf. Refusing to cost it would be wrong.
+- **An adjustment-only ingredient has a row and no basis.** Someone finds 5 kg in the back
+  and records a count correction; `ingredient_stock` now holds a row whose average is 0.
+  Reading that row costs the ingredient at zero, silently — the exact failure AGENTS.md
+  § Missing cost data is an error, never zero exists to prevent, and the one a
+  row-existence check would have walked straight into.
+- **A purchase at nil value has a basis, and it is genuinely 0.** A free sample or a
+  write-off is a real fact about cost, not the absence of one.
+
+So the predicate is `exists (select 1 from stock_movements ... movement_type = 'purchase')`,
+and all four cases are asserted against a live database.
+
+`loadCostLookup` batch-loads the whole tenant in **one query** and returns a synchronous
+lookup — catalogue recalculation costs every recipe, and a per-ingredient fetch would be
+N+1 against the ledger. Synchronous is also what keeps `src/lib/costing.ts` free of `await`
+and therefore pure. Values are normalised to `bigint` at the boundary, once: the `exists`
+is a raw expression whose runtime type is the driver's business rather than the select
+shape's, and the rate arrives through a left join that can be null.
+
+Soft-deleted ingredients are included on purpose. A line may still reference one and its
+purchase history is just as real; reporting "deleted" as "never received" would send
+somebody looking for a delivery to record that does not exist.
+
+#### The demo, working
+
+`P3 and P7 cost end to end from real purchase history` records seven receipts at prices
+that produce the paper rates (maida ₹45/kg → 4500 millipaise/g, butter ₹500/kg → 50000, and
+so on), builds the dough and the cinnamon roll **through the real save path**, and asserts
+13622 and 3,581,960 — with the 3,582,029 exact-rational variant asserted against, in the
+database test as well as the pure one.
+
+The last test is PROJECT-SPEC § 1's sentence, working: a second butter delivery at ₹600
+moves the weighted average to 55000, and the dough recosts to **14575**. That number is
+hand-computed from the ledger, not from the paper cases — once the average moves the paper
+rate no longer applies, and forcing the ledger to match it would have been backwards.
+
+#### The validators are reachable now
+
+`saveRecipe` runs all three before it writes anything: unit compatibility per line, then
+cycles and depth against the graph **as it would be**. Cycle rejection needs an edit rather
+than a create — a new recipe cannot be referenced by anything yet — so the save path
+supports both, and the test asserts the rejected edit left the dough at 13622 with its five
+lines intact.
+
+Depth is checked **from every recipe in the prospective graph, not just the edited one**.
+Walking downward from the edited recipe alone would never notice that deepening a leaf
+pushed a parent over the limit.
+
+Editing replaces the line set wholesale: old lines soft-deleted, new ones inserted, one
+transaction. Diffing would be more code for an identical result, and the soft-deleted rows
+are the edit history.
+
+Two permissions added, `recipes.view` and `recipes.manage`, both owner and manager. **A
+recipe cost is the owner's margin working backwards**, so counter and kitchen see neither.
+Month 3's kitchen board shows what to make, not what it cost.
+
+`MAX_RECIPE_DEPTH` of 5 approved, and the reasoning now sits next to the constant so it is
+not raised later as an arbitrary number.
+
+#### Verified
+
+136 tests, 0 failures, 0 skipped against live Postgres — 124 before, plus 13 database tests
+covering the four cost-basis cases, the end-to-end costing, P14, and every validator firing
+through the save path.
+
+#### Still not built
+
+Recipe screens, deliberately. Nothing in `app/` touches any of this yet — no list, no
+editor, no cost breakdown. Step 5 of Month 2 is where those land, and the what-if price is
+already a parameter away: `recipeRateMillipaisePerBase` with a lookup that overrides one
+ingredient, writing nothing.
+
+### 2026-08-21 — The recipe list and the cost breakdown (screens, no editors yet)
+
+Two screens, stopped deliberately before the editors so the breakdown's vocabulary can be
+looked at before anything else is built on it.
+
+#### A bug the list found before the list existed
+
+Costing a whole list means catching `MissingCostError` per recipe and carrying on — and
+that is the first thing that ever shared a cost cache across separate calls. It exposed a
+real defect: `rateOf` cached a rate it had computed with a `0n` placeholder for a missing
+ingredient. A parent reading that cached value found nothing missing in its own walk and
+would have returned **a confident, plausible, wrong total instead of an error** — the exact
+failure this module exists to prevent, arrived at from a direction nobody was watching.
+
+Fixed at the root: a rate computed while anything was missing is never cached. Two lines,
+and P22 now pins it.
+
+#### What the screens do
+
+**`/recipes`** — name, line count, yield, cost, last updated, with search. A sub-recipe is
+labelled where the fact lives, beside the count of what uses it ("Sub-recipe · used by 1"),
+rather than in a separate type column that would say the same thing twice. A recipe that
+cannot be costed shows a badge reading **No cost yet**, never a zero and never a dash.
+
+**`/recipes/[id]/cost`** — the screen the project was sold on. Batch cost and unit cost as
+headline figures, then every line with quantity, rate, rupee contribution and share of the
+batch, biggest first, with a bar behind the percentage. Sub-recipes expand in place to show
+their own composition, and the expansion is a `<details>` element — no client component, no
+hydration, works with JavaScript off, and the browser owns the keyboard behaviour.
+
+**The cost column adds up to the batch total exactly**, which is the whole reason
+sub-recipe rates are rounded. The seeded demo:
+
+```
+Cinnamon roll dough   2160 g   Rs 138.53/kg   Rs 299.22   68.4%
+Butter (unsalted)      120 g   Rs 520.00/kg   Rs  62.40   14.3%
+Cinnamon powder         60 g   Rs 880.00/kg   Rs  52.80   12.1%
+Brown sugar            240 g   Rs  95.00/kg   Rs  22.80    5.2%
+Batch total                                   Rs 437.22  100.0%
+```
+
+Expanding the dough gives its five lines summing to Rs 581.84. One portion costs Rs 36.44
+against Rs 350.00 — margin Rs 313.56, food cost 10.4%.
+
+**The what-if works.** Butter at Rs 620/kg instead of Rs 520 moves the dough to
+Rs 157.58/kg, the roll to Rs 40.86, the margin to Rs 309.14 and food cost to 11.7%, under a
+banner saying nothing is saved, with a link back to actual costs. It is a GET form and an
+override map wrapped around the real lookup — **the page has no write path at all**, which
+is a stronger guarantee than a promise not to write.
+
+#### Verified against the running app, not just compiled
+
+Every figure above was hand-computed from the seed prices first and then read off the
+rendered page. All three failure states were exercised against temporary fixtures, since
+none of them can be produced by the happy path:
+
+- **Missing cost** renders "1 ingredient has no purchase history … **Saffron strands** (in
+  ZZ uncostable test). Record a delivery for each" with a link to the receipt form. Never a
+  stack trace, never a zero.
+- **A recipe with no lines** says an empty recipe costs nothing because it contains
+  nothing, not because it is free.
+- **A menu item priced below cost** flips the margin tile to "Loss per portion Rs 16.44 —
+  sold below what it costs to make", with a food cost of 182.2%.
+
+The fixtures were removed afterwards.
+
+#### The seed now carries the demo recipe
+
+Without it these screens have nothing to show, because the recipe editor does not exist
+yet. P3's dough and P7's cinnamon roll at the **seeded** prices, plus one menu item at
+Rs 350. Every figure is reproducible by hand from `seed.ts`, and the arithmetic is written
+out in a comment there.
+
+#### Three new CSS patterns, flagged
+
+Month 1's vocabulary covered everything else. These three did not exist:
+
+- **`.stat` / `.statgrid`** — headline figures. Same card shape as `.navcard` (border,
+  radius, 6px left rule) so they read as one family; only the type scale differs.
+- **`.costbar`** — the share bar. Decoration on top of the percentage beside it, never
+  instead of it, so greyscale and a screen reader both still get the figure. Sky and navy
+  as fills, which is all the palette constraint allows them to be.
+- **`.subdetails` / `.subrow` / `.table--nested`** — the expandable sub-recipe. It sits in
+  a full-width row beneath its parent because a `<tr>` cannot be wrapped in `<details>` and
+  stay valid HTML. Nested rows drop the 56px fingertip floor: they are read, not tapped.
+
+#### Verified
+
+139 tests, 0 failures, 0 skipped. `next build` exits 0, 12 routes.
+
+#### Not built
+
+The recipe editor, the menu item editor, and the line editor whose control has to make the
+unit follow the ingredient. `saveRecipe` and all three validators are already behind them,
+so those screens are forms over a function that already refuses everything it should.

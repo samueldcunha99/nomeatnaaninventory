@@ -62,3 +62,64 @@ Left, once the account exists:
   Compose enforces the order with `service_completed_successfully`.
 - **The app container cannot alter the schema.** The migration runner is a separate image
   target on purpose.
+
+---
+
+## Demo box on a free VPS (not the production path above)
+
+The E2E target above still stands for production and § 13 still applies. This section is
+a **throwaway demo host**, on the developer's own free-tier account, with no client data
+on it. Do not let it drift into production: no real orders, no real customer records.
+
+**Provider: Oracle Cloud Always Free, Mumbai or Hyderabad.** The only free tier big
+enough to run this stack — Ampere A1, up to 4 ARM vCPU / 24 GB, free indefinitely rather
+than for 12 months. Google's e2-micro (1 GB) and Oracle's AMD micro shapes are too small
+for Postgres + Next + Caddy together. Two known annoyances: signup needs a card for
+identity verification (no charge on Always Free), and popular regions often answer
+"Out of host capacity" for A1 — retry, or take 2 vCPU / 12 GB instead of 4 / 24.
+
+Ampere is ARM64, which is why CI now publishes `linux/amd64,linux/arm64` for both images.
+The same `IMAGE_TAG` works on either architecture.
+
+### 1. Create the instance — you, not an agent
+
+Account creation and card entry are yours to do. Shape `VM.Standard.A1.Flex`,
+Ubuntu 24.04, paste your SSH public key, and open 80/443 in the subnet's security list
+(Oracle blocks them by default — this is the step everyone forgets).
+
+### 2. Harden and install Docker
+
+    sudo apt update && sudo apt install -y unattended-upgrades
+    curl -fsSL https://get.docker.com | sudo sh
+    sudo usermod -aG docker ubuntu   # log out and back in
+    # Ubuntu images on Oracle ship iptables rules that drop 80/443 regardless of the
+    # console's security list. Both have to allow it.
+    sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
+    sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
+    sudo netfilter-persistent save
+
+### 3. Ship the three files it needs
+
+From the repo, `scp` `deploy/docker-compose.prod.yml`, `Caddyfile`, and a `.env` you
+write on the server (never committed) into `~/cafe/`:
+
+    GHCR_REPO=<lowercase owner/repo>
+    IMAGE_TAG=sha-<the sha CI published>
+    SITE_ADDRESS=:80          # demo: plain HTTP on the IP. A hostname here gets TLS free.
+    POSTGRES_PASSWORD=<generated>
+    SEED_OWNER_PASSWORD=<generated>
+
+Then, if the packages are private, `docker login ghcr.io` with a PAT scoped
+`read:packages`, and:
+
+    docker compose -f docker-compose.prod.yml pull
+    docker compose -f docker-compose.prod.yml up -d
+
+Migrations run as a one-shot before the app starts, same as locally. Seeding is not
+automatic — `docker compose run --rm migrate node src/db/seed.ts` if the demo needs the
+owner account.
+
+### 4. Deleting it
+
+It is a demo. `docker compose down -v` and terminate the instance; nothing here is
+backed up, and § 10.5's tested-restore requirement is deliberately not met.

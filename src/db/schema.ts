@@ -104,6 +104,8 @@ const deletedAt = () => timestamp('deleted_at', { withTimezone: true });
 const milliBase = (name: string) => bigint(name, { mode: 'number' });
 const millipaisePerBase = (name: string) => bigint(name, { mode: 'number' });
 const paise = (name: string) => bigint(name, { mode: 'number' });
+// Thousandths of a percent. 3% -> 3000, 2.5% -> 2500. See the Module 3 header below.
+const millipercent = (name: string) => bigint(name, { mode: 'number' });
 
 export const tenants = pgTable('tenants', {
   id: id(),
@@ -340,5 +342,195 @@ export const auditLog = pgTable(
       foreignColumns: [users.tenantId, users.id],
       name: 'audit_log_tenant_user_fk',
     }),
+  ],
+);
+
+/* ---------------------------------------------------------------------------
+ * Module 3 — recipes, sub-recipes, menu items. SCHEMA ONLY, no arithmetic.
+ *
+ * Quantities are milli_base on the same scale as stock_movements: a recipe line
+ * consuming 180 g of dough stores 180000, and the sub-recipe it draws from
+ * yields 4200000 (4.2 kg). Same scale on both sides of the reference, so a
+ * sub-recipe line needs no conversion — only the unit_type compatibility check,
+ * which is save-time work (PROGRESS.md, Month 2 risks).
+ *
+ * WASTAGE is `wastage_millipercent`, thousandths of a percent, and the multiplier
+ * is 1 + w/100000 — AGENTS.md's `180 g x 1.03`. It means you must ISSUE more than
+ * the recipe calls for. The other reading (yield shrinks, so divide by 1 - w) was
+ * considered and rejected; see AGENTS.md § Wastage is a multiplier on quantity.
+ *
+ * It multiplies QUANTITY and never cost. Cost follows because more quantity costs
+ * more; applying it to cost as well would count the loss twice.
+ * ------------------------------------------------------------------------- */
+
+export const recipes = pgTable(
+  'recipes',
+  {
+    id: id(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id),
+    name: text('name').notNull(),
+    /**
+     * What one batch produces, and in what kind of unit. A dough batch is
+     * (weight, 4200000); a cinnamon-roll batch is (count, 12000).
+     *
+     * Batch-level loss lives HERE, not in a recipe-level wastage column: if the
+     * bowl keeps 300 g, the batch yields 4.2 kg and not 4.5 kg, and that is the
+     * same statement with one fewer column. Two places to record one loss are two
+     * places to double-count it. Wastage percent is per-line, where the loss is
+     * attributable to one input.
+     */
+    yieldUnitType: unitType('yield_unit_type').notNull(),
+    yieldQtyMilliBase: milliBase('yield_qty_milli_base').notNull(),
+    notes: text('notes'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    deletedAt: deletedAt(),
+  },
+  (t) => [
+    uniqueIndex('recipes_tenant_name_uq')
+      .on(t.tenantId, sql`lower(${t.name})`)
+      .where(sql`${t.deletedAt} is null`),
+    // Composite-FK target for recipe_lines (twice) and menu_items. Must be a
+    // UNIQUE CONSTRAINT, not an index — same drizzle-kit emission-order reason as
+    // users_tenant_id_uq above.
+    unique('recipes_tenant_id_uq').on(t.tenantId, t.id),
+    // A zero-yield recipe divides by zero in every costing path that will exist.
+    check('recipes_yield_positive', sql`${t.yieldQtyMilliBase} > 0`),
+  ],
+);
+
+/**
+ * Deviation 9: carries tenant_id, which PROJECT-SPEC § 5 omits. The composite FKs
+ * to recipes and ingredients are what stop a line referencing another tenant's data.
+ *
+ * SOFT DELETE WARNING. A costing query that forgets `deleted_at is null` inflates a
+ * recipe cost silently, which is the undetectable failure class. Nothing in the
+ * costing path may query this table directly — see AGENTS.md § One loader for
+ * recipe lines.
+ */
+export const recipeLines = pgTable(
+  'recipe_lines',
+  {
+    id: id(),
+    tenantId: uuid('tenant_id').notNull(),
+    recipeId: uuid('recipe_id').notNull(),
+    // Exactly one of these two is set — enforced below, in the database.
+    ingredientId: uuid('ingredient_id'),
+    subRecipeId: uuid('sub_recipe_id'),
+    /**
+     * Magnitude, always positive. A recipe line describes a quantity, not a ledger
+     * event; the sign appears in Month 3 when consumption is written. Expressed in
+     * the referenced thing's own base unit: g for an ingredient of unit_type
+     * weight, and the sub-recipe's yield unit for a sub-recipe.
+     */
+    quantityMilliBase: milliBase('quantity_milli_base').notNull(),
+    wastageMillipercent: millipercent('wastage_millipercent').notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    deletedAt: deletedAt(),
+  },
+  (t) => [
+    index('recipe_lines_tenant_recipe_idx').on(t.tenantId, t.recipeId),
+    // Reverse lookup: what consumes this sub-recipe. Cycle detection walks it, and so
+    // does "this sub-recipe recosted, what else moved".
+    //
+    // There is deliberately NO matching index on ingredient_id. The butter-price demo
+    // scans this table by ingredient, but a catalogue is hundreds of lines, not
+    // millions, and Postgres seq-scans that in microseconds. Add the index when a
+    // measurement asks for it, not before.
+    index('recipe_lines_tenant_sub_recipe_idx').on(t.tenantId, t.subRecipeId),
+    foreignKey({
+      columns: [t.tenantId, t.recipeId],
+      foreignColumns: [recipes.tenantId, recipes.id],
+      name: 'recipe_lines_tenant_recipe_fk',
+    }),
+    foreignKey({
+      columns: [t.tenantId, t.ingredientId],
+      foreignColumns: [ingredients.tenantId, ingredients.id],
+      name: 'recipe_lines_tenant_ingredient_fk',
+    }),
+    foreignKey({
+      columns: [t.tenantId, t.subRecipeId],
+      foreignColumns: [recipes.tenantId, recipes.id],
+      name: 'recipe_lines_tenant_sub_recipe_fk',
+    }),
+    // XOR, in the database rather than in application code. `<>` on two booleans is
+    // exclusive-or in Postgres, and null-safe here because `is null` never yields
+    // null.
+    check(
+      'recipe_lines_exactly_one_source',
+      sql`(${t.ingredientId} is null) <> (${t.subRecipeId} is null)`,
+    ),
+    // The one-step cycle, caught declaratively. Deeper cycles still need the
+    // recursive CTE at save time — this is not a substitute for it, it is the
+    // trivial case never reaching the CTE at all.
+    check('recipe_lines_no_self_reference', sql`${t.subRecipeId} is distinct from ${t.recipeId}`),
+    check('recipe_lines_qty_positive', sql`${t.quantityMilliBase} > 0`),
+    // 0-100%. Above 100% the line consumes more than double its own quantity, which
+    // is a typo (30 entered for 3.0) far more often than it is a recipe.
+    check(
+      'recipe_lines_wastage_range',
+      sql`${t.wastageMillipercent} >= 0 and ${t.wastageMillipercent} <= 100000`,
+    ),
+    // NO duplicate-line unique index, deliberately. Butter in the dough and butter
+    // in the topping is a normal recipe, and a chef entering from a written card
+    // will hit it. Blocking a legitimate entry is the worse failure; a duplicate
+    // costs the same either way. Accidental double entry is a UI concern.
+  ],
+);
+
+export const menuItems = pgTable(
+  'menu_items',
+  {
+    id: id(),
+    // Deviation 6 drops the redundant direct FK to tenants wherever a composite FK
+    // already guarantees the tenant exists. It is KEPT here on purpose: that guarantee
+    // holds only while recipe_id is NOT NULL, because a composite FK is MATCH SIMPLE
+    // and stops being enforced the moment one of its columns is null. If the resale-item
+    // question makes recipe_id nullable, this FK is the only thing left tying a menu
+    // item to a real tenant.
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id),
+    name: text('name').notNull(),
+    // NOT NULL for now. Resale items with no recipe (bottled water, canned drinks,
+    // packaged snacks) are an OPEN QUESTION with the client — see PROGRESS.md. The
+    // answer decides whether costing needs a second branch; nothing is built for it.
+    recipeId: uuid('recipe_id').notNull(),
+    /**
+     * How much of the recipe's yield one sold portion takes. A cinnamon-roll recipe
+     * yielding 12 units sells at portion 1000 (one unit); a chai recipe yielding
+     * 5 litres sells at portion 250000 (250 ml).
+     *
+     * Without it, "recipe cost" and "item cost" are the same number and every batch
+     * recipe has to be rewritten as a per-portion one.
+     */
+    portionQtyMilliBase: milliBase('portion_qty_milli_base').notNull(),
+    // Whole paise. Money the customer hands over, not a rate — the same boundary
+    // rule as stock_movements.total_cost_paise.
+    sellingPricePaise: paise('selling_price_paise').notNull(),
+    // Distinct from deleted_at: off the menu today is not gone forever.
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    deletedAt: deletedAt(),
+  },
+  (t) => [
+    uniqueIndex('menu_items_tenant_name_uq')
+      .on(t.tenantId, sql`lower(${t.name})`)
+      .where(sql`${t.deletedAt} is null`),
+    index('menu_items_tenant_active_idx').on(t.tenantId, t.isActive),
+    // "This recipe recosted, which menu items moved."
+    index('menu_items_tenant_recipe_idx').on(t.tenantId, t.recipeId),
+    foreignKey({
+      columns: [t.tenantId, t.recipeId],
+      foreignColumns: [recipes.tenantId, recipes.id],
+      name: 'menu_items_tenant_recipe_fk',
+    }),
+    check('menu_items_portion_positive', sql`${t.portionQtyMilliBase} > 0`),
+    // Zero is legal — staff meals, samples. Negative is not.
+    check('menu_items_price_nonneg', sql`${t.sellingPricePaise} >= 0`),
   ],
 );
