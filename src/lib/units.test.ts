@@ -12,6 +12,9 @@ import {
   formatQty,
   costPerPurchaseUnitPaise,
   milliBaseToPurchaseUnits,
+  milliBaseToBaseUnits,
+  millipercentToPercent,
+  paiseToRupees,
   isLowStock,
 } from './units.ts';
 
@@ -113,6 +116,20 @@ test('a stored quantity survives a round trip through an edit form unchanged', (
   assert.equal(milliBaseToPurchaseUnits(2_500_000, 1000), '2.5');
   assert.equal(milliBaseToPurchaseUnits(0, 1000), '0');
   assert.throws(() => milliBaseToPurchaseUnits(1000, 0), RangeError);
+});
+
+test('every stored scale has an exact inverse, for putting a value back in a box', () => {
+  // Each pair is a boundary the editors cross: a recipe line quantity, a wastage
+  // percent, a selling price. Every one of them goes out to a form and comes back.
+  for (const text of ['0', '4200', '0.4', '2160', '0.001']) {
+    assert.equal(milliBaseToBaseUnits(baseUnitsToMilliBase(text)), text);
+  }
+  for (const text of ['0', '3', '2.5', '0.001', '100']) {
+    assert.equal(millipercentToPercent(parseDecimalToInteger(text, 1000n)), text);
+  }
+  for (const text of ['0', '350', '450.01', '39']) {
+    assert.equal(paiseToRupees(rupeesToPaise(text)), text);
+  }
 });
 
 test('low stock triggers at the threshold, not below it', () => {

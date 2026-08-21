@@ -23,7 +23,18 @@ import { and, eq } from 'drizzle-orm';
 import { db } from './client.ts';
 import { dbReachable, closeDb } from './test-db.ts';
 import { tenants, users, ingredients, ingredientStock, recipeLines } from './schema.ts';
-import { loadRecipeGraph, loadCostLookup, saveRecipe, type RecipeLineInput } from './recipes.ts';
+import {
+  loadRecipeGraph,
+  loadCostLookup,
+  saveRecipe,
+  saveMenuItem,
+  getRecipeForEdit,
+  listLineSources,
+  listMenuItems,
+  DuplicateRecipeError,
+  DuplicateMenuItemError,
+  type RecipeLineInput,
+} from './recipes.ts';
 import { recordMovements } from './stock.ts';
 import {
   recipeRateMillipaisePerBase,
@@ -403,6 +414,260 @@ test('kitchen staff can neither read costs nor save recipes', async (t) => {
       lines: [line({ ingredientId: ing.maida }, 100)],
     }),
     AuthzError,
+  );
+});
+
+/* --------------------------------------------------------------------------
+ * What the editors can send, and what has to bounce
+ * ------------------------------------------------------------------------ */
+
+test('a line with no quantity is refused, and the message names the line', async (t) => {
+  if (!reachable) return t.skip('no database');
+  await assert.rejects(
+    saveRecipe(owner, {
+      name: `zero qty ${crypto.randomUUID().slice(0, 8)}`,
+      yieldUnitType: 'weight',
+      yieldQtyMilliBase: g(1000),
+      lines: [line({ ingredientId: ing.maida }, 0)],
+    }),
+    // A constraint violation would name a table and a column. This names the line.
+    (e: unknown) => e instanceof RangeError && /Maida/.test(e.message) && /above zero/.test(e.message),
+  );
+});
+
+test('wastage outside 0-100% is refused before the database has to catch it', async (t) => {
+  if (!reachable) return t.skip('no database');
+  await assert.rejects(
+    saveRecipe(owner, {
+      name: `bad wastage ${crypto.randomUUID().slice(0, 8)}`,
+      yieldUnitType: 'weight',
+      yieldQtyMilliBase: g(1000),
+      // 150% - the shape of "30 typed for 3.0", which the range exists to catch.
+      lines: [line({ ingredientId: ing.maida }, 100, 'weight', 150_000n)],
+    }),
+    (e: unknown) => e instanceof RangeError && /Maida/.test(e.message) && /100%/.test(e.message),
+  );
+});
+
+test('a recipe name that is already taken is refused in words, not in SQL', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const name = `Twice named ${crypto.randomUUID().slice(0, 8)}`;
+  const body = {
+    yieldUnitType: 'weight' as const,
+    yieldQtyMilliBase: g(1000),
+    lines: [line({ ingredientId: ing.maida }, 100)],
+  };
+  await saveRecipe(owner, { name, ...body });
+
+  await assert.rejects(
+    saveRecipe(owner, { name: name.toLowerCase(), ...body }),
+    (e: unknown) =>
+      e instanceof DuplicateRecipeError &&
+      /already exists/.test(e.message) &&
+      !/duplicate key/.test(e.message),
+  );
+});
+
+test('changing what a recipe yields is refused while another recipe draws on it', async (t) => {
+  if (!reachable) return t.skip('no database');
+  // The roll enters the dough by weight. Nothing re-validates a stored line, so the
+  // only safe moment to catch this is here.
+  await assert.rejects(
+    saveRecipe(owner, {
+      id: doughId,
+      name: 'Dough',
+      yieldUnitType: 'volume',
+      yieldQtyMilliBase: g(4200),
+      lines: [
+        line({ ingredientId: ing.maida }, 2500),
+        line({ ingredientId: ing.butter }, 800),
+        line({ ingredientId: ing.castor }, 400),
+        line({ ingredientId: ing.milk }, 600, 'volume'),
+        line({ ingredientId: ing.salt }, 20),
+      ],
+    }),
+    (e: unknown) => e instanceof RangeError && /Cinnamon roll batch/.test(e.message),
+  );
+
+  const graph = await loadRecipeGraph(owner);
+  assert.equal(graph.get(doughId)!.yieldUnitType, 'weight', 'the rejected edit still wrote');
+});
+
+test('getRecipeForEdit returns what was stored, exactly', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const edit = await getRecipeForEdit(owner, rollId);
+  assert.ok(edit);
+  assert.equal(edit.name, 'Cinnamon roll batch');
+  assert.equal(edit.yieldUnitType, 'count');
+  assert.equal(edit.yieldQtyMilliBase, g(12));
+  assert.equal(edit.lines.length, 4);
+
+  const sub = edit.lines.find((l) => l.kind === 'sub-recipe');
+  assert.ok(sub, 'the sub-recipe line came back as an ingredient');
+  assert.equal(sub.sourceId, doughId);
+  assert.equal(sub.quantityMilliBase, g(2160));
+
+  // Line order is stable across loads, which is what stops the editor shuffling rows.
+  const again = await getRecipeForEdit(owner, rollId);
+  assert.deepEqual(
+    again!.lines.map((l) => l.sourceId),
+    edit.lines.map((l) => l.sourceId),
+  );
+});
+
+test('getRecipeForEdit refuses kitchen staff and returns null for a stranger', async (t) => {
+  if (!reachable) return t.skip('no database');
+  await assert.rejects(getRecipeForEdit(kitchen, rollId), AuthzError);
+  assert.equal(await getRecipeForEdit(owner, crypto.randomUUID()), null);
+});
+
+test('the line picker offers other recipes, never the one being edited', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const sources = await listLineSources(owner, doughId);
+  assert.equal(sources.some((s) => s.id === doughId), false, 'a recipe was offered itself');
+
+  const roll = sources.find((s) => s.id === rollId);
+  assert.ok(roll, 'another recipe was not offered as a sub-recipe');
+  assert.equal(roll.kind, 'recipe');
+  assert.equal(roll.unitType, 'count', 'the unit a line has to be entered in');
+
+  const maida = sources.find((s) => s.id === ing.maida);
+  assert.ok(maida);
+  assert.equal(maida.kind, 'ingredient');
+});
+
+test('a deactivated ingredient stays available to the recipe already using it', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const retired = await makeIngredient('Retired flour');
+  const recipeId = await saveRecipe(owner, {
+    name: `uses retired ${crypto.randomUUID().slice(0, 8)}`,
+    yieldUnitType: 'weight',
+    yieldQtyMilliBase: g(1000),
+    lines: [line({ ingredientId: retired }, 500)],
+  });
+
+  await db.update(ingredients).set({ isActive: false }).where(eq(ingredients.id, retired));
+
+  // Off the shelf, so it is not offered for a new line...
+  const fresh = await listLineSources(owner);
+  assert.equal(fresh.some((s) => s.id === retired), false);
+
+  // ...but dropping it from the recipe that uses it would leave a row pointing at a
+  // blank name, and re-saving would quietly rewrite the recipe.
+  const editing = await listLineSources(owner, recipeId);
+  assert.equal(editing.some((s) => s.id === retired), true);
+});
+
+/* --------------------------------------------------------------------------
+ * Menu items
+ * ------------------------------------------------------------------------ */
+
+test('a menu item is created, then edited, and comes back as bigint', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const name = `Cinnamon roll ${crypto.randomUUID().slice(0, 8)}`;
+  const itemId = await saveMenuItem(owner, {
+    recipeId: rollId,
+    name,
+    portionQtyMilliBase: g(1),
+    sellingPricePaise: 35000n,
+    isActive: true,
+  });
+
+  const [created] = (await listMenuItems(owner, rollId)).filter((m) => m.id === itemId);
+  assert.equal(created.name, name);
+  assert.equal(created.sellingPricePaise, 35000n);
+  assert.equal(typeof created.sellingPricePaise, 'bigint');
+  assert.equal(created.portionQtyMilliBase, g(1));
+  assert.equal(created.isActive, true);
+
+  const sameId = await saveMenuItem(owner, {
+    id: itemId,
+    recipeId: rollId,
+    name,
+    portionQtyMilliBase: g(1),
+    sellingPricePaise: 39000n,
+    // Off the menu today is not gone forever.
+    isActive: false,
+  });
+  assert.equal(sameId, itemId, 'an edit created a second item');
+
+  const [edited] = (await listMenuItems(owner, rollId)).filter((m) => m.id === itemId);
+  assert.equal(edited.sellingPricePaise, 39000n);
+  assert.equal(edited.isActive, false);
+});
+
+test('a menu item priced at nothing is legal; the rest is not', async (t) => {
+  if (!reachable) return t.skip('no database');
+  // Zero is a staff meal or a sample, and it has to be recordable.
+  const free = await saveMenuItem(owner, {
+    recipeId: rollId,
+    name: `Staff roll ${crypto.randomUUID().slice(0, 8)}`,
+    portionQtyMilliBase: g(1),
+    sellingPricePaise: 0n,
+    isActive: true,
+  });
+  assert.ok(free);
+
+  await assert.rejects(
+    saveMenuItem(owner, {
+      recipeId: rollId,
+      name: `No portion ${crypto.randomUUID().slice(0, 8)}`,
+      portionQtyMilliBase: 0n,
+      sellingPricePaise: 100n,
+      isActive: true,
+    }),
+    RangeError,
+  );
+
+  await assert.rejects(
+    saveMenuItem(owner, {
+      recipeId: rollId,
+      name: `Negative ${crypto.randomUUID().slice(0, 8)}`,
+      portionQtyMilliBase: g(1),
+      sellingPricePaise: -1n,
+      isActive: true,
+    }),
+    RangeError,
+  );
+
+  // A recipe id that is not this tenant's is not a 500, and writes nothing.
+  await assert.rejects(
+    saveMenuItem(owner, {
+      recipeId: crypto.randomUUID(),
+      name: `Orphan ${crypto.randomUUID().slice(0, 8)}`,
+      portionQtyMilliBase: g(1),
+      sellingPricePaise: 100n,
+      isActive: true,
+    }),
+    RangeError,
+  );
+
+  await assert.rejects(
+    saveMenuItem(kitchen, {
+      recipeId: rollId,
+      name: `Not allowed ${crypto.randomUUID().slice(0, 8)}`,
+      portionQtyMilliBase: g(1),
+      sellingPricePaise: 100n,
+      isActive: true,
+    }),
+    AuthzError,
+  );
+});
+
+test('a menu item name that is already taken is refused in words', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const name = `Twice sold ${crypto.randomUUID().slice(0, 8)}`;
+  const body = {
+    recipeId: rollId,
+    portionQtyMilliBase: g(1),
+    sellingPricePaise: 100n,
+    isActive: true,
+  };
+  await saveMenuItem(owner, { name, ...body });
+
+  await assert.rejects(
+    saveMenuItem(owner, { name: name.toUpperCase(), ...body }),
+    (e: unknown) => e instanceof DuplicateMenuItemError && !/duplicate key/.test(e.message),
   );
 });
 

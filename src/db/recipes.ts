@@ -29,6 +29,7 @@ import {
   type RecipeExplanation,
 } from '../lib/costing.ts';
 import { assertPermission, type Actor } from '../lib/auth.ts';
+import { translating } from './errors.ts';
 import type { UnitType } from '../lib/units.ts';
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -72,7 +73,12 @@ export async function loadRecipeGraph(actor: Actor): Promise<Map<string, Recipe>
           isNull(recipeLines.deletedAt),
         ),
       )
-      .orderBy(asc(recipeLines.createdAt)),
+      // Every line of one save is inserted in a single statement and shares a created_at
+      // to the microsecond, so created_at alone leaves the order up to the planner. The
+      // id breaks the tie, which makes the editor show the same rows in the same places
+      // on every load. It is stable, not meaningful: recipes carry no stored line order,
+      // and the cost breakdown sorts by contribution on purpose.
+      .orderBy(asc(recipeLines.createdAt), asc(recipeLines.id)),
   ]);
 
   const graph = new Map<string, Recipe>(
@@ -199,6 +205,24 @@ export async function loadCostLookup(actor: Actor): Promise<CostLookup> {
  * Saving a recipe — where the validators actually fire
  * ------------------------------------------------------------------------- */
 
+/** The unique indexes a name collides on. Matched by name so nothing else is mislabelled. */
+const RECIPE_NAME_CONSTRAINT = 'recipes_tenant_name_uq';
+const MENU_ITEM_NAME_CONSTRAINT = 'menu_items_tenant_name_uq';
+
+export class DuplicateRecipeError extends Error {
+  constructor(name: string) {
+    super(`A recipe called "${name}" already exists. Open that one and edit it instead.`);
+    this.name = 'DuplicateRecipeError';
+  }
+}
+
+export class DuplicateMenuItemError extends Error {
+  constructor(name: string) {
+    super(`A menu item called "${name}" already exists. Open that one and edit it instead.`);
+    this.name = 'DuplicateMenuItemError';
+  }
+}
+
 export type RecipeLineInput = {
   ingredientId?: string | null;
   subRecipeId?: string | null;
@@ -232,8 +256,11 @@ export type RecipeInput = {
  */
 export async function saveRecipe(actor: Actor, input: RecipeInput): Promise<string> {
   assertPermission(actor.role, 'recipes.manage');
-  if (input.lines.length === 0) throw new RangeError('a recipe needs at least one line');
-  if (input.yieldQtyMilliBase <= 0n) throw new RangeError('a recipe must yield something');
+  // Both messages are shown to an operator as they are, so they are sentences.
+  if (input.lines.length === 0) throw new RangeError('A recipe needs at least one line.');
+  if (input.yieldQtyMilliBase <= 0n) {
+    throw new RangeError('One batch has to yield something. Enter how much it makes.');
+  }
 
   const recipeId = input.id ?? crypto.randomUUID();
 
@@ -250,19 +277,54 @@ export async function saveRecipe(actor: Actor, input: RecipeInput): Promise<stri
     throw new RangeError(`recipe ${input.id} does not exist in this tenant`);
   }
 
+  // Changing what a recipe YIELDS changes what every parent line means. A parent that
+  // entered "2160 g of dough" cannot silently become 2160 ml, and nothing re-validates a
+  // stored line - it carries no unit of its own, by design. So the change is refused
+  // while a parent still draws on this recipe, naming the parents to remove it from.
+  const before = input.id ? graph.get(input.id) : undefined;
+  if (before && before.yieldUnitType !== input.yieldUnitType) {
+    const parents = [...graph.values()].filter(
+      (r) => r.id !== recipeId && r.lines.some((l) => l.subRecipeId === recipeId),
+    );
+    if (parents.length > 0) {
+      throw new RangeError(
+        `"${before.name}" is measured by ${before.yieldUnitType} and is used by ` +
+          `${parents.map((p) => `"${p.name}"`).join(', ')}. Remove it from ` +
+          `${parents.length === 1 ? 'that recipe' : 'those recipes'} before changing what it yields.`,
+      );
+    }
+  }
+
   // Unit compatibility, line by line, against what the source actually measures in.
   for (const line of input.lines) {
     if (!line.ingredientId === !line.subRecipeId) {
       throw new RangeError('a line must reference exactly one of an ingredient or a sub-recipe');
     }
+
+    let label: string;
+    let provides: UnitType;
     if (line.ingredientId) {
       const ingredient = ingredientsById.get(line.ingredientId);
       if (!ingredient) throw new RangeError(`ingredient ${line.ingredientId} is not in this tenant`);
-      assertLineUnitCompatible(line.entryUnitType, ingredient.unitType, ingredient.name);
+      label = ingredient.name;
+      provides = ingredient.unitType;
     } else {
       const sub = graph.get(line.subRecipeId!);
       if (!sub) throw new RangeError(`recipe ${line.subRecipeId} is not in this tenant`);
-      assertLineUnitCompatible(line.entryUnitType, sub.yieldUnitType, sub.name);
+      label = sub.name;
+      provides = sub.yieldUnitType;
+    }
+    assertLineUnitCompatible(line.entryUnitType, provides, label);
+
+    // Both of these are database checks as well. They are caught here so the operator is
+    // told which LINE is wrong, by name, rather than being handed a constraint violation
+    // that names a table and a column.
+    if (line.quantityMilliBase <= 0n) {
+      throw new RangeError(`"${label}" needs a quantity above zero.`);
+    }
+    const wastage = line.wastageMillipercent ?? 0n;
+    if (wastage < 0n || wastage > 100_000n) {
+      throw new RangeError(`Wastage on "${label}" must be between 0% and 100%.`);
     }
   }
 
@@ -284,60 +346,171 @@ export async function saveRecipe(actor: Actor, input: RecipeInput): Promise<stri
   });
   for (const id of prospective.keys()) assertAcyclicWithinDepth(id, prospective);
 
-  await db.transaction(async (tx: Tx) => {
-    const values = {
-      tenantId: actor.tenantId,
-      name: input.name,
-      yieldUnitType: input.yieldUnitType,
-      yieldQtyMilliBase: Number(input.yieldQtyMilliBase),
-      notes: input.notes ?? null,
-      updatedAt: new Date(),
-    };
-
-    if (input.id) {
-      await tx.update(recipes).set(values).where(eq(recipes.id, recipeId));
-      await tx
-        .update(recipeLines)
-        .set({ deletedAt: new Date() })
-        .where(and(eq(recipeLines.recipeId, recipeId), isNull(recipeLines.deletedAt)));
-    } else {
-      await tx.insert(recipes).values({ id: recipeId, ...values });
-    }
-
-    await tx.insert(recipeLines).values(
-      input.lines.map((l) => ({
+  const run = () =>
+    db.transaction(async (tx: Tx) => {
+      const values = {
         tenantId: actor.tenantId,
-        recipeId,
-        ingredientId: l.ingredientId ?? null,
-        subRecipeId: l.subRecipeId ?? null,
-        quantityMilliBase: Number(l.quantityMilliBase),
-        wastageMillipercent: Number(l.wastageMillipercent ?? 0n),
-      })),
-    );
-
-    await tx.insert(auditLog).values({
-      tenantId: actor.tenantId,
-      userId: actor.id,
-      action: input.id ? 'recipe.update' : 'recipe.create',
-      entityType: 'recipe',
-      entityId: recipeId,
-      // bigint is not JSON, and jsonb is. Milli-base and millipercent are far inside
-      // Number's exact range, the same argument as the aggregate rule.
-      afterJson: {
         name: input.name,
         yieldUnitType: input.yieldUnitType,
         yieldQtyMilliBase: Number(input.yieldQtyMilliBase),
-        lines: input.lines.map((l) => ({
+        notes: input.notes ?? null,
+        updatedAt: new Date(),
+      };
+
+      if (input.id) {
+        await tx.update(recipes).set(values).where(eq(recipes.id, recipeId));
+        await tx
+          .update(recipeLines)
+          .set({ deletedAt: new Date() })
+          .where(and(eq(recipeLines.recipeId, recipeId), isNull(recipeLines.deletedAt)));
+      } else {
+        await tx.insert(recipes).values({ id: recipeId, ...values });
+      }
+
+      await tx.insert(recipeLines).values(
+        input.lines.map((l) => ({
+          tenantId: actor.tenantId,
+          recipeId,
           ingredientId: l.ingredientId ?? null,
           subRecipeId: l.subRecipeId ?? null,
           quantityMilliBase: Number(l.quantityMilliBase),
           wastageMillipercent: Number(l.wastageMillipercent ?? 0n),
         })),
-      },
+      );
+
+      await tx.insert(auditLog).values({
+        tenantId: actor.tenantId,
+        userId: actor.id,
+        action: input.id ? 'recipe.update' : 'recipe.create',
+        entityType: 'recipe',
+        entityId: recipeId,
+        // bigint is not JSON, and jsonb is. Milli-base and millipercent are far inside
+        // Number's exact range, the same argument as the aggregate rule.
+        afterJson: {
+          name: input.name,
+          yieldUnitType: input.yieldUnitType,
+          yieldQtyMilliBase: Number(input.yieldQtyMilliBase),
+          lines: input.lines.map((l) => ({
+            ingredientId: l.ingredientId ?? null,
+            subRecipeId: l.subRecipeId ?? null,
+            quantityMilliBase: Number(l.quantityMilliBase),
+            wastageMillipercent: Number(l.wastageMillipercent ?? 0n),
+          })),
+        },
+      });
     });
-  });
+
+  await translating(run, [
+    { constraint: RECIPE_NAME_CONSTRAINT, toError: () => new DuplicateRecipeError(input.name) },
+  ]);
 
   return recipeId;
+}
+
+/* ---------------------------------------------------------------------------
+ * Menu items — what a recipe sells as, and for how much
+ * ------------------------------------------------------------------------- */
+
+export type MenuItemInput = {
+  /** Present on an edit. Absent creates. */
+  id?: string;
+  recipeId: string;
+  name: string;
+  portionQtyMilliBase: bigint;
+  sellingPricePaise: bigint;
+  isActive: boolean;
+};
+
+/**
+ * Create or update one menu item.
+ *
+ * `recipeId` is set on create and never on update: a menu item that changes recipe
+ * changes what it costs and what it depletes, and every historical figure carrying its
+ * name would silently start meaning something else. Making a new item is the honest
+ * version of that, and it keeps the old one's history intact.
+ */
+export async function saveMenuItem(actor: Actor, input: MenuItemInput): Promise<string> {
+  assertPermission(actor.role, 'recipes.manage');
+  if (input.portionQtyMilliBase <= 0n) {
+    throw new RangeError('A portion has to be some of the batch. Enter how much one serving takes.');
+  }
+  // Zero is legal - staff meals, samples. Negative is not.
+  if (input.sellingPricePaise < 0n) throw new RangeError('A selling price cannot be negative.');
+
+  const [recipe] = await db
+    .select({ id: recipes.id })
+    .from(recipes)
+    .where(
+      and(
+        eq(recipes.tenantId, actor.tenantId),
+        eq(recipes.id, input.recipeId),
+        isNull(recipes.deletedAt),
+      ),
+    );
+  if (!recipe) throw new RangeError(`recipe ${input.recipeId} does not exist in this tenant`);
+
+  const itemId = input.id ?? crypto.randomUUID();
+
+  const run = () =>
+    db.transaction(async (tx: Tx) => {
+      const values = {
+        name: input.name,
+        portionQtyMilliBase: Number(input.portionQtyMilliBase),
+        sellingPricePaise: Number(input.sellingPricePaise),
+        isActive: input.isActive,
+        updatedAt: new Date(),
+      };
+
+      let beforeJson: Record<string, unknown> | null = null;
+      if (input.id) {
+        // Scoped by tenant as well as id: an id from another tenant updates nothing
+        // rather than updating something.
+        const [before] = await tx
+          .select()
+          .from(menuItems)
+          .where(and(eq(menuItems.tenantId, actor.tenantId), eq(menuItems.id, itemId)));
+        if (!before || before.deletedAt) throw new RangeError('That menu item no longer exists.');
+        beforeJson = auditable(before);
+
+        await tx
+          .update(menuItems)
+          .set(values)
+          .where(and(eq(menuItems.tenantId, actor.tenantId), eq(menuItems.id, itemId)));
+      } else {
+        await tx
+          .insert(menuItems)
+          .values({ id: itemId, tenantId: actor.tenantId, recipeId: input.recipeId, ...values });
+      }
+
+      await tx.insert(auditLog).values({
+        tenantId: actor.tenantId,
+        userId: actor.id,
+        action: input.id ? 'menu_item.update' : 'menu_item.create',
+        entityType: 'menu_item',
+        entityId: itemId,
+        beforeJson,
+        afterJson: {
+          recipeId: input.recipeId,
+          name: input.name,
+          // bigint is not JSON, and jsonb is. Both are far inside Number's exact range.
+          portionQtyMilliBase: Number(input.portionQtyMilliBase),
+          sellingPricePaise: Number(input.sellingPricePaise),
+          isActive: input.isActive,
+        },
+      });
+    });
+
+  await translating(run, [
+    { constraint: MENU_ITEM_NAME_CONSTRAINT, toError: () => new DuplicateMenuItemError(input.name) },
+  ]);
+
+  return itemId;
+}
+
+/** What is worth keeping in the audit trail: the fields an operator actually changed. */
+function auditable(row: typeof menuItems.$inferSelect) {
+  const { id, tenantId, createdAt, updatedAt, deletedAt, ...rest } = row;
+  return rest;
 }
 
 /* ---------------------------------------------------------------------------
@@ -424,6 +597,117 @@ export async function listRecipes(
   return rows.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+export type RecipeEditLine = {
+  /** The ingredient or recipe this line draws on. Which of the two is `kind`. */
+  sourceId: string;
+  kind: 'ingredient' | 'sub-recipe';
+  quantityMilliBase: bigint;
+  wastageMillipercent: bigint;
+};
+
+export type RecipeEdit = {
+  id: string;
+  name: string;
+  notes: string | null;
+  yieldUnitType: UnitType;
+  yieldQtyMilliBase: bigint;
+  lines: RecipeEditLine[];
+};
+
+/**
+ * One recipe in the shape the editor puts on screen. Lines come from the graph loader,
+ * never from a query of their own - see the header of this file.
+ */
+export async function getRecipeForEdit(actor: Actor, id: string): Promise<RecipeEdit | null> {
+  assertPermission(actor.role, 'recipes.manage');
+
+  const [graph, rows] = await Promise.all([
+    loadRecipeGraph(actor),
+    db
+      .select({ notes: recipes.notes })
+      .from(recipes)
+      .where(and(eq(recipes.tenantId, actor.tenantId), eq(recipes.id, id), isNull(recipes.deletedAt))),
+  ]);
+
+  const recipe = graph.get(id);
+  if (!recipe || rows.length === 0) return null;
+
+  return {
+    id: recipe.id,
+    name: recipe.name,
+    notes: rows[0].notes,
+    yieldUnitType: recipe.yieldUnitType,
+    yieldQtyMilliBase: recipe.yieldQtyMilliBase,
+    lines: recipe.lines.map((l) => ({
+      sourceId: (l.subRecipeId ?? l.ingredientId)!,
+      kind: l.subRecipeId ? ('sub-recipe' as const) : ('ingredient' as const),
+      quantityMilliBase: l.quantityMilliBase,
+      wastageMillipercent: l.wastageMillipercent,
+    })),
+  };
+}
+
+export type LineSource = {
+  id: string;
+  name: string;
+  /** What it is measured in — and therefore the unit the line must be entered in. */
+  unitType: UnitType;
+  kind: 'ingredient' | 'recipe';
+};
+
+/**
+ * Everything a recipe line may draw on: the ingredients on the shelf, and every other
+ * recipe.
+ *
+ * Deactivated and soft-deleted ingredients are excluded, EXCEPT where a line of the
+ * recipe being edited already uses one. Dropping those would leave a row on screen
+ * pointing at a blank name, and re-saving would quietly rewrite the recipe.
+ *
+ * A recipe that would close a cycle is deliberately still offered. `saveRecipe` refuses
+ * it with the loop spelled out, which tells the operator more than an option that is
+ * silently absent.
+ */
+export async function listLineSources(actor: Actor, forRecipeId?: string): Promise<LineSource[]> {
+  assertPermission(actor.role, 'recipes.manage');
+
+  const [graph, rows] = await Promise.all([
+    loadRecipeGraph(actor),
+    db
+      .select({
+        id: ingredients.id,
+        name: ingredients.name,
+        unitType: ingredients.unitType,
+        isActive: ingredients.isActive,
+        deletedAt: ingredients.deletedAt,
+      })
+      .from(ingredients)
+      .where(eq(ingredients.tenantId, actor.tenantId))
+      .orderBy(asc(ingredients.name)),
+  ]);
+
+  const inUse = new Set(
+    (forRecipeId ? (graph.get(forRecipeId)?.lines ?? []) : [])
+      .map((l) => l.ingredientId)
+      .filter((x): x is string => x !== null),
+  );
+
+  const sources: LineSource[] = rows
+    .filter((r) => (r.isActive && r.deletedAt === null) || inUse.has(r.id))
+    .map((r) => ({ id: r.id, name: r.name, unitType: r.unitType, kind: 'ingredient' as const }));
+
+  for (const recipe of graph.values()) {
+    if (recipe.id === forRecipeId) continue;
+    sources.push({
+      id: recipe.id,
+      name: recipe.name,
+      unitType: recipe.yieldUnitType,
+      kind: 'recipe' as const,
+    });
+  }
+
+  return sources;
+}
+
 export type UsedIngredient = {
   id: string;
   name: string;
@@ -440,6 +724,37 @@ export type MenuItemRow = {
   sellingPricePaise: bigint;
   isActive: boolean;
 };
+
+/** What one recipe sells as. Shared by the breakdown and the menu editor. */
+export async function listMenuItems(actor: Actor, recipeId: string): Promise<MenuItemRow[]> {
+  assertPermission(actor.role, 'recipes.view');
+
+  const rows = await db
+    .select({
+      id: menuItems.id,
+      name: menuItems.name,
+      portionQtyMilliBase: menuItems.portionQtyMilliBase,
+      sellingPricePaise: menuItems.sellingPricePaise,
+      isActive: menuItems.isActive,
+    })
+    .from(menuItems)
+    .where(
+      and(
+        eq(menuItems.tenantId, actor.tenantId),
+        eq(menuItems.recipeId, recipeId),
+        isNull(menuItems.deletedAt),
+      ),
+    )
+    .orderBy(asc(menuItems.name));
+
+  // Money and quantity come back from the driver as strings; String() then BigInt() is
+  // correct either way. AGENTS.md, Aggregates come back as strings.
+  return rows.map((m) => ({
+    ...m,
+    portionQtyMilliBase: BigInt(String(m.portionQtyMilliBase)),
+    sellingPricePaise: BigInt(String(m.sellingPricePaise)),
+  }));
+}
 
 export type Breakdown = {
   recipe: { id: string; name: string; yieldUnitType: UnitType; yieldQtyMilliBase: bigint };
@@ -478,23 +793,7 @@ export async function getRecipeCostBreakdown(
       })
       .from(ingredients)
       .where(eq(ingredients.tenantId, actor.tenantId)),
-    db
-      .select({
-        id: menuItems.id,
-        name: menuItems.name,
-        portionQtyMilliBase: menuItems.portionQtyMilliBase,
-        sellingPricePaise: menuItems.sellingPricePaise,
-        isActive: menuItems.isActive,
-      })
-      .from(menuItems)
-      .where(
-        and(
-          eq(menuItems.tenantId, actor.tenantId),
-          eq(menuItems.recipeId, recipeId),
-          isNull(menuItems.deletedAt),
-        ),
-      )
-      .orderBy(asc(menuItems.name)),
+    listMenuItems(actor, recipeId),
   ]);
 
   const recipe = graph.get(recipeId);
@@ -557,10 +856,6 @@ export async function getRecipeCostBreakdown(
     missing,
     sources,
     ingredientsUsed,
-    menuItems: menuRows.map((m) => ({
-      ...m,
-      portionQtyMilliBase: BigInt(m.portionQtyMilliBase),
-      sellingPricePaise: BigInt(m.sellingPricePaise),
-    })),
+    menuItems: menuRows,
   };
 }

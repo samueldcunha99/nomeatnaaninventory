@@ -122,7 +122,7 @@ export function ReceiptForm({
                   <td>
                     <IngredientCombobox
                       fieldName={`lines[${i}][ingredientId]`}
-                      ingredients={ingredients}
+                      options={ingredients}
                       value={row.ingredientId}
                       text={row.ingredientText}
                       onChange={({ id, text }) => set(i, { ingredientId: id, ingredientText: text })}

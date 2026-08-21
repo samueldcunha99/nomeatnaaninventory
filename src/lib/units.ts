@@ -99,19 +99,16 @@ export function costPerPurchaseUnitPaise(
 }
 
 /**
- * The inverse of purchaseUnitsToMilliBase: back to a decimal string in purchase units,
- * for putting a stored value into a form field. Exact - no float, no rounding - because
- * a value that survives a round trip through an edit form must come back unchanged.
+ * The inverse of parseDecimalToInteger: a scaled integer back to a decimal string, at any
+ * scale. Exact - no float, no rounding - because a value that survives a round trip
+ * through an edit form must come back unchanged.
+ *
+ * One implementation, three names below it. Each caller says which scale it means rather
+ * than passing 1000 and hoping the next reader knows what it stood for.
  */
-export function milliBaseToPurchaseUnits(
-  milliBase: number | bigint,
-  purchaseUnitInBase: number,
-): string {
-  if (!Number.isInteger(purchaseUnitInBase) || purchaseUnitInBase <= 0) {
-    throw new RangeError('purchase_unit_in_base must be a positive integer');
-  }
-  const scale = BigInt(purchaseUnitInBase) * 1000n;
-  const v = BigInt(milliBase);
+export function integerToDecimal(value: number | bigint, scale: bigint): string {
+  if (scale <= 0n) throw new RangeError('integerToDecimal: scale must be positive');
+  const v = BigInt(value);
   const neg = v < 0n;
   const abs = neg ? -v : v;
   const whole = abs / scale;
@@ -120,6 +117,32 @@ export function milliBaseToPurchaseUnits(
   // Longest exact decimal the scale can produce, then trim.
   const frac = ((rem * 10n ** 9n) / scale).toString().padStart(9, '0').replace(/0+$/, '');
   return `${neg ? '-' : ''}${whole}.${frac}`;
+}
+
+/** The inverse of purchaseUnitsToMilliBase: 2_500_000 with 1000 in base -> "2.5". */
+export function milliBaseToPurchaseUnits(
+  milliBase: number | bigint,
+  purchaseUnitInBase: number,
+): string {
+  if (!Number.isInteger(purchaseUnitInBase) || purchaseUnitInBase <= 0) {
+    throw new RangeError('purchase_unit_in_base must be a positive integer');
+  }
+  return integerToDecimal(milliBase, BigInt(purchaseUnitInBase) * 1000n);
+}
+
+/** The inverse of baseUnitsToMilliBase: 400 -> "0.4". Recipe lines are written in these. */
+export function milliBaseToBaseUnits(milliBase: number | bigint): string {
+  return integerToDecimal(milliBase, 1000n);
+}
+
+/** The inverse of rupeesToPaise: 45001 -> "450.01". For a price going back into a box. */
+export function paiseToRupees(paise: number | bigint): string {
+  return integerToDecimal(paise, 100n);
+}
+
+/** Wastage back to what an operator types: 2500 millipercent -> "2.5". */
+export function millipercentToPercent(millipercent: number | bigint): string {
+  return integerToDecimal(millipercent, 1000n);
 }
 
 /** True when an ingredient is at or below its reorder threshold. */

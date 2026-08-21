@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { requirePermission } from '../../src/auth/server.ts';
+import { hasPermission } from '../../src/lib/auth.ts';
 import { listRecipes } from '../../src/db/recipes.ts';
 import { formatQty, formatINR, costPerPurchaseUnitPaise, type UnitType } from '../../src/lib/units.ts';
 import { Glyph } from '../ui/status-badge.tsx';
@@ -26,6 +27,9 @@ export default async function RecipesPage({
   const { q } = await searchParams;
   const rows = await listRecipes(actor, { search: q });
 
+  // Governs what is rendered, not what is allowed - every mutation re-checks.
+  const canManage = hasPermission(actor.role, 'recipes.manage');
+
   return (
     <>
       <header className="brandbar">
@@ -38,7 +42,14 @@ export default async function RecipesPage({
       </header>
 
       <main className="page">
-        <h1>Recipes</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1>Recipes</h1>
+          {canManage ? (
+            <Link className="btn" href="/recipes/new">
+              + New recipe
+            </Link>
+          ) : null}
+        </div>
         <p className="prose-note">
           Cost comes from the stock ledger and moves on its own when a delivery is
           recorded at a new price. Nothing here sets a price.
@@ -73,6 +84,11 @@ export default async function RecipesPage({
                   <th scope="col" className="col-secondary">
                     Last updated
                   </th>
+                  {canManage ? (
+                    <th scope="col" className="w-24">
+                      <span className="sr-only">Edit</span>
+                    </th>
+                  ) : null}
                 </tr>
               </thead>
               <tbody>
@@ -137,6 +153,16 @@ export default async function RecipesPage({
                           timeZone: 'Asia/Kolkata',
                         })}
                       </td>
+
+                      {/* Above the row-link overlay, or the breakdown swallows the click. */}
+                      {canManage ? (
+                        <td>
+                          <Link className="btn-quiet row-action" href={`/recipes/${r.id}/edit`}>
+                            Edit
+                            <span className="sr-only"> {r.name}</span>
+                          </Link>
+                        </td>
+                      ) : null}
                     </tr>
                   );
                 })}

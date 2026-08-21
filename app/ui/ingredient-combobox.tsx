@@ -2,10 +2,17 @@
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 
-export type IngredientChoice = { id: string; name: string };
+export type IngredientChoice = {
+  id: string;
+  name: string;
+  /** Muted tag in the option row — "recipe", say — when the name alone is ambiguous. */
+  hint?: string;
+};
 
 /**
- * Type-to-filter ingredient picker.
+ * Type-to-filter picker. Ingredients on the receipt form; ingredients AND sub-recipes on
+ * the recipe editor, which is why the options are a plain id/name list and the word for
+ * what is being picked is a prop.
  *
  * A native `<select>` with 37 options means scrolling a long list with a thumb during a
  * rush. A native `<datalist>` fixes the typing but its popup is browser chrome — a black
@@ -22,22 +29,25 @@ export type IngredientChoice = { id: string; name: string };
  */
 export function IngredientCombobox({
   fieldName,
-  ingredients,
+  options,
   value,
   text,
   onChange,
   ariaLabel,
+  noun = 'ingredient',
   placeholder = 'Type to search…',
 }: {
   /** Form field name for the hidden id, e.g. `lines[0][ingredientId]`. */
   fieldName: string;
-  ingredients: IngredientChoice[];
-  /** Resolved ingredient id, or '' when the text matches nothing. */
+  options: IngredientChoice[];
+  /** Resolved id, or '' when the text matches nothing. */
   value: string;
   /** What the operator has typed. */
   text: string;
   onChange: (next: { id: string; text: string }) => void;
   ariaLabel: string;
+  /** What the operator is picking, for the two messages that have to say it. */
+  noun?: string;
   placeholder?: string;
 }) {
   const listId = useId();
@@ -50,8 +60,8 @@ export function IngredientCombobox({
 
   const query = text.trim().toLowerCase();
   const matches = query
-    ? ingredients.filter((i) => i.name.toLowerCase().includes(query))
-    : ingredients;
+    ? options.filter((i) => i.name.toLowerCase().includes(query))
+    : options;
 
   /*
    * Fixed positioning, not absolute. The list lives inside `.table-wrap`, which sets
@@ -116,7 +126,7 @@ export function IngredientCombobox({
     if (e.key === 'Tab') setOpen(false);
   };
 
-  // Typed something that matches no ingredient. Blank is not an error — it is an unused row.
+  // Typed something that matches nothing. Blank is not an error — it is an unused row.
   const unresolved = text.trim() !== '' && value === '';
 
   return (
@@ -139,7 +149,7 @@ export function IngredientCombobox({
         value={text}
         onChange={(e) => {
           const typed = e.target.value;
-          const hit = ingredients.find((i) => i.name.toLowerCase() === typed.trim().toLowerCase());
+          const hit = options.find((i) => i.name.toLowerCase() === typed.trim().toLowerCase());
           onChange({ id: hit?.id ?? '', text: typed });
           setOpen(true);
           setActive(0);
@@ -161,7 +171,7 @@ export function IngredientCombobox({
           style={rect ? { left: rect.left, top: rect.top, width: Math.max(rect.width, 240) } : undefined}
         >
           {matches.length === 0 ? (
-            <li className="combo-empty">No ingredient matches “{text.trim()}”</li>
+            <li className="combo-empty">No {noun} matches “{text.trim()}”</li>
           ) : (
             matches.map((m, i) => (
               <li
@@ -177,6 +187,7 @@ export function IngredientCombobox({
                 onMouseEnter={() => setActive(i)}
               >
                 {m.name}
+                {m.hint ? <span className="ml-2 text-xs muted">{m.hint}</span> : null}
               </li>
             ))
           )}
@@ -184,7 +195,7 @@ export function IngredientCombobox({
       ) : null}
 
       {unresolved ? (
-        <span className="block text-xs text-danger font-semibold mt-1">No such ingredient</span>
+        <span className="block text-xs text-danger font-semibold mt-1">No such {noun}</span>
       ) : null}
     </div>
   );

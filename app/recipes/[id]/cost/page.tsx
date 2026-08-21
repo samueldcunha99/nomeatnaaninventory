@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requirePermission } from '../../../../src/auth/server.ts';
+import { hasPermission } from '../../../../src/lib/auth.ts';
 import { getRecipeCostBreakdown, type Breakdown } from '../../../../src/db/recipes.ts';
 import { portionCostPaise, menuItemMargin, type RecipeExplanation } from '../../../../src/lib/costing.ts';
 import {
@@ -8,6 +9,7 @@ import {
   formatQty,
   costPerPurchaseUnitPaise,
   unitCostMillipaisePerBase,
+  millipercentToPercent,
   rupeesToPaise,
   type UnitType,
 } from '../../../../src/lib/units.ts';
@@ -83,7 +85,7 @@ function Lines({
                 {line.wastageMillipercent > 0n ? (
                   <span className="block text-xs muted font-normal">
                     {formatQty(line.quantityMilliBase, source.unitType)} plus{' '}
-                    {(Number(line.wastageMillipercent) / 1000).toString()}% wastage
+                    {millipercentToPercent(line.wastageMillipercent)}% wastage
                   </span>
                 ) : null}
               </th>
@@ -157,6 +159,9 @@ export default async function CostBreakdownPage({
   const base = await getRecipeCostBreakdown(actor, id);
   if (!base) notFound();
 
+  // Governs what is rendered, not what is allowed - both editors re-check.
+  const canManage = hasPermission(actor.role, 'recipes.manage');
+
   // The what-if. A hypothetical rate is built exactly the way a real receipt would build
   // one - same helper, same rounding - and passed as an override. NOTHING IS WRITTEN;
   // there is no write path in this file or the one it calls.
@@ -207,6 +212,17 @@ export default async function CostBreakdownPage({
           Costs come from the weighted average of what was actually paid, over the stock
           ledger.
         </p>
+
+        {canManage ? (
+          <p className="flex flex-wrap gap-3">
+            <Link className="btn btn--secondary" href={`/recipes/${id}/edit`}>
+              Edit recipe
+            </Link>
+            <Link className="btn btn--secondary" href={`/recipes/${id}/menu`}>
+              Menu items
+            </Link>
+          </p>
+        ) : null}
 
         {whatIf ? (
           <div className="msg msg--warn" role="status">
@@ -327,6 +343,15 @@ export default async function CostBreakdownPage({
                           {formatQty(item.portionQtyMilliBase, view.recipe.yieldUnitType)}
                         </span>
                         {!item.isActive ? <span className="badge badge--muted ml-2">Off menu</span> : null}
+                        {canManage ? (
+                          <>
+                            {' '}
+                            <Link className="btn-quiet" href={`/recipes/${id}/menu`}>
+                              Edit
+                              <span className="sr-only"> {item.name}</span>
+                            </Link>
+                          </>
+                        ) : null}
                       </h3>
                       <ul className="statgrid">
                         <li className="stat">
@@ -373,6 +398,13 @@ export default async function CostBreakdownPage({
             ) : (
               <p className="prose-note mt-6">
                 Nothing on the menu sells this yet, so there is no price to compare against.
+                {canManage ? (
+                  <>
+                    {' '}
+                    <Link href={`/recipes/${id}/menu`}>Put it on the menu</Link> and the margin
+                    appears here.
+                  </>
+                ) : null}
               </p>
             )}
           </>
