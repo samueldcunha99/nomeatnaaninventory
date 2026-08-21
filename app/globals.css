@@ -244,7 +244,12 @@
    */
   .navgrid {
     @apply grid gap-3 mb-8 p-0 list-none;
-    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    /*
+     * auto-FIT, not auto-fill. auto-fill keeps the empty tracks it created, so three
+     * cards in a four-track row leave a quarter of the page blank and the row reads as
+     * unfinished. auto-fit collapses what nothing landed in and the cards take the width.
+     */
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
   }
 
   .navcard {
@@ -262,12 +267,37 @@
     @apply border-l-sage;
   }
 
+  /*
+   * The screens that are not urgent. Demoted from cards to chips, because the exception
+   * list on the home page answers most visits before anyone needs a menu - but still
+   * 44px tall, because the thing pressing one may be a thumb with a tray in the other
+   * hand. Quieter, not smaller.
+   */
+  .navrow {
+    @apply flex flex-wrap gap-2 mb-8 p-0 list-none;
+  }
+
+  .navchip {
+    @apply inline-flex items-center min-h-tap px-4 bg-surface border-2 border-mist
+      rounded-md text-navy font-semibold no-underline;
+  }
+
+  .navchip:hover {
+    @apply border-navy bg-stripe;
+  }
+
   .navcard__hint {
     @apply font-normal text-sm text-ink-muted;
   }
 
+  /*
+   * The top margin belongs to the class, not to each screen. Every caller was writing
+   * `section-title mt-8` by hand; the home page forgot, and its first heading sat welded
+   * to the line above it. A utility on the element still overrides this when a screen
+   * genuinely wants a tighter gap.
+   */
   .section-title {
-    @apply text-base uppercase tracking-widest text-ink-muted mb-2;
+    @apply text-base uppercase tracking-widest text-ink-muted mt-8 mb-2;
   }
 
   /* ---- Tables -------------------------------------------------------------- */
@@ -504,6 +534,15 @@
     @apply border-l-danger bg-danger-surface;
   }
 
+  /*
+   * A tile that is also the way in. Only the border darkens on hover: .stat--bad carries
+   * a claret background that means something, and swapping it for a hover grey would
+   * animate the alarm away under the cursor.
+   */
+  .stat--link:hover {
+    @apply border-navy;
+  }
+
   .stat__label {
     @apply text-xs uppercase tracking-widest text-ink-muted;
   }
@@ -518,6 +557,38 @@
 
   .stat__hint {
     @apply text-sm text-ink-muted;
+  }
+
+  /* ---- Today: the exceptions, listed --------------------------------------- */
+
+  /*
+   * The home page's job is to say what needs someone now, so the exceptions ARE the page
+   * rather than a widget on it. A list and not cards: these are facts to read down, not
+   * destinations to tap, and the section carries one link to the full screen instead of
+   * making every row a target that mostly goes to the same place.
+   *
+   * 56px rows like every other list, even though nothing here is tapped. A row height
+   * that changes between screens reads as a different kind of thing.
+   */
+  .alertlist {
+    @apply grid mb-2 p-0 list-none bg-surface border-2 border-mist rounded-md overflow-hidden;
+  }
+
+  .alertrow {
+    @apply flex flex-wrap items-center gap-x-3 gap-y-1 min-h-row px-4 py-2;
+  }
+
+  .alertrow + .alertrow {
+    @apply border-t-2 border-mist;
+  }
+
+  .alertrow__name {
+    @apply font-semibold text-navy;
+  }
+
+  /* The figure that makes it an exception. Right-aligned where the row is wide enough. */
+  .alertrow__fact {
+    @apply text-sm text-ink-muted tabular-nums sm:ml-auto sm:text-right;
   }
 
   /* ---- Cost share bar (NEW in Month 2) ------------------------------------- */

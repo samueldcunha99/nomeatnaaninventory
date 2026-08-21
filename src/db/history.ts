@@ -214,6 +214,37 @@ export function orderGroupLines(rows: MovementRow[]): MovementRow[] {
   return result;
 }
 
+/**
+ * How many separate DELIVERIES were recorded since an instant - not how many lines.
+ *
+ * A receipt is one delivery however many ingredients arrived on it, and every line of it
+ * shares a reference_id (see recordReceipt). Counting rows would report a five-line
+ * delivery as five, which is not what anybody at the counter means by "deliveries today".
+ *
+ * The coalesce covers a purchase written without a reference: it then counts as a
+ * delivery of its own rather than collapsing every such row into a single null group.
+ */
+export async function countDeliveriesSince(actor: Actor, from: Date): Promise<number> {
+  assertPermission(actor.role, 'ingredients.view');
+
+  const [row] = await db
+    .select({
+      deliveries: raw<string>`count(distinct coalesce(${stockMovements.referenceId}::text, ${stockMovements.id}::text))`,
+    })
+    .from(stockMovements)
+    .where(
+      and(
+        eq(stockMovements.tenantId, actor.tenantId),
+        eq(stockMovements.movementType, 'purchase'),
+        gte(stockMovements.createdAt, from),
+      ),
+    );
+
+  // count() is bigint, which the driver hands back as a string. AGENTS.md, Aggregates
+  // come back as strings.
+  return Number(row?.deliveries ?? 0);
+}
+
 export type LowStockRow = {
   ingredientId: string;
   name: string;

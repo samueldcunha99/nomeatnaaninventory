@@ -11,7 +11,12 @@ import { eq } from 'drizzle-orm';
 import { db } from './client.ts';
 import { dbReachable, closeDb } from './test-db.ts';
 import { tenants, users, ingredients, stockMovements } from './schema.ts';
-import { listMovements, listLowStock, HISTORY_PAGE_SIZE } from './history.ts';
+import {
+  listMovements,
+  listLowStock,
+  countDeliveriesSince,
+  HISTORY_PAGE_SIZE,
+} from './history.ts';
 import { recordReceipt, recordCorrection } from './movements.ts';
 import { AuthzError, type Actor, type Role } from '../lib/auth.ts';
 
@@ -37,11 +42,11 @@ before(async () => {
 
 after(closeDb);
 
-async function makeIngredient(name: string, thresholdMilliBase = 0) {
+async function makeIngredient(name: string, thresholdMilliBase = 0, tenantId = owner.tenantId) {
   const [row] = await db
     .insert(ingredients)
     .values({
-      tenantId: owner.tenantId,
+      tenantId,
       name: `${name} ${crypto.randomUUID().slice(0, 8)}`,
       unitType: 'weight',
       purchaseUnit: 'kg',
@@ -334,4 +339,61 @@ test('every numeric field crossing the driver boundary is a number, not a string
     balances.every((b) => typeof b === 'number'),
     'a string here would make every comparison lexicographic: "900" > "4850000" is true',
   );
+});
+
+/*
+ * Deliveries today runs in a tenant of its own. Every other test in this file writes
+ * receipts to the shared fixture tenant, and a count that has to reason about which of
+ * them fell inside a time window would be measuring the test file, not the query.
+ */
+test('deliveries counts receipts, not the lines on them', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const [t2] = await db
+    .insert(tenants)
+    .values({ name: `hist deliveries ${crypto.randomUUID()}` })
+    .returning();
+  const counter = await makeActor('owner', t2.id);
+  const flour = await makeIngredient('Delivery flour', 0, counter.tenantId);
+  const sugar = await makeIngredient('Delivery sugar', 0, counter.tenantId);
+  const EPOCH = new Date(0);
+
+  assert.equal(await countDeliveriesSince(counter, EPOCH), 0, 'a new tenant has no deliveries');
+
+  // The whole point of the figure: this is ONE delivery, whatever arrived on it. Counting
+  // rows would report a two-line receipt as two, which is not what anyone at the counter
+  // means by "deliveries today".
+  await recordReceipt(counter, {
+    lines: [
+      { ingredientId: flour, quantityMilliBase: 25_000_000n, totalCostPaise: 105_000n },
+      { ingredientId: sugar, quantityMilliBase: 10_000_000n, totalCostPaise: 58_000n },
+    ],
+  });
+  assert.equal(await countDeliveriesSince(counter, EPOCH), 1);
+
+  await recordReceipt(counter, {
+    lines: [{ ingredientId: flour, quantityMilliBase: 5_000_000n, totalCostPaise: 21_000n }],
+  });
+  assert.equal(await countDeliveriesSince(counter, EPOCH), 2);
+
+  // A correction is not a delivery. Nothing arrived.
+  await recordCorrection(counter, 'wastage', {
+    ingredientId: flour,
+    quantityMilliBase: -1_000_000n,
+    reason: 'spoilage',
+  });
+  assert.equal(await countDeliveriesSince(counter, EPOCH), 2);
+
+  // The window is real, not decorative.
+  const later = new Date(Date.now() + 60_000);
+  assert.equal(await countDeliveriesSince(counter, later), 0);
+
+  // And it does not leak: another tenant's receipts are not this tenant's deliveries.
+  const [t3] = await db
+    .insert(tenants)
+    .values({ name: `hist deliveries other ${crypto.randomUUID()}` })
+    .returning();
+  const stranger = await makeActor('owner', t3.id);
+  assert.equal(await countDeliveriesSince(stranger, EPOCH), 0);
+
+  await assert.rejects(countDeliveriesSince(kitchen, EPOCH), AuthzError);
 });
