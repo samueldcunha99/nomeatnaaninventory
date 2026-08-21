@@ -34,19 +34,23 @@ export async function recordReceiptAction(_prev: FormState, formData: FormData):
   const supplierId = String(formData.get('supplierId') ?? '') || null;
   const note = String(formData.get('note') ?? '').trim() || null;
 
-  const raw: unknown[] = [];
+  // A Map, NOT an array indexed by the submitted number. `lines[2000000000][quantity]`
+  // costs nothing to send and turns the next iteration over that array into a hang - the
+  // index is attacker-controlled, so it never becomes a length. Entry order is the sort.
+  const raw = new Map<number, Record<string, string>>();
   for (const [key, value] of formData.entries()) {
     const m = /^lines\[(\d+)]\[(\w+)]$/.exec(key);
     if (!m) continue;
     const [, index, field] = m;
-    const row = (raw[Number(index)] ??= {}) as Record<string, unknown>;
+    const row = raw.get(Number(index)) ?? {};
     row[field] = String(value);
+    raw.set(Number(index), row);
   }
   // A row the operator left entirely blank is not an error, it is an unused row.
-  const lines = raw.filter(
-    (r): r is Record<string, string> =>
-      !!r && Object.values(r as Record<string, string>).some((v) => v.trim() !== ''),
-  );
+  const lines = [...raw.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([, row]) => row)
+    .filter((r) => Object.values(r).some((v) => v.trim() !== ''));
 
   const parsed = Receipt.safeParse({ supplierId, note, lines });
   if (!parsed.success) return { error: parsed.error.issues[0].message, ok: null };
