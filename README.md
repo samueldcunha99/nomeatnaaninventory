@@ -4,8 +4,9 @@ Internal management system for a single-outlet cafe and bakery in Chhatrapati
 Sambhajinagar, Maharashtra. Ingredient-level cost visibility, self-maintaining inventory,
 order management, and a customer-facing tracking page. Five-month build.
 
-**Month 1 complete. Month 2 costing engine built and verified: 139 tests passing against a
-live PostgreSQL, 0 skipped.**
+**Month 1 and Month 2 complete and verified — costing engine, screens and editors: 156
+tests passing against a live PostgreSQL, 0 skipped.** Only the deploy to a real server is
+outstanding, and it is deferred rather than blocking.
 
 ---
 
@@ -24,10 +25,10 @@ repository. Nothing important lives in a chat log.
 | Month 2 step 0b — deploy to a VPS | ⏸️ **deferred, does not block anything** |
 | Month 2 step 1 — recipe / menu schema | ✅ **done**, migration 0002 |
 | Month 2 steps 2–4 — costing engine | ✅ **done**, paper cases P1–P22 |
-| Month 2 step 5 — costing screens | 🟡 recipe list, cost breakdown and what-if done; **editors not built** |
+| Month 2 step 5 — costing screens and editors | ✅ **done**, recipe list, cost breakdown, what-if, and the recipe / line / menu-item editors |
 | Trunk | `main`. Everything is merged; `month-2-costing` is merged and safe to delete. |
-| Tests | **139, all passing** against live Postgres, 0 skipped |
-| `next build` | exits 0, 12 routes |
+| Tests | **156, all passing** against live Postgres, 0 skipped |
+| `next build` | exits 0, 15 routes |
 
 ## Verified against a live database vs merely built
 
@@ -169,7 +170,7 @@ Run the tests with Docker up:
 npm test
 ```
 
-**139 tests should pass with 0 skipped.** If you see skips, Postgres is not reachable —
+**156 tests should pass with 0 skipped.** If you see skips, Postgres is not reachable —
 the database tests skip loudly rather than passing quietly, and a green run full of skips
 is not a pass.
 

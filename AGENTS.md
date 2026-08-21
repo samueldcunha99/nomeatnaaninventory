@@ -3,20 +3,20 @@
 Conventions for the cafe management system. Read `files/PROJECT-SPEC.md` first — this
 file records what we decided that the spec does not say, and why.
 
-**139 tests passing against a live PostgreSQL, 0 skipped.**
+**156 tests passing against a live PostgreSQL, 0 skipped.**
 
 **Month 1 is complete and verified.** Schema, migrations, seed, unit conversion,
 weighted-average cost, auth, role enforcement, ingredient CRUD, stock receipts /
 adjustments / wastage, movement history, low-stock views, and a UI styling pass across all
 9 internal screens.
 
-**Month 2 is well under way, and is NOT gated on the VPS** (changed 2026-08-21): the deploy
-step stays stubbed and everything else runs locally against our own Postgres. Do not
-re-introduce the provisioning gate. Built so far: the recipe / sub-recipe / menu-item
-schema, the pure costing engine against paper cases P1-P22, the ledger-backed cost lookup,
-save-time cycle / depth / unit validators, and the recipe list and cost breakdown screens
-including the what-if price. **The editors are not built** - no recipe form, no menu-item
-form.
+**Month 2 is complete except the deploy, which is NOT a gate** (changed 2026-08-21): the
+deploy step stays stubbed and everything else runs locally against our own Postgres. Do not
+re-introduce the provisioning gate. Built: the recipe / sub-recipe / menu-item schema, the
+pure costing engine against paper cases P1-P22, the ledger-backed cost lookup, save-time
+cycle / depth / unit validators, the recipe list and cost breakdown screens including the
+what-if price, and — since 2026-08-22 — the recipe, line and menu-item editors at
+`/recipes/new`, `/recipes/[id]/edit` and `/recipes/[id]/menu`.
 
 Read [README.md](README.md) first — it carries the handover, the working rules and the
 Month 2 decisions already made. [PROGRESS.md](PROGRESS.md) carries state, blockers and
@@ -117,6 +117,14 @@ Exactly two places convert, and nothing between them ever does:
 - **Display boundary** — `formatINR()` / `formatQty()`. Divides back down and rounds.
 
 Server actions, query functions, and the costing engine see integers only.
+
+An edit form is a third crossing of the same boundary and the trap in it is rounding: a
+stored value going back into a box must come back **unchanged**. `integerToDecimal()` is the
+exact inverse of `parseDecimalToInteger()` and the only implementation;
+`milliBaseToPurchaseUnits`, `milliBaseToBaseUnits`, `paiseToRupees` and
+`millipercentToPercent` are names for it at the four scales that exist. Never divide a
+stored scale by hand in a component — `Number(w) / 1000` is a float in the middle of an
+integer system.
 
 ### Rounding
 
@@ -398,6 +406,42 @@ So the filter does not live in the callers:
 The rule is structural on purpose. "Remember to filter" is not a control — it works until
 the one query where somebody forgets, and that query is indistinguishable from a correct
 one by looking at its output.
+
+## The unit a line is entered in is submitted, not inferred
+
+`recipe_lines` has no unit column: a line's quantity is in the unit of whatever it draws on,
+and that unit belongs to the source. The editor derives the label from the selected source,
+shows it beside the quantity box, and **submits it**. `saveRecipe` checks it against what
+the source measures in *now*.
+
+Deriving it on the server as well would make `assertLineUnitCompatible` pass vacuously. What
+the operator was shown has to travel with what they typed, or a unit type that changed while
+the page sat open reinterprets 800 g as 800 ml without a word.
+
+The form also submits **which kind of source it picked**, and that claim is not trusted:
+`saveRecipe` looks the id up in this tenant's ingredients or this tenant's recipes according
+to the claim, so a wrong one can only produce a refusal, never a wrong write. That is the
+general shape for anything a form asserts about a row — accept the claim, verify it against
+the tenant, let it fail loudly.
+
+### A recipe's yield unit is fixed while a parent uses it
+
+A stored line carries no unit, so changing what a recipe yields changes what every parent
+line means, and nothing re-validates stored lines. `saveRecipe` refuses the change while any
+parent draws on the recipe, and names the parents to remove it from first.
+
+The same hole exists one level down: `ingredients.unit_type` is editable and recipe lines
+referencing it carry no unit either. It is **less severe** — costing never reads a unit type,
+so no total moves; only the display lies about what "800" means — and it is **not fixed**.
+The fix is the same shape, in `updateIngredient`.
+
+### Save-time messages name the line, not the constraint
+
+A positive quantity and 0-100% wastage are check constraints in the database **and** checks
+in `saveRecipe`. Not belt and braces for its own sake: the constraint is the thing that is
+actually true, and the application check is the thing that can say `"Butter (unsalted)" needs
+a quantity above zero.` instead of `recipe_lines_qty_positive`. Keep both, and keep the
+database one authoritative.
 
 ## One implementation of the cost arithmetic
 
@@ -775,7 +819,17 @@ inventing per-screen classes:
 `.btn` / `.btn--secondary` / `.btn--on-navy` / `.btn--block` ·
 `.msg` / `.msg--error` / `.msg--warn` / `.msg--ok` / `.msg__icon` / `.msg__title` ·
 `.navgrid` / `.navcard` / `.navcard--write` / `.navcard__hint` ·
+`.navrow` / `.navchip` · `.alertlist` / `.alertrow` / `.alertrow__name` /
+`.alertrow__fact` · `.statgrid` / `.stat` / `.stat--link` / `.stat--headline` /
+`.stat--bad` / `.stat__label` / `.stat__value` / `.stat__hint` ·
+`.costbar` / `.costbar__fill` · `.subdetails` / `.subrow` / `.table--nested` ·
 `.section-title` / `.muted` / `.small`
+
+Two of these carry their own spacing on purpose, and a screen that fights it is usually
+wrong: **`.section-title` owns its top margin** (every screen was writing `mt-8` by hand
+and the one that forgot welded a heading to the paragraph above it), and **`.navgrid` is
+`auto-fit`, not `auto-fill`** — auto-fill keeps the empty tracks it created, so three
+cards in a four-track row leave a quarter of the page blank.
 
 **The table pattern** (designed against the ingredients list, the hardest screen — search,
 filter, status column, badge, row action):
@@ -918,3 +972,13 @@ it doesn't.
   the same transaction as every movement insert. `recalculateStock(ingredientId)` rebuilds
   it from the ledger.
 - Zod validation on every mutation, server-side, including role checks.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

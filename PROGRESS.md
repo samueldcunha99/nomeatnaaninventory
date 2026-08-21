@@ -41,7 +41,7 @@ Legend: ✅ done and verified · 🟡 in progress · ⬜ not started · 🚫 blo
 | 2 | Cost lookup seam + missing-cost errors | ✅ |
 | 3 | Sub-recipes: yield, cycle and depth rejection, unit compatibility | ✅ reachable through `saveRecipe` |
 | 4 | Wastage multiplier + sign-safe quantity rounder | ✅ multiplier done; the rounder is Month 3's, see the superseded risk item |
-| 5 | Cost breakdown and margin views | 🟡 list + breakdown + what-if done; editors not built |
+| 5 | Cost breakdown and margin views, and the three editors | ✅ |
 
 **Gate (revised 2026-08-21): the owner exercises the multi-line receipt form by hand.
 Provisioning is no longer a gate.** Steps 1-5 run locally against our own Postgres exactly
@@ -51,7 +51,7 @@ as Month 1 did. See the log entry for 2026-08-21.
 
 | Module | What | Status |
 |---|---|---|
-| 3 | Recipes, sub-recipes, costing engine (Month 2) | ⬜ |
+| 3 | Recipes, sub-recipes, costing engine (Month 2) | ✅ |
 | 4 | Orders, atomic depletion, cost snapshots (Month 3) | ⬜ |
 | 5 | Kitchen status board (Month 3) | ⬜ |
 | 6 | Customer order tracking (Month 4) | ⬜ |
@@ -1217,3 +1217,257 @@ Month 1's vocabulary covered everything else. These three did not exist:
 The recipe editor, the menu item editor, and the line editor whose control has to make the
 unit follow the ingredient. `saveRecipe` and all three validators are already behind them,
 so those screens are forms over a function that already refuses everything it should.
+
+### 2026-08-22 — The three editors: recipe, line, menu item (Month 2 step 5 closes)
+
+The screens that were deliberately not built on 2026-08-21. `saveRecipe` and its validators
+were already behind them, so most of this is a form over a function that refuses everything
+it should — but building the forms found two things the read-only screens could not.
+
+#### The unit is the whole problem, and it is solved by not asking twice
+
+A recipe line's quantity is in the unit of whatever the line draws on, and `recipe_lines`
+has no unit column because the unit belongs to the source. So the editor derives it: pick
+"Butter (unsalted)" and the box beside the quantity reads **g**, pick the dough and it reads
+**g** with "Sub-recipe, measured by weight" under the name, pick a volume ingredient and it
+reads **ml**. The operator never types a unit and never chooses one.
+
+**That label is then submitted, as a hidden field, and the server checks it.** It would have
+been easy to derive the unit server-side too and let the check pass vacuously. Submitting it
+makes the label an assertion: if an ingredient's unit type changed while the page sat open,
+the save is refused by `assertLineUnitCompatible` instead of silently reinterpreting 800 g as
+800 ml. The same field is what makes P19b reachable from the UI at all.
+
+The kind of source (`ingredient` or `recipe`) is submitted the same way and is **not
+trusted**: `saveRecipe` looks the id up in this tenant's ingredients or this tenant's
+recipes accordingly, so a wrong claim can only produce a refusal, never a wrong write. It
+was tested by claiming a recipe id was an ingredient — "ingredient … is not in this tenant".
+
+#### A defect the editor opened, and the guard that closes it
+
+Nothing before this could change a recipe's **yield unit type**. The editor can, and that
+would have been silent corruption: the cinnamon roll enters the dough as "2160 g", a stored
+line carries no unit of its own, and nothing re-validates stored lines. Flipping the dough
+to volume would have turned every parent line into 2160 ml without a word.
+
+`saveRecipe` now refuses the change while any parent still draws on the recipe, naming them:
+*"Cinnamon roll dough" is measured by weight and is used by "Cinnamon roll batch". Remove it
+from that recipe before changing what it yields.* Verified through the form and in the test
+suite; the rejected edit writes nothing.
+
+The same hole exists one level down — an ingredient's unit type is editable and recipe lines
+referencing it carry no unit. It is **not** the same severity (costing never reads a unit
+type, so no total moves; the display would lie about what "800" means) and it is **not
+fixed**. Noted here rather than built: the fix is the same shape, in `updateIngredient`.
+
+#### Two checks moved off the database, for the message
+
+`recipe_lines` already has check constraints for a positive quantity and 0-100% wastage. A
+constraint violation names a table and a column, which is no use to whoever typed it. Both
+now run in `saveRecipe` first and name the line: *"Butter (unsalted)" needs a quantity above
+zero.* and *Wastage on "Butter (unsalted)" must be between 0% and 100%.* The constraints stay
+where they are — they are the thing that is actually true.
+
+Duplicate recipe and menu item names are translated the same way ingredients already were,
+through `translating()` on the unique index, so a taken name reads as a sentence instead of
+`duplicate key value violates unique constraint`.
+
+#### Line order is now deterministic, and still not meaningful
+
+Every line of one save is inserted in a single statement and shares a `created_at` to the
+microsecond, so ordering by `created_at` alone left the row order to the planner — an editor
+that shuffles its rows between loads. The loader now orders by `(created_at, id)`.
+
+Stable, not meaningful. **No `position` column was added**: recipes carry no stored line
+order, the breakdown sorts by contribution on purpose, and a column exists to be maintained.
+
+#### What a line may draw on
+
+`listLineSources` offers every active ingredient plus every other recipe. Two rules in it:
+
+- A deactivated or soft-deleted ingredient is excluded, **except** where a line of the recipe
+  being edited already uses one. Dropping it would leave a row pointing at a blank name, and
+  re-saving would quietly rewrite the recipe.
+- A recipe that would close a cycle **is still offered**. `saveRecipe` refuses it with the
+  loop spelled out, which tells the operator more than an option that is silently absent.
+
+#### One inverse for every scale
+
+The editors put stored integers back into boxes, which needed the other direction of
+`parseDecimalToInteger` at three scales. Rather than three near-copies: `integerToDecimal`
+is the one implementation, with `milliBaseToPurchaseUnits`, `milliBaseToBaseUnits`,
+`paiseToRupees` and `millipercentToPercent` named on top of it. Each round trip is exact and
+pinned by a test — a value that survives an edit form must come back unchanged.
+
+`millipercentToPercent` also replaced the one float divide left on the cost breakdown
+(`Number(w) / 1000`), so no display path converts a stored scale by hand any more.
+
+`listMenuItems` was extracted from `getRecipeCostBreakdown` so the breakdown and the menu
+editor read the same rows through the same function.
+
+#### The screens
+
+- **`/recipes/new`** and **`/recipes/[id]/edit`** — the same form. Name, what one batch
+  yields (quantity plus weight/volume/count, with the unit label following the choice), the
+  line table, and method notes. Rows are added and removed; a row left blank is an unused
+  row, not an error; a row half-filled is an error and the message names the half.
+- **`/recipes/[id]/menu`** — every menu item for one recipe, each its own form, plus a blank
+  one to add another. One screen rather than a new-and-edit pair: a recipe has one or two
+  menu items and seeing them together is how someone notices the half portion priced above
+  half. Off the menu is a checkbox, not a delete.
+- Entry points: **+ New recipe** and a per-row **Edit** on `/recipes`, **Edit recipe** and
+  **Menu items** on the breakdown, and **Put it on the menu** where the breakdown says
+  nothing sells this yet. All behind `recipes.manage`, which is rendering only — every
+  mutation re-checks.
+
+The line picker is the receipt form's combobox, generalised: `options` instead of
+`ingredients`, an optional muted `hint` per option (a recipe is tagged "recipe"), and the
+noun in its two messages is a prop. One picker, two screens, no second implementation.
+
+#### A hang the new action would have copied, fixed in both places
+
+Both line-collecting actions turned the submitted row index into an **array index**:
+`raw[Number(index)] ??= {}`. The index comes from the form, so `lines[2000000000][quantity]`
+- a request that costs nothing to send - made an array of length two billion, and the
+`.filter()` on the next line walked every slot. An authenticated operator could stop the
+counter PC serving the whole cafe with one request.
+
+Both now collect into a `Map` and sort by index, so the number is never a length. Fixed in
+`app/recipes/actions.ts` **and** in `app/stock/actions.ts`, which had the original copy of
+the pattern - the new code did not introduce it, it inherited it, and patching only the new
+one would have left the receipt form still holding the bug.
+
+#### Verified against the running app, not just compiled
+
+151 tests, 0 failures, 0 skipped. `next build` exits 0, 15 routes.
+
+Then 45 checks driven over HTTP against `next dev`, submitting the real forms the way a
+browser with JavaScript off does — Next renders server-action forms with hidden `$ACTION_*`
+fields, so a plain multipart POST reaches the real action, the real Zod parse and the real
+database. Every figure was hand-computed from the seeded ledger first and then read off the
+rendered page.
+
+A recipe created through the form — maida 500 g at Rs 42/kg, butter 60 g plus 5% wastage at
+Rs 520/kg, yielding 900 g:
+
+```
+Maida (refined flour)   500 g               Rs 21.00   39.1%
+Butter (unsalted)        63 g (60 g + 5%)   Rs 32.76   60.9%
+Batch total                                 Rs 53.76  100.0%
+Unit cost                                   Rs 59.73 per kg
+```
+
+Edited to swap the butter for 200 ml of milk: Rs 33.40 the batch, Rs 12.40 the milk line,
+butter gone from the breakdown and from the what-if list. A menu item at 300 g and Rs 120:
+portion cost Rs 11.13, margin Rs 108.87. Repriced to Rs 150 and taken off the menu: the
+badge appears and the margin follows.
+
+Nine refusals were exercised through the form, each one landing as a sentence in the error
+banner and writing nothing: a quantity with nothing to attach it to, an ingredient with no
+quantity, a quantity of zero, 150% wastage, a unit that disagrees with its ingredient, a
+recipe claimed to be an ingredient, a name already taken, a batch that yields nothing, and
+"half a bag" typed into a quantity. Plus the two that need an existing graph: closing a cycle
+("This recipe would contain itself: Cinnamon roll dough > Cinnamon roll batch > Cinnamon roll
+dough") and changing the yield unit of a recipe in use. After all of them the seeded dough
+and roll still had their 5 and 4 lines and their original yields.
+
+Five more checks covered the receipt form, which the index fix touched: blank rows dropped,
+a half-filled row still an error, the two-billion index answering instantly instead of
+hanging, and a receipt with a blank row above two real ones recording both, in order.
+
+The recipe and menu fixtures were removed from the dev database afterwards and the seeded
+demo left as it was - maida still 4200, butter still 52000. The **stock movements from the
+receipt check were not removed**: the ledger is append-only, and a real delivery of walnuts
+and cashews (neither is in a demo recipe, so no costed figure moves) is a smaller wrong than
+deleting ledger rows by hand.
+
+#### Not built
+
+- **Deleting or deactivating a recipe.** Nothing asked for it and nothing is hard deleted.
+  A recipe that is not on the menu costs nothing to leave alone.
+- **A menu list across all recipes.** Menu items live under the recipe that makes them; a
+  cross-recipe view with margins is Month 5's analytics screen, not a fourth editor.
+- **A live rupee preview per line while typing.** It would need the contribution arithmetic
+  in a client component, and AGENTS.md § One implementation of the cost arithmetic says no
+  second copy in a component or an action. The breakdown is one save away and is the same
+  numbers by construction.
+
+#### One incidental change
+
+`next dev` on Next 16.3 appends a `<!-- BEGIN:nextjs-agent-rules -->` block to `AGENTS.md`
+and re-adds it on every run. It is committed rather than fought; `agentRules: false` in
+`next.config.ts` turns it off if it is unwanted.
+
+### 2026-08-22 — The home screen stops being a launcher
+
+Four UI directions were put up; the one chosen was **"Today, for real"**. The home page
+was called Today and said nothing about today: six identical cards, one of which was a menu
+item you clicked to find out whether anything was wrong.
+
+#### The rule the page now keeps
+
+**When nothing is wrong, the page goes quiet.** Three zeros and one sentence — *"Nothing
+needs you. All 37 ingredients are above their reorder threshold, and every recipe can be
+costed."* — with no empty widgets and no zero-state cards.
+
+That is the whole design bet. A dashboard that looks the same busy and idle teaches people
+to stop reading it, and this one is read at the start of every shift. It was verified both
+ways: the three seeded low ingredients had their thresholds temporarily zeroed, the quiet
+state was read off the rendered page, and the thresholds were put back to 1000000 exactly.
+
+#### What is on it
+
+- **Three figures**, each a link, each from a function that already existed: *need
+  reordering* (`listLowStock`, the same worst-first ordering the low stock screen uses),
+  *deliveries today*, and *cannot be costed* (`listRecipes`, the same `MissingCostError`
+  the breakdown reports). Nothing here recomputes anything, and the tile turns claret when
+  its count is not zero — never colour alone, the label says what it counts.
+- **Needs you** — the exceptions themselves, worst first, four at a time, each naming the
+  figure that makes it an exception. An uncostable recipe names the ingredient with no
+  purchase history, because "1 recipe has no cost" sends someone hunting and "Saffron
+  strands has no purchase history" does not.
+- **Record** — the two write actions, unchanged and still cards. They are why counter staff
+  open the app.
+- **Everything else** — the read screens, demoted from cards to 44px chips. Quieter, not
+  smaller: the thing pressing one may still be a thumb with a tray in the other hand.
+
+The signed-in identity moved into the brandbar, which had an empty band across the middle
+of it and was crowding the first heading on the page.
+
+#### Two layout bugs, fixed in the class rather than in the screens
+
+- **`.section-title` had no top margin.** Every screen was writing `section-title mt-8` by
+  hand; the home page forgot, which is why "Signed in as Cafe Owner" sat welded to "STOCK".
+  The margin now belongs to the class, and a utility still overrides it where a screen
+  wants a tighter gap.
+- **`.navgrid` used `auto-fill`.** An auto-fill track that no card lands in still takes its
+  share of the row, so three cards in a four-track row left a quarter of the page blank and
+  the row read as unfinished. `auto-fit` collapses the empty track.
+
+#### One new query, and one new pure function
+
+`countDeliveriesSince` counts **receipts, not rows**: every line of a delivery shares a
+`reference_id`, and counting rows would report a three-line delivery as three, which is not
+what anyone at the counter means by "deliveries today". A purchase written without a
+reference counts as its own delivery rather than collapsing into a null group.
+
+`startOfDayIST` in the new `src/lib/time.ts` is the day boundary, and it is the reason the
+figure is not quietly wrong: timestamps are stored UTC and the day being asked about is a
+Kolkata day. Cutting the day in UTC files every evening delivery under the next date — an
+error nobody reports, because the number still looks plausible. India keeps a fixed +05:30
+with no daylight saving, so the offset is a constant and the file stays pure.
+
+#### Verified
+
+156 tests, 0 failures, 0 skipped (five new: four on the day boundary, one on the delivery
+count across two fresh tenants). `next build` exits 0. The page was read off the running
+app in both states, with the figures checked against the database: 3 low of 37 ingredients,
+1 delivery today, 0 uncostable of 2 recipes.
+
+#### Not done
+
+The other three directions are still on the table and are not blocked by this one:
+**Docket** (paper vernacular, tear-off write screens), **Counter mode** (thumb-zone actions
+and a tab rail for the 10-inch tablet), and the rest of **Weight and rhythm** (a full type
+scale across the six table screens). This entry changed the home page and two shared
+classes; every other screen is untouched.
