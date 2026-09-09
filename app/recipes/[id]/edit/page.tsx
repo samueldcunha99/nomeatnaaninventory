@@ -46,6 +46,7 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
             yieldUnitType: recipe.yieldUnitType,
             // Exact round trip: what is stored comes back into the box unchanged.
             yieldQty: milliBaseToBaseUnits(recipe.yieldQtyMilliBase),
+            batchMinutes: recipe.batchMinutes === null ? '' : String(recipe.batchMinutes),
             notes: recipe.notes ?? '',
             lines: recipe.lines.map((l) => ({
               sourceId: l.sourceId,

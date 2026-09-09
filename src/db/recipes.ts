@@ -16,7 +16,15 @@
  */
 import { and, eq, isNull, asc, sql as raw } from 'drizzle-orm';
 import { db } from './client.ts';
-import { recipes, recipeLines, ingredients, ingredientStock, menuItems, auditLog } from './schema.ts';
+import {
+  recipes,
+  recipeLines,
+  ingredients,
+  ingredientStock,
+  menuItems,
+  tenants,
+  auditLog,
+} from './schema.ts';
 import {
   MissingCostError,
   explainRecipe,
@@ -25,6 +33,7 @@ import {
   assertLineUnitCompatible,
   type CostLookup,
   type MissingCost,
+  type OverheadRates,
   type Recipe,
   type RecipeExplanation,
 } from '../lib/costing.ts';
@@ -52,6 +61,7 @@ export async function loadRecipeGraph(actor: Actor): Promise<Map<string, Recipe>
         name: recipes.name,
         yieldUnitType: recipes.yieldUnitType,
         yieldQtyMilliBase: recipes.yieldQtyMilliBase,
+        batchMinutes: recipes.batchMinutes,
       })
       .from(recipes)
       .where(and(eq(recipes.tenantId, tenantId), isNull(recipes.deletedAt)))
@@ -89,6 +99,7 @@ export async function loadRecipeGraph(actor: Actor): Promise<Map<string, Recipe>
         name: row.name,
         yieldUnitType: row.yieldUnitType,
         yieldQtyMilliBase: BigInt(row.yieldQtyMilliBase),
+        batchMinutes: row.batchMinutes,
         lines: [],
       },
     ]),
@@ -201,6 +212,69 @@ export async function loadCostLookup(actor: Actor): Promise<CostLookup> {
   };
 }
 
+/**
+ * The tenant's hourly rates, or null when neither has been set.
+ *
+ * Null means "not configured" and the screens say so; it never means zero, because a
+ * total that quietly claims labour is free is the same class of lie as costing an
+ * ingredient nobody has bought at nothing. One rate set and the other not is a real
+ * answer - a cafe may know its wage bill and not its gas - so that half counts as zero
+ * and overhead still applies.
+ */
+export async function loadOverheadRates(actor: Actor): Promise<OverheadRates | null> {
+  assertPermission(actor.role, 'recipes.view');
+  const [row] = await db
+    .select({
+      labour: tenants.labourRatePaisePerHour,
+      kitchen: tenants.kitchenRatePaisePerHour,
+    })
+    .from(tenants)
+    .where(eq(tenants.id, actor.tenantId));
+
+  if (!row || (row.labour === null && row.kitchen === null)) return null;
+  return {
+    labourPaisePerHour: BigInt(row.labour ?? 0),
+    kitchenPaisePerHour: BigInt(row.kitchen ?? 0),
+  };
+}
+
+/** Whole paise per hour, or null to unset. Only an owner or manager sets these. */
+export async function saveOverheadRates(
+  actor: Actor,
+  input: { labourPaisePerHour: bigint | null; kitchenPaisePerHour: bigint | null },
+): Promise<void> {
+  assertPermission(actor.role, 'recipes.manage');
+  for (const value of [input.labourPaisePerHour, input.kitchenPaisePerHour]) {
+    if (value !== null && value < 0n) throw new RangeError('An hourly rate cannot be negative.');
+  }
+
+  await db.transaction(async (tx: Tx) => {
+    await tx
+      .update(tenants)
+      .set({
+        labourRatePaisePerHour:
+          input.labourPaisePerHour === null ? null : Number(input.labourPaisePerHour),
+        kitchenRatePaisePerHour:
+          input.kitchenPaisePerHour === null ? null : Number(input.kitchenPaisePerHour),
+      })
+      .where(eq(tenants.id, actor.tenantId));
+
+    await tx.insert(auditLog).values({
+      tenantId: actor.tenantId,
+      userId: actor.id,
+      action: 'tenant.rates_update',
+      entityType: 'tenant',
+      entityId: actor.tenantId,
+      afterJson: {
+        labourPaisePerHour:
+          input.labourPaisePerHour === null ? null : Number(input.labourPaisePerHour),
+        kitchenPaisePerHour:
+          input.kitchenPaisePerHour === null ? null : Number(input.kitchenPaisePerHour),
+      },
+    });
+  });
+}
+
 /* ---------------------------------------------------------------------------
  * Saving a recipe — where the validators actually fire
  * ------------------------------------------------------------------------- */
@@ -242,6 +316,8 @@ export type RecipeInput = {
   name: string;
   yieldUnitType: UnitType;
   yieldQtyMilliBase: bigint;
+  /** Minutes one batch takes. Null leaves it untimed, and untimed is not zero. */
+  batchMinutes?: number | null;
   notes?: string | null;
   lines: readonly RecipeLineInput[];
 };
@@ -337,6 +413,7 @@ export async function saveRecipe(actor: Actor, input: RecipeInput): Promise<stri
     name: input.name,
     yieldUnitType: input.yieldUnitType,
     yieldQtyMilliBase: input.yieldQtyMilliBase,
+    batchMinutes: input.batchMinutes ?? null,
     lines: input.lines.map((l) => ({
       ingredientId: l.ingredientId ?? null,
       subRecipeId: l.subRecipeId ?? null,
@@ -353,6 +430,7 @@ export async function saveRecipe(actor: Actor, input: RecipeInput): Promise<stri
         name: input.name,
         yieldUnitType: input.yieldUnitType,
         yieldQtyMilliBase: Number(input.yieldQtyMilliBase),
+        batchMinutes: input.batchMinutes ?? null,
         notes: input.notes ?? null,
         updatedAt: new Date(),
       };
@@ -542,9 +620,10 @@ export async function listRecipes(
   actor: Actor,
   opts: { search?: string } = {},
 ): Promise<RecipeListRow[]> {
-  const [graph, lookup, stamps] = await Promise.all([
+  const [graph, lookup, rates, stamps] = await Promise.all([
     loadRecipeGraph(actor),
     loadCostLookup(actor),
+    loadOverheadRates(actor),
     db
       .select({ id: recipes.id, updatedAt: recipes.updatedAt })
       .from(recipes)
@@ -575,7 +654,7 @@ export async function listRecipes(
     try {
       cost = {
         ok: true,
-        rateMillipaisePerBase: recipeRateMillipaisePerBase(recipe.id, graph, lookup, cache),
+        rateMillipaisePerBase: recipeRateMillipaisePerBase(recipe.id, graph, lookup, cache, rates),
       };
     } catch (e) {
       if (!(e instanceof MissingCostError)) throw e;
@@ -608,6 +687,7 @@ export type RecipeEditLine = {
 export type RecipeEdit = {
   id: string;
   name: string;
+  batchMinutes: number | null;
   notes: string | null;
   yieldUnitType: UnitType;
   yieldQtyMilliBase: bigint;
@@ -635,6 +715,7 @@ export async function getRecipeForEdit(actor: Actor, id: string): Promise<Recipe
   return {
     id: recipe.id,
     name: recipe.name,
+    batchMinutes: recipe.batchMinutes ?? null,
     notes: rows[0].notes,
     yieldUnitType: recipe.yieldUnitType,
     yieldQtyMilliBase: recipe.yieldQtyMilliBase,
@@ -765,6 +846,8 @@ export type Breakdown = {
   /** Every ingredient anywhere in the tree, for the what-if control. */
   ingredientsUsed: UsedIngredient[];
   menuItems: MenuItemRow[];
+  /** Null when the tenant has set no hourly rates, so the screen can say so. */
+  rates: OverheadRates | null;
 };
 
 /**
@@ -780,9 +863,10 @@ export async function getRecipeCostBreakdown(
   recipeId: string,
   overrides?: ReadonlyMap<string, bigint>,
 ): Promise<Breakdown | null> {
-  const [graph, realLookup, ingredientRows, menuRows] = await Promise.all([
+  const [graph, realLookup, rates, ingredientRows, menuRows] = await Promise.all([
     loadRecipeGraph(actor),
     loadCostLookup(actor),
+    loadOverheadRates(actor),
     db
       .select({
         id: ingredients.id,
@@ -811,7 +895,7 @@ export async function getRecipeCostBreakdown(
   let explanation: RecipeExplanation | null = null;
   let missing: readonly MissingCost[] | null = null;
   try {
-    explanation = explainRecipe(recipeId, graph, lookup);
+    explanation = explainRecipe(recipeId, graph, lookup, rates);
   } catch (e) {
     if (!(e instanceof MissingCostError)) throw e;
     missing = e.missing;
@@ -857,5 +941,6 @@ export async function getRecipeCostBreakdown(
     sources,
     ingredientsUsed,
     menuItems: menuRows,
+    rates,
   };
 }

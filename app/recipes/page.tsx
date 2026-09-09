@@ -45,9 +45,14 @@ export default async function RecipesPage({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1>Recipes</h1>
           {canManage ? (
-            <Link className="btn" href="/recipes/new">
-              + New recipe
-            </Link>
+            <span className="flex flex-wrap gap-2">
+              <Link className="btn btn--secondary" href="/settings/costing">
+                Hourly rates
+              </Link>
+              <Link className="btn" href="/recipes/new">
+                + New recipe
+              </Link>
+            </span>
           ) : null}
         </div>
         <p className="prose-note">

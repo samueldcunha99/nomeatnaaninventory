@@ -3,7 +3,7 @@
 Conventions for the cafe management system. Read `files/PROJECT-SPEC.md` first — this
 file records what we decided that the spec does not say, and why.
 
-**160 tests passing against a live PostgreSQL, 0 skipped.**
+**165 tests passing against a live PostgreSQL, 0 skipped.**
 
 **Month 1 is complete and verified.** Schema, migrations, seed, unit conversion,
 weighted-average cost, auth, role enforcement, ingredient CRUD, stock receipts /
@@ -496,6 +496,32 @@ Two things follow, and both are load-bearing:
 - **The cache is never the source of truth.** Anything that needs certainty rebuilds. The
   tests check the incremental result against a rebuild, which is the property that keeps
   the snapshot honest.
+
+## Overhead goes inside the rate, and null is never zero
+
+A recipe's cost is its ingredients plus the time the batch takes, priced at two
+tenant-wide hourly rates: labour, and kitchen for gas, power and rent. Time rather than a
+percentage of food cost, because a percentage cannot tell a three-hour dough batch from a
+two-minute chai — it would charge them overhead in proportion to their groceries.
+
+**The overhead joins the batch numerator BEFORE the division by yield**, scaled by
+`CONTRIBUTION_PER_PAISE`. That is not an implementation detail. It is what makes a
+sub-recipe carry its own labour upward, so a roll using 2160 g of a 4200 g dough batch
+carries 2160/4200 of the time that dough took. Add it after the division and every
+sub-recipe's labour is stranded at the bottom of the tree, and every parent is costed as
+though its components made themselves. P26 pins this to the paise.
+
+Rates reach the pure functions as a PARAMETER defaulting to null, exactly like the cost
+lookup — which is why P1–P22 still pass unchanged.
+
+Three states, three different sentences on screen, and none of them is a zero:
+
+- **no rates set** — the tenant has not said what an hour costs
+- **rates set, recipe untimed** — nobody has timed this batch
+- **zero entered** — an assertion that an hour is free, honoured as one
+
+Costing labour at zero because a box was left blank is the same failure as costing an
+unpurchased ingredient at zero. See § Missing cost data is an error, never zero.
 
 ## One implementation of the cost arithmetic
 

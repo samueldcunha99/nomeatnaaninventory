@@ -133,13 +133,58 @@ function Lines({
       <tfoot>
         <tr>
           <th scope="row" className="text-right">
-            Batch total
+            {explanation.overhead.applied ? 'Ingredients' : 'Batch total'}
           </th>
           <td />
           <td className="col-secondary" />
           <td className="num whitespace-nowrap font-bold text-navy">{formatINR(total)}</td>
           <td className="num tabular-nums">100.0%</td>
         </tr>
+
+        {/*
+         * The time in the kitchen, added where the arithmetic adds it. Shown only when
+         * there is time to charge: a row reading "Labour Rs 0.00" would state something
+         * false about an untimed recipe.
+         */}
+        {explanation.overhead.applied ? (
+          <>
+            <tr>
+              <th scope="row" className="text-right font-normal">
+                Labour
+                <span className="block text-xs muted">{explanation.batchMinutes} min</span>
+              </th>
+              <td />
+              <td className="col-secondary" />
+              <td className="num whitespace-nowrap">
+                {formatINR(explanation.overhead.labourPaise)}
+              </td>
+              <td />
+            </tr>
+            <tr>
+              <th scope="row" className="text-right font-normal">
+                Kitchen
+                <span className="block text-xs muted">gas, power, rent</span>
+              </th>
+              <td />
+              <td className="col-secondary" />
+              <td className="num whitespace-nowrap">
+                {formatINR(explanation.overhead.kitchenPaise)}
+              </td>
+              <td />
+            </tr>
+            <tr>
+              <th scope="row" className="text-right">
+                Batch total
+              </th>
+              <td />
+              <td className="col-secondary" />
+              <td className="num whitespace-nowrap font-bold text-navy">
+                {formatINR(explanation.totalBatchPaise)}
+              </td>
+              <td />
+            </tr>
+          </>
+        ) : null}
       </tfoot>
     </table>
   );
@@ -296,8 +341,12 @@ export default async function CostBreakdownPage({
           <>
             <ul className="statgrid">
               <li className="stat">
-                <span className="stat__label">Batch cost</span>
-                <span className="stat__value">{formatINR(view.explanation.batchPaise)}</span>
+                <span className="stat__label">
+                  {view.explanation.overhead.applied ? 'Batch cost, all in' : 'Batch cost'}
+                </span>
+                <span className="stat__value">
+                  {formatINR(view.explanation.totalBatchPaise)}
+                </span>
                 <span className="stat__hint">
                   per {formatQty(view.recipe.yieldQtyMilliBase, view.recipe.yieldUnitType)}
                 </span>
@@ -322,6 +371,28 @@ export default async function CostBreakdownPage({
               at its own rounded rate, which is what keeps these figures consistent with
               the ones inside it.
             </p>
+
+            {/*
+             * Two different silences, and they need different sentences. No rates set is a
+             * settings problem; rates set but this batch untimed is a recipe problem. Both
+             * are stated rather than absorbed into a total that looks complete.
+             */}
+            {!view.rates ? (
+              <p className="prose-note mt-2">
+                <strong>Ingredients only.</strong> Labour and kitchen overhead are not in
+                these figures because no hourly rates are set.{' '}
+                {canManage ? <Link href="/settings/costing">Set them</Link> : 'Ask the owner to set them'}{' '}
+                and every recipe recosts itself.
+              </p>
+            ) : !view.explanation.overhead.applied ? (
+              <p className="prose-note mt-2">
+                <strong>Ingredients only.</strong> This recipe has no batch time, so there
+                is nothing to charge labour or kitchen overhead against.{' '}
+                {canManage ? (
+                  <Link href={`/recipes/${id}/edit`}>Add how long a batch takes</Link>
+                ) : null}
+              </p>
+            ) : null}
 
             {/* ---- What it sells for ------------------------------------- */}
             {view.menuItems.length > 0 ? (
@@ -382,7 +453,9 @@ export default async function CostBreakdownPage({
                           </span>
                         </li>
                         <li className="stat">
-                          <span className="stat__label">Food cost</span>
+                          <span className="stat__label">
+                            {view.explanation!.overhead.applied ? 'Total cost' : 'Food cost'}
+                          </span>
                           <span className="stat__value">
                             {Number.isFinite(m.foodCostPercent) ? `${m.foodCostPercent.toFixed(1)}%` : '—'}
                           </span>

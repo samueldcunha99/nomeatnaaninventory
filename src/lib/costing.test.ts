@@ -22,8 +22,10 @@ import {
   UnitMismatchError,
   MAX_RECIPE_DEPTH,
   explainRecipe,
+  batchOverheadPaise,
   type Recipe,
   type CostLookup,
+  type OverheadRates,
 } from './costing.ts';
 
 /* --------------------------------------------------------------------------
@@ -408,4 +410,133 @@ test('P22 a rate computed over a missing ingredient is never cached', () => {
     () => recipeRateMillipaisePerBase('parent', gr, lookup, cache),
     (e: unknown) => e instanceof MissingCostError && /cardamom/.test(e.message),
   );
+});
+
+/* --------------------------------------------------------------------------
+ * P23-P27 — time in the kitchen
+ *
+ * Rates are paise per hour: labour Rs 80/hr = 8000, kitchen Rs 30/hr = 3000.
+ * ------------------------------------------------------------------------ */
+
+const RATES: OverheadRates = { labourPaisePerHour: 8000n, kitchenPaisePerHour: 3000n };
+
+/** The P3 dough, timed: two hours from bowl to proved. */
+const TIMED_DOUGH: Recipe = { ...DOUGH, batchMinutes: 120 };
+
+test('P23 an hourly rate becomes a batch cost, rounded once', () => {
+  // 120 minutes at Rs 80/hr is exactly Rs 160, and at Rs 30/hr exactly Rs 60.
+  const twoHours = batchOverheadPaise(120, RATES);
+  assert.equal(twoHours.labourPaise, 16_000n);
+  assert.equal(twoHours.kitchenPaise, 6_000n);
+  assert.equal(twoHours.applied, true);
+
+  // 10 minutes at Rs 80/hr is 1333.33 paise. Half-up, once, at the end of its own chain.
+  const tenMinutes = batchOverheadPaise(10, RATES);
+  assert.equal(tenMinutes.labourPaise, 1_333n);
+  assert.equal(tenMinutes.kitchenPaise, 500n);
+});
+
+test('P24 null is not zero: an untimed batch, or no rates, carries no overhead', () => {
+  // A recipe nobody has timed. Costing it at zero labour would be a silent discount.
+  assert.equal(batchOverheadPaise(null, RATES).applied, false);
+  assert.equal(batchOverheadPaise(undefined, RATES).applied, false);
+  // Rates the tenant has never set.
+  assert.equal(batchOverheadPaise(120, null).applied, false);
+  assert.equal(batchOverheadPaise(120, null).labourPaise, 0n);
+
+  // And the rate is the ingredients-only rate in both cases - P3's 13622 exactly.
+  assert.equal(rate('dough', graph(DOUGH)), 13_622n);
+  assert.equal(
+    recipeRateMillipaisePerBase('dough', graph(DOUGH), lookup, new Map(), RATES),
+    13_622n,
+    'a recipe with no batch time must cost the same with rates as without',
+  );
+});
+
+test('P25 a timed batch carries its labour into its own rate', () => {
+  /*
+   * P3's dough is Rs 572.14 of ingredients over 4200 g. Two hours adds Rs 160 of labour
+   * and Rs 60 of kitchen, so the batch is Rs 792.14 and the rate is
+   *   79214 paise / 4200 g = 18.860476 paise/g -> 18860 millipaise/g, half-up.
+   */
+  const g2 = graph(TIMED_DOUGH);
+  assert.equal(recipeRateMillipaisePerBase('dough', g2, lookup, new Map(), RATES), 18_860n);
+
+  const ex = explainRecipe('dough', g2, lookup, RATES);
+  assert.equal(ex.batchPaise, 57_214n, 'the ingredient total must not move');
+  assert.equal(ex.overhead.labourPaise, 16_000n);
+  assert.equal(ex.overhead.kitchenPaise, 6_000n);
+  assert.equal(ex.totalBatchPaise, 79_214n);
+  assert.equal(ex.batchMinutes, 120);
+});
+
+test('P26 a sub-recipe carries its labour upward, in proportion to what is used', () => {
+  /*
+   * THE POINT OF DOING THIS INSIDE THE RATE. The roll uses 2160 g of a 4200 g dough
+   * batch, which is 51.428...% of it, so it must carry that share of the dough's Rs 220
+   * of time: Rs 113.14. Anything that added overhead after the division would strand the
+   * dough's two hours at the bottom of the tree and cost the roll as though the dough
+   * made itself.
+   */
+  const ROLL: Recipe = {
+    ...r('roll', 12, 'count', [
+      ['dough', 2160],
+      ['cinnamon', 60],
+      ['brown', 240],
+      ['butter', 120],
+    ]),
+    batchMinutes: 30,
+  };
+  const g2 = graph(TIMED_DOUGH, ROLL);
+
+  const withTime = explainRecipe('roll', g2, lookup, RATES);
+  const doughLine = withTime.lines.find((l) => l.sourceId === 'dough')!;
+  assert.equal(doughLine.contributionPaise, 40_738n);
+
+  const withoutTime = explainRecipe('roll', graph(DOUGH, { ...ROLL, batchMinutes: null }), lookup);
+  const plainLine = withoutTime.lines.find((l) => l.sourceId === 'dough')!;
+  assert.equal(plainLine.contributionPaise, 29_424n);
+
+  // 2160/4200 of Rs 220 is Rs 113.14, to the paise.
+  assert.equal(doughLine.contributionPaise - plainLine.contributionPaise, 11_314n);
+
+  // The roll's own half hour: Rs 40 of labour, Rs 15 of kitchen.
+  assert.equal(withTime.overhead.labourPaise, 4_000n);
+  assert.equal(withTime.overhead.kitchenPaise, 1_500n);
+  assert.equal(withTime.batchPaise, 54_298n);
+  assert.equal(withTime.totalBatchPaise, 59_798n);
+});
+
+test('P27 the total is what a portion is measured against', () => {
+  const ROLL: Recipe = {
+    ...r('roll', 12, 'count', [
+      ['dough', 2160],
+      ['cinnamon', 60],
+      ['brown', 240],
+      ['butter', 120],
+    ]),
+    batchMinutes: 30,
+  };
+  const g2 = graph(TIMED_DOUGH, ROLL);
+  const rateWithTime = recipeRateMillipaisePerBase('roll', g2, lookup, new Map(), RATES);
+
+  // One roll of a batch of twelve: 4983133 millipaise per unit x 1 unit -> Rs 49.83.
+  const perRoll = portionCostPaise(rateWithTime, g(1));
+  assert.equal(perRoll, 4_983n);
+
+  // Sold at Rs 350, the margin is what is left after the flour AND the baker.
+  const m = menuItemMargin(perRoll, 35_000n);
+  assert.equal(m.marginPaise, 30_017n);
+
+  /*
+   * Against Rs 35.82 when only the ingredients are counted - P7's 3581960 millipaise per
+   * roll, to the paise. The difference, Rs 14.01, is the baker and the oven, and it is
+   * 28% of what the roll actually costs. Costing without it is not a rounding error.
+   */
+  const ingredientsOnly = portionCostPaise(
+    recipeRateMillipaisePerBase('roll', graph(DOUGH, { ...ROLL, batchMinutes: null }), lookup),
+    g(1),
+  );
+  assert.equal(ingredientsOnly, 3_582n);
+  assert.equal(perRoll - ingredientsOnly, 1_401n);
 });

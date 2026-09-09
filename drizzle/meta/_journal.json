@@ -36,6 +36,13 @@
       "when": 1788959511728,
       "tag": "0004_white_newton_destine",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788965176822,
+      "tag": "0005_outstanding_smasher",
+      "breakpoints": true
     }
   ]
 }

@@ -55,6 +55,17 @@ const Recipe = z.object({
   name: z.string().trim().min(1, 'A recipe needs a name.').max(120),
   yieldUnitType: UNIT,
   yieldQty: z.string().trim().min(1, 'Enter what one batch yields.'),
+  /*
+   * Blank is a real answer and it is NOT zero: an untimed recipe is costed on its
+   * ingredients alone and says so on screen. Costing labour at nothing would be a silent
+   * discount on every item that uses it.
+   */
+  batchMinutes: z
+    .string()
+    .trim()
+    .regex(/^\d*$/, 'Batch time is a whole number of minutes, or blank.')
+    .transform((v) => (v === '' ? null : Number(v)))
+    .refine((v) => v === null || (v > 0 && v <= 24 * 60), 'A batch takes between 1 and 1440 minutes.'),
   notes: z.string().trim().max(2000).nullable(),
   lines: z.array(Line).min(1, 'A recipe needs at least one line.'),
 });
@@ -92,6 +103,7 @@ export async function saveRecipeAction(_prev: FormState, formData: FormData): Pr
     name: formData.get('name'),
     yieldUnitType: formData.get('yieldUnitType'),
     yieldQty: formData.get('yieldQty'),
+    batchMinutes: String(formData.get('batchMinutes') ?? '').trim(),
     notes: String(formData.get('notes') ?? '').trim() || null,
     lines: collectLines(formData),
   });
@@ -115,6 +127,7 @@ export async function saveRecipeAction(_prev: FormState, formData: FormData): Pr
       name: parsed.data.name,
       yieldUnitType: parsed.data.yieldUnitType,
       yieldQtyMilliBase: baseUnitsToMilliBase(parsed.data.yieldQty),
+      batchMinutes: parsed.data.batchMinutes,
       notes: parsed.data.notes,
       lines,
     });

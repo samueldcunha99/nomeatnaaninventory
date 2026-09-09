@@ -51,7 +51,58 @@ export type Recipe = {
   yieldUnitType: UnitType;
   yieldQtyMilliBase: bigint;
   lines: readonly RecipeLine[];
+  /**
+   * How long one batch occupies the kitchen, in minutes. Optional, and null is NOT zero:
+   * a recipe nobody has timed cannot have its labour costed, and the screens say so
+   * rather than quietly costing it at nothing.
+   */
+  batchMinutes?: number | null;
 };
+
+/**
+ * What an hour of making things costs, before any ingredient is touched. Tenant-wide,
+ * because a wage is not a property of a cinnamon roll.
+ *
+ * Both are per hour of BATCH TIME, which is the honest allocator available here: a
+ * three-hour dough batch really does consume more wages and more oven gas than a
+ * two-minute chai, and charging overhead in proportion to grocery cost instead would say
+ * the opposite. Anything finer needs production volume, which arrives with orders.
+ */
+export type OverheadRates = {
+  /** Wages, per hour of batch time. */
+  labourPaisePerHour: bigint;
+  /** Gas, power, rent and the rest of the kitchen, per hour of batch time. */
+  kitchenPaisePerHour: bigint;
+};
+
+export type BatchOverhead = {
+  labourPaise: bigint;
+  kitchenPaise: bigint;
+  /** False when the batch has no time set, or the tenant has set no rates. */
+  applied: boolean;
+};
+
+export const NO_OVERHEAD: BatchOverhead = { labourPaise: 0n, kitchenPaise: 0n, applied: false };
+
+/**
+ * What one batch costs in time. Rounded to whole paise HERE, which is the end of its own
+ * chain - minutes times an hourly rate is money, and the figure printed on the breakdown
+ * has to be the figure inside the total. Same reasoning as a sub-recipe's rounded rate;
+ * see AGENTS.md, Nested rounding.
+ */
+export function batchOverheadPaise(
+  batchMinutes: number | null | undefined,
+  rates: OverheadRates | null,
+): BatchOverhead {
+  if (batchMinutes == null || rates == null) return NO_OVERHEAD;
+  if (batchMinutes < 0) throw new RangeError('a batch cannot take negative time');
+  const minutes = BigInt(batchMinutes);
+  return {
+    labourPaise: divRoundHalfUp(minutes * rates.labourPaisePerHour, 60n),
+    kitchenPaise: divRoundHalfUp(minutes * rates.kitchenPaisePerHour, 60n),
+    applied: true,
+  };
+}
 
 /**
  * Millipaise per base unit for one ingredient. THROWS when the ingredient has no cost
@@ -128,8 +179,11 @@ export function recipeRateMillipaisePerBase(
   recipes: ReadonlyMap<string, Recipe>,
   lookup: CostLookup,
   cache: Map<string, bigint> = new Map(),
+  // A cache is keyed by recipe alone, so it is shareable only across calls using the SAME
+  // rates. Every caller that shares one costs a whole catalogue, where they are constant.
+  rates: OverheadRates | null = null,
 ): bigint {
-  const ctx: Ctx = { recipes, lookup, cache, missing: [] };
+  const ctx: Ctx = { recipes, lookup, cache, missing: [], rates };
   const rate = rateOf(recipeId, ctx, []);
   // Collected across the whole tree, then thrown once, so the operator gets the full list
   // rather than one name per attempt.
@@ -142,6 +196,8 @@ type Ctx = {
   lookup: CostLookup;
   cache: Map<string, bigint>;
   missing: MissingCost[];
+  /** Null costs ingredients only, which is what every paper case P1-P22 does. */
+  rates: OverheadRates | null;
 };
 
 /** One line's contribution, before any rounding. See CONTRIBUTION_PER_PAISE. */
@@ -188,6 +244,19 @@ function rateOf(recipeId: string, ctx: Ctx, stack: readonly string[], terms?: Te
     terms?.push({ line, unitRate, numerator: term });
     numerator += term;
   }
+
+  /*
+   * Time in the kitchen, folded into the same numerator the ingredients built.
+   *
+   * CONTRIBUTION_PER_PAISE is exactly the factor that turns one paise into this
+   * numerator's units, so this is an exact addition rather than a second scale to keep
+   * straight. Doing it HERE, before the division by yield, is what makes overhead flow
+   * upward: a sub-recipe's labour is inside its rate, so a parent buying 2160 g of a
+   * 4200 g dough batch carries 2160/4200 of the time that dough took. Adding it after
+   * the division would strand every sub-recipe's labour at the bottom of the tree.
+   */
+  const overhead = batchOverheadPaise(recipe.batchMinutes, ctx.rates);
+  numerator += (overhead.labourPaise + overhead.kitchenPaise) * CONTRIBUTION_PER_PAISE;
 
   // (batch millipaise) / (yield in base units), as one exact quotient:
   //   N / (MILLI x WASTAGE_SCALE)  divided by  yieldMilli / MILLI
@@ -251,7 +320,18 @@ export type RecipeExplanation = {
    * this number — rounding the rate is what makes the nested breakdown add up at all.
    * See AGENTS.md § Nested rounding.
    */
+  /**
+   * INGREDIENTS ONLY. What the time in the kitchen costs is below it, and
+   * `totalBatchPaise` is the two together - which is what a menu item is measured
+   * against, because a roll that took ninety minutes of somebody's day did not cost
+   * only its flour.
+   */
   batchPaise: bigint;
+  /** Minutes one batch takes, or null when nobody has timed it. Null is not zero. */
+  batchMinutes: number | null;
+  overhead: BatchOverhead;
+  /** Ingredients plus labour plus kitchen. What making one batch actually costs. */
+  totalBatchPaise: bigint;
   rateMillipaisePerBase: bigint;
 };
 
@@ -260,8 +340,9 @@ export function explainRecipe(
   recipeId: string,
   recipes: ReadonlyMap<string, Recipe>,
   lookup: CostLookup,
+  rates: OverheadRates | null = null,
 ): RecipeExplanation {
-  const ctx: Ctx = { recipes, lookup, cache: new Map(), missing: [] };
+  const ctx: Ctx = { recipes, lookup, cache: new Map(), missing: [], rates };
   const out = explain(recipeId, ctx, []);
   if (ctx.missing.length > 0) throw new MissingCostError(ctx.missing);
   return out;
@@ -273,6 +354,7 @@ function explain(recipeId: string, ctx: Ctx, stack: readonly string[]): RecipeEx
   const rate = rateOf(recipeId, ctx, stack, terms);
   const path = [...stack, recipe.name];
 
+  const overhead = batchOverheadPaise(recipe.batchMinutes, ctx.rates);
   const lines: CostLine[] = terms.map((t) => ({
     kind: t.line.subRecipeId ? 'sub-recipe' : 'ingredient',
     sourceId: (t.line.subRecipeId ?? t.line.ingredientId)!,
@@ -287,13 +369,18 @@ function explain(recipeId: string, ctx: Ctx, stack: readonly string[]): RecipeEx
     children: t.line.subRecipeId ? explain(t.line.subRecipeId, ctx, path) : null,
   }));
 
+  const batchPaise = lines.reduce((sum, l) => sum + l.contributionPaise, 0n);
+
   return {
     recipeId,
     name: recipe.name,
     yieldUnitType: recipe.yieldUnitType,
     yieldQtyMilliBase: recipe.yieldQtyMilliBase,
     lines,
-    batchPaise: lines.reduce((sum, l) => sum + l.contributionPaise, 0n),
+    batchPaise,
+    batchMinutes: recipe.batchMinutes ?? null,
+    overhead,
+    totalBatchPaise: batchPaise + overhead.labourPaise + overhead.kitchenPaise,
     rateMillipaisePerBase: rate,
   };
 }
@@ -302,10 +389,13 @@ function explain(recipeId: string, ctx: Ctx, stack: readonly string[]): RecipeEx
 export function costCatalogue(
   recipes: ReadonlyMap<string, Recipe>,
   lookup: CostLookup,
+  rates: OverheadRates | null = null,
 ): Map<string, bigint> {
   const cache = new Map<string, bigint>();
   const out = new Map<string, bigint>();
-  for (const id of recipes.keys()) out.set(id, recipeRateMillipaisePerBase(id, recipes, lookup, cache));
+  for (const id of recipes.keys()) {
+    out.set(id, recipeRateMillipaisePerBase(id, recipes, lookup, cache, rates));
+  }
   return out;
 }
 

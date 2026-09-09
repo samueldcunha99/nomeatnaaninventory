@@ -1692,3 +1692,98 @@ are designed rather than after.
 
 160 tests, 0 failures, 0 skipped — four new, all four of them proven to fail when the fix
 is removed. `next build` exits 0, 15 routes. `docker build --target runtime` completes.
+
+### 2026-09-09 — Overhead: what a batch costs in time
+
+The recipe builder costed ingredients. It now costs the kitchen as well, which is what the
+owner meant by "everything that makes up the total cost". **Not in PROJECT-SPEC** — the
+spec tracks food cost and gross margin only — so this is scope added deliberately, on
+request.
+
+#### The model, and why not a percentage
+
+Chosen from three: a flat percentage on food cost, free-text cost lines per recipe, or
+**time in the kitchen**. Time won because it is the only one that can tell a three-hour
+dough batch from a two-minute chai. A percentage charges overhead in proportion to
+groceries, which says the chai and the rolls carry it in the same ratio as their flour —
+the opposite of the truth. Free-text lines mean retyping wages onto every recipe, and
+re-editing all of them when wages change.
+
+So: two tenant-wide rates in rupees per hour (labour, and kitchen for gas, power and rent),
+and one number per recipe — how long a batch takes.
+
+#### Overhead goes inside the rate, not on the end
+
+`batchOverheadPaise(minutes, rates)` rounds labour and kitchen to whole paise once each, at
+the end of their own chain, and `rateOf` adds them to the batch numerator **before** the
+division by yield:
+
+```
+numerator += (labourPaise + kitchenPaise) * CONTRIBUTION_PER_PAISE
+```
+
+`CONTRIBUTION_PER_PAISE` is exactly the factor that turns one paise into the numerator's
+units, so it is an exact addition rather than a second scale to keep straight.
+
+Doing it there is the whole design. It is what makes **a sub-recipe carry its own labour
+upward**: a roll using 2160 g of a 4200 g dough batch carries 2160/4200 of the time that
+dough took, without anyone entering it twice. Adding overhead after the division would
+strand the dough's two hours at the bottom of the tree and cost the roll as though the
+dough had made itself. P26 pins it to the paise.
+
+The seam is the one the cost lookup already uses: rates are a PARAMETER to the pure
+functions, defaulting to null. Every paper case P1–P22 passes untouched, because they pass
+no rates.
+
+#### Null is not zero, in three places
+
+A recipe with no batch time, a tenant with no rates, and a rate of zero are three different
+statements, and the screens keep them apart:
+
+- **No rates set** — "Ingredients only. Labour and kitchen overhead are not in these
+  figures because no hourly rates are set", with a link to set them.
+- **Rates set, recipe untimed** — "This recipe has no batch time, so there is nothing to
+  charge labour or kitchen overhead against", with a link to the editor.
+- **Zero entered** — an assertion that an hour costs nothing, honoured as one.
+
+Costing labour at zero because nobody filled in a box is the same class of error as costing
+an ingredient nobody has bought at zero, which AGENTS.md has forbidden since Month 1.
+
+#### What it looks like
+
+The breakdown's footer became the build-up: ingredients, then Labour with the minutes
+beside it, then Kitchen, then the batch total. The headline tile says "Batch cost, all in"
+only when the time is actually in it. A menu item's tile stops saying "Food cost" and says
+"Total cost", because once the baker is in the figure it is not a food cost any more.
+
+`/settings/costing` holds the two rates, with the arithmetic for working them out in the
+hint text — a baker on ₹16,000 a month over 26 days of 8 hours is about ₹77 an hour.
+
+#### Verified end to end, through the real forms
+
+Rates set to ₹80/hr labour and ₹30/hr kitchen through the settings form, then the demo
+dough timed at 120 minutes through the recipe editor:
+
+```
+                      before          after
+  Dough batch        ₹581.84        ₹801.84      +160 labour, +60 kitchen
+  Dough rate         ₹138.53/kg     ₹190.91/kg
+  Cinnamon roll      ₹437.22        ₹550.37      +113.15, inherited
+```
+
+₹113.15 is 2160/4200 of the dough's ₹220. **Nobody entered labour on the roll.** The
+owner's own "pizza" recipe went from ₹934.82 to ₹1,099.82 at 90 minutes, which is ₹120 of
+labour and ₹45 of kitchen, exactly.
+
+Both silences were exercised too: before any rates the breakdown said ingredients only and
+linked to the settings; with rates but no batch time it said the recipe was untimed.
+
+#### Verified
+
+165 tests, 0 failures, 0 skipped — five new paper cases P23–P27, hand-computed from the
+rules before the code ran. One of them disagreed with the implementation, and **the
+expectation was wrong**: ₹36.44 came from the seeded demo, where butter is ₹520/kg, while
+the paper fixture prices it at ₹500. P7 already pinned that rate at 3581960 millipaise, so
+the expectation was corrected to ₹35.82 rather than the code being bent to meet it.
+
+`next build` exits 0, 16 routes.

@@ -19,6 +19,8 @@ export type RecipeFormValues = {
   yieldUnitType: UnitType;
   /** Decimal strings throughout - never a float. The action converts, once. */
   yieldQty: string;
+  /** Whole minutes, or '' for a recipe nobody has timed. */
+  batchMinutes: string;
   notes: string;
   lines: Array<{ sourceId: string; quantity: string; wastage: string }>;
 };
@@ -173,6 +175,29 @@ export function RecipeForm({
           behind yields 4200 g — that loss belongs here, not on a line.
         </p>
       </fieldset>
+
+      <div className="field max-w-xs">
+        <label className="label" htmlFor="batchMinutes">
+          Batch takes <span className="font-normal muted">(optional)</span>
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            className="input w-28 tabular-nums"
+            id="batchMinutes"
+            name="batchMinutes"
+            defaultValue={initial?.batchMinutes}
+            inputMode="numeric"
+            placeholder="90"
+            aria-describedby="batch-hint"
+          />
+          <span className="text-sm font-medium text-ink">minutes</span>
+        </div>
+        <p id="batch-hint" className="prose-note mt-1">
+          Start to finish, including proving and baking. Labour and kitchen overhead are
+          charged on this time. Leave it blank and the recipe is costed on its ingredients
+          alone — the breakdown will say so rather than pretend the time was free.
+        </p>
+      </div>
 
       <h2 className="section-title">What goes into it</h2>
       <p className="prose-note">

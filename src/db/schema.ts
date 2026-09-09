@@ -5,6 +5,7 @@ import {
   text,
   bigint,
   bigserial,
+  integer,
   boolean,
   timestamp,
   jsonb,
@@ -112,6 +113,21 @@ export const tenants = pgTable('tenants', {
   name: text('name').notNull(),
   timezone: text('timezone').notNull().default('Asia/Kolkata'),
   currency: text('currency').notNull().default('INR'),
+  /**
+   * What an hour of making things costs, before an ingredient is touched. Whole paise per
+   * hour of batch time, both of them.
+   *
+   * NULLABLE, and null is not zero: a cafe that has not told us its wage bill gets recipe
+   * costs that say "ingredients only" on screen, rather than a total that silently claims
+   * labour is free. Same rule as a missing purchase price.
+   *
+   * Tenant-wide because a wage is not a property of a cinnamon roll, and per HOUR because
+   * batch time is the honest allocator available before order volumes exist: a three-hour
+   * dough batch really does consume more wages and more oven gas than a two-minute chai.
+   */
+  labourRatePaisePerHour: paise('labour_rate_paise_per_hour'),
+  /** Gas, power, rent and the rest of the kitchen, per hour of batch time. */
+  kitchenRatePaisePerHour: paise('kitchen_rate_paise_per_hour'),
   createdAt: createdAt(),
 });
 
@@ -406,6 +422,12 @@ export const recipes = pgTable(
      */
     yieldUnitType: unitType('yield_unit_type').notNull(),
     yieldQtyMilliBase: milliBase('yield_qty_milli_base').notNull(),
+    /**
+     * How long one batch occupies the kitchen, in whole minutes. Nullable, and null is
+     * NOT zero: an untimed recipe is costed on its ingredients alone and says so, because
+     * costing labour at nothing is a silent discount on every item that uses it.
+     */
+    batchMinutes: integer('batch_minutes'),
     notes: text('notes'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
