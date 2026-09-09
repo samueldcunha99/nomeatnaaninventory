@@ -160,3 +160,174 @@ test('T12 - a multi-line receipt with one bad line rolls back entirely', async (
   const afterAll = await db.select().from(ingredientStock).where(eq(ingredientStock.tenantId, tenantId));
   assert.equal(afterAll.length, before.length, 'ingredient_stock must be unchanged for all three');
 });
+
+/* --------------------------------------------------------------------------
+ * Two people at once, and the watermark that makes the cache cheap
+ * ------------------------------------------------------------------------ */
+
+/** The state the ledger says is true, computed the long way round. */
+async function rebuildOf(ingredientId: string) {
+  return db.transaction((tx) => recalculateStock(tx, tenantId, ingredientId, { rebuild: true }));
+}
+
+const purchase = (ingredientId: string, qty: number, unitCost: number): MovementInput => ({
+  tenantId,
+  ingredientId,
+  movementType: 'purchase',
+  quantityMilliBase: qty,
+  unitCostMillipaisePerBase: unitCost,
+  totalCostPaise: Math.round((qty * unitCost) / 1_000_000),
+  createdByUserId: userId,
+});
+
+test('two receipts for one ingredient at the same moment cannot lose a movement', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const ing = await makeIngredient('Contended butter');
+
+  /*
+   * The failure this pins down: both transactions read the ledger before either commits,
+   * so the second one computes its new state without the first one's movement in it and
+   * then overwrites the cache. Stock and cost are both wrong afterwards, silently.
+   *
+   * The interleaving is forced rather than hoped for. The first transaction is held open
+   * after it has written, the second is started and given time to reach the ledger read,
+   * and only then is the first allowed to commit. Without the advisory lock this fails
+   * every run, not one in ten.
+   */
+  let firstHasWritten!: () => void;
+  let releaseFirst!: () => void;
+  const written = new Promise<void>((resolve) => (firstHasWritten = resolve));
+  const held = new Promise<void>((resolve) => (releaseFirst = resolve));
+
+  const first = db.transaction(async (tx) => {
+    await recordMovements([purchase(ing, 5_000_000, 50_000)], tx);
+    firstHasWritten();
+    await held;
+  });
+
+  await written;
+  const second = db.transaction(async (tx) => {
+    await recordMovements([purchase(ing, 3_000_000, 60_000)], tx);
+  });
+
+  // Long enough for the second transaction to have blocked on the lock - or, without
+  // one, to have read the ledger and computed a state that is missing the first receipt.
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  releaseFirst();
+  await Promise.all([first, second]);
+
+  const [cached] = await db
+    .select()
+    .from(ingredientStock)
+    .where(and(eq(ingredientStock.tenantId, tenantId), eq(ingredientStock.ingredientId, ing)));
+  const truth = await rebuildOf(ing);
+
+  // 5 kg at 50000 then 3 kg at 60000: 8 kg, and (5x50000 + 3x60000)/8 = 53750.
+  assert.equal(BigInt(cached.qtyMilliBase), 8_000_000n, 'a movement was lost from the cache');
+  assert.equal(BigInt(cached.weightedAvgCostMillipaisePerBase), 53_750n);
+  assert.equal(BigInt(cached.qtyMilliBase), truth.qtyMilliBase);
+  assert.equal(
+    BigInt(cached.weightedAvgCostMillipaisePerBase),
+    truth.weightedAvgCostMillipaisePerBase,
+  );
+});
+
+test('concurrent receipts across many ingredients still agree with the ledger', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const a = await makeIngredient('Race maida');
+  const b = await makeIngredient('Race sugar');
+
+  // Both receipts name both ingredients, in opposite orders. Locks are taken sorted, so
+  // this queues instead of deadlocking - which is the whole reason they are sorted.
+  await Promise.all([
+    recordMovements([purchase(a, 1_000_000, 4_000), purchase(b, 2_000_000, 7_000)]),
+    recordMovements([purchase(b, 2_000_000, 9_000), purchase(a, 1_000_000, 6_000)]),
+  ]);
+
+  for (const ing of [a, b]) {
+    const [cached] = await db
+      .select()
+      .from(ingredientStock)
+      .where(and(eq(ingredientStock.tenantId, tenantId), eq(ingredientStock.ingredientId, ing)));
+    const truth = await rebuildOf(ing);
+    assert.equal(BigInt(cached.qtyMilliBase), truth.qtyMilliBase);
+    assert.equal(
+      BigInt(cached.weightedAvgCostMillipaisePerBase),
+      truth.weightedAvgCostMillipaisePerBase,
+    );
+  }
+});
+
+test('the incremental fold and a full rebuild stay identical over many movements', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const ing = await makeIngredient('Watermark walnut');
+
+  // Prices and quantities chosen to make the average move to something that does not
+  // divide evenly, so a rounding difference between the two paths would show up.
+  for (let i = 1; i <= 12; i++) {
+    await recordMovements([purchase(ing, 300_000 + i * 7_000, 40_000 + i * 313)]);
+    await recordMovements([
+      {
+        tenantId,
+        ingredientId: ing,
+        movementType: 'wastage',
+        quantityMilliBase: -11_000,
+        reason: 'spoilage',
+        createdByUserId: userId,
+      },
+    ]);
+  }
+
+  const [cached] = await db
+    .select()
+    .from(ingredientStock)
+    .where(and(eq(ingredientStock.tenantId, tenantId), eq(ingredientStock.ingredientId, ing)));
+
+  const movements = await db
+    .select({ seq: stockMovements.seq })
+    .from(stockMovements)
+    .where(and(eq(stockMovements.tenantId, tenantId), eq(stockMovements.ingredientId, ing)));
+
+  // The watermark is at the end of the ledger, not somewhere behind it.
+  assert.equal(
+    Number(cached.snapshotSeq),
+    Math.max(...movements.map((m) => Number(m.seq))),
+    'the cache is not caught up with the ledger it claims to summarise',
+  );
+
+  const truth = await rebuildOf(ing);
+  assert.equal(BigInt(cached.qtyMilliBase), truth.qtyMilliBase);
+  assert.equal(
+    BigInt(cached.weightedAvgCostMillipaisePerBase),
+    truth.weightedAvgCostMillipaisePerBase,
+    'folding since the watermark disagreed with folding the whole ledger',
+  );
+});
+
+test('recalculating with nothing new to fold changes nothing', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const ing = await makeIngredient('Idempotent salt');
+  await recordMovements([purchase(ing, 2_000_000, 2_200)]);
+
+  const before = await db
+    .select()
+    .from(ingredientStock)
+    .where(and(eq(ingredientStock.tenantId, tenantId), eq(ingredientStock.ingredientId, ing)));
+
+  // Twice, because an incremental fold that re-read its own movements would double the
+  // stock on the first repeat and keep going on the second.
+  await db.transaction((tx) => recalculateStock(tx, tenantId, ing));
+  await db.transaction((tx) => recalculateStock(tx, tenantId, ing));
+
+  const after = await db
+    .select()
+    .from(ingredientStock)
+    .where(and(eq(ingredientStock.tenantId, tenantId), eq(ingredientStock.ingredientId, ing)));
+
+  assert.equal(after[0].qtyMilliBase, before[0].qtyMilliBase);
+  assert.equal(
+    after[0].weightedAvgCostMillipaisePerBase,
+    before[0].weightedAvgCostMillipaisePerBase,
+  );
+  assert.equal(after[0].snapshotSeq, before[0].snapshotSeq);
+});

@@ -1,6 +1,9 @@
 /**
- * End-to-end replay cost: 50,000 rows pulled out of Postgres and folded, which is what
- * recalculateStock() actually does on every movement insert.
+ * End-to-end cost of maintaining the stock cache, at four ledger sizes.
+ *
+ * Since snapshotting (2026-09-09) there are two paths worth measuring: a full rebuild
+ * from the whole ledger, and the incremental fold that a real movement triggers. The
+ * first is what the cache is verified against; the second is what happens in a shift.
  *
  * The in-memory fold is ~2 ms at this size (src/lib/stock.bench.test.ts). This measures
  * the part that number deliberately excluded - the fetch.
@@ -12,8 +15,15 @@
  */
 import { and, eq } from 'drizzle-orm';
 import { db, sql } from '../src/db/client.ts';
-import { tenants, users, ingredients, stockMovements, ingredientStock } from '../src/db/schema.ts';
-import { recalculateStock } from '../src/db/stock.ts';
+import {
+  tenants,
+  users,
+  ingredients,
+  stockMovements,
+  ingredientStock,
+  auditLog,
+} from '../src/db/schema.ts';
+import { recalculateStock, recordMovements } from '../src/db/stock.ts';
 
 const SIZES = [1_000, 10_000, 50_000, 100_000];
 const CHUNK = 2_000;
@@ -30,7 +40,7 @@ const [user] = await db
   })
   .returning();
 
-console.log(`size      fetch+fold (median of 5)   per movement`);
+console.log('size        rebuild      incremental      speedup');
 
 for (const size of SIZES) {
   const [ing] = await db
@@ -61,18 +71,45 @@ for (const size of SIZES) {
     await db.insert(stockMovements).values(rows);
   }
 
-  const runs: number[] = [];
+  // Two numbers, because there are now two paths and only one of them runs in a shift.
+  //
+  // REBUILD is the old behaviour: fold the whole ledger from empty. It is what the cache
+  // is checked against, and what a repair would cost.
+  //
+  // INCREMENTAL is what recording a movement actually does now: fold only what arrived
+  // since the watermark, which is the one row just written. It is measured by writing a
+  // real movement each time, because a recalculation with nothing new to fold would
+  // measure an empty query and flatter the result.
+  const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+
+  const rebuilds: number[] = [];
   for (let r = 0; r < 5; r++) {
     const t = performance.now();
-    await db.transaction((tx) => recalculateStock(tx, tenant.id, ing.id));
-    runs.push(performance.now() - t);
+    await db.transaction((tx) => recalculateStock(tx, tenant.id, ing.id, { rebuild: true }));
+    rebuilds.push(performance.now() - t);
   }
-  runs.sort((a, b) => a - b);
-  const median = runs[2];
+
+  const increments: number[] = [];
+  for (let r = 0; r < 5; r++) {
+    const t = performance.now();
+    await recordMovements([
+      {
+        tenantId: tenant.id,
+        ingredientId: ing.id,
+        movementType: 'consumption',
+        quantityMilliBase: -1_000,
+        createdByUserId: user.id,
+      },
+    ]);
+    increments.push(performance.now() - t);
+  }
+
+  const cold = median(rebuilds);
+  const warm = median(increments);
   console.log(
-    `${String(size).padEnd(9)} ${median.toFixed(0).padStart(6)} ms` +
-      `  (min ${runs[0].toFixed(0)}, max ${runs[4].toFixed(0)})`.padEnd(22) +
-      ` ${((median * 1000) / size).toFixed(1)} us`,
+    `${String(size).padEnd(9)} ${cold.toFixed(0).padStart(8)} ms` +
+      `${warm.toFixed(1).padStart(13)} ms` +
+      `${(cold / Math.max(warm, 0.01)).toFixed(0).padStart(11)}x`,
   );
 
   await db.delete(ingredientStock).where(and(eq(ingredientStock.tenantId, tenant.id), eq(ingredientStock.ingredientId, ing.id)));
@@ -80,6 +117,8 @@ for (const size of SIZES) {
   await db.delete(ingredients).where(and(eq(ingredients.tenantId, tenant.id), eq(ingredients.id, ing.id)));
 }
 
+// recordMovements writes an audit entry per operation, and those reference the user.
+await db.delete(auditLog).where(eq(auditLog.tenantId, tenant.id));
 await db.delete(users).where(eq(users.tenantId, tenant.id));
 await db.delete(tenants).where(eq(tenants.id, tenant.id));
 await sql.end();

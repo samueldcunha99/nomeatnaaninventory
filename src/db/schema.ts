@@ -317,6 +317,18 @@ export const ingredientStock = pgTable(
     weightedAvgCostMillipaisePerBase: millipaisePerBase('weighted_avg_cost_millipaise_per_base')
       .notNull()
       .default(0),
+    /**
+     * The seq of the last movement folded into this row - the snapshot watermark.
+     *
+     * Without it every insert replays an ingredient's entire ledger, which is 87 ms at
+     * 50k movements and grows forever (AGENTS.md, Ledger replay cost). With it the
+     * ordinary path folds only what arrived since, and a full rebuild is still one call
+     * away for when the cache has to be re-derived from the source of truth.
+     *
+     * This is a derived value like the two above it. It never makes the cache the truth:
+     * the ledger is, and `recalculateStock(..., { rebuild: true })` proves it on demand.
+     */
+    snapshotSeq: bigint('snapshot_seq', { mode: 'number' }).notNull().default(0),
     updatedAt: updatedAt(),
   },
   (t) => [

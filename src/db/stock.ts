@@ -6,26 +6,95 @@
  * replayLedger(), so they cannot disagree about a number. The only divergence left
  * possible is a write that did not happen, and that is what the tests here check.
  */
-import { and, eq, asc } from 'drizzle-orm';
+import { and, eq, asc, gt, sql as raw } from 'drizzle-orm';
 import { db } from './client.ts';
 import { stockMovements, ingredientStock, auditLog } from './schema.ts';
-import { replayLedger, type Movement } from '../lib/stock.ts';
+import { replayLedger, EMPTY_STOCK, type Movement, type StockState } from '../lib/stock.ts';
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /**
- * Rebuild one ingredient's cached stock from the ledger, and write it back.
- * Must run inside the same transaction as whatever movement triggered it.
+ * Serialise everything that touches one ingredient's ledger.
+ *
+ * WHY THIS EXISTS. The cache is derived by reading the ledger and writing the result
+ * back. Two transactions doing that concurrently on the same ingredient both read before
+ * either commits, and the second write overwrites the first one's movement out of the
+ * cache: stock and weighted-average cost both end up wrong, silently, and stay wrong
+ * until somebody rebuilds. A row lock on ingredient_stock does NOT fix it - by the time
+ * the second transaction blocks on the write, it has already read a stale ledger, and
+ * the row may not exist yet on a first purchase.
+ *
+ * The lock is taken BEFORE the movement is inserted, not just before the read, which
+ * additionally keeps `seq` assignment in the same order as commits. That matters for the
+ * watermark below: if a transaction could commit a movement with a seq LOWER than one
+ * already folded in, the next incremental fold would skip it forever.
+ *
+ * Transaction-scoped, so it is released on commit or rollback with no unlock path to
+ * forget. Callers take these in a deterministic order (sorted by ingredient) so two
+ * multi-line receipts naming the same ingredients cannot deadlock.
  */
-export async function recalculateStock(tx: Tx, tenantId: string, ingredientId: string) {
+async function lockIngredient(tx: Tx, tenantId: string, ingredientId: string) {
+  await tx.execute(raw`select pg_advisory_xact_lock(hashtextextended(${`${tenantId}:${ingredientId}`}, 0))`);
+}
+
+/**
+ * Bring one ingredient's cached stock up to date with the ledger, and write it back.
+ * Must run inside the same transaction as whatever movement triggered it.
+ *
+ * Ordinarily this folds only the movements that arrived since the cached watermark,
+ * starting from the cached state. `rebuild` throws the cache away and folds the whole
+ * ledger from empty - the operation that proves the cache is still derivable from the
+ * source of truth, and the one the tests use to check exactly that.
+ *
+ * Both paths call the same replayLedger(); only the starting state and the range of
+ * movements differ.
+ */
+export async function recalculateStock(
+  tx: Tx,
+  tenantId: string,
+  ingredientId: string,
+  opts: { rebuild?: boolean } = {},
+) {
+  await lockIngredient(tx, tenantId, ingredientId);
+
+  const cached = opts.rebuild
+    ? []
+    : await tx
+        .select({
+          qtyMilliBase: ingredientStock.qtyMilliBase,
+          weightedAvgCostMillipaisePerBase: ingredientStock.weightedAvgCostMillipaisePerBase,
+          snapshotSeq: ingredientStock.snapshotSeq,
+        })
+        .from(ingredientStock)
+        .where(
+          and(eq(ingredientStock.tenantId, tenantId), eq(ingredientStock.ingredientId, ingredientId)),
+        );
+
+  const from: StockState = cached.length
+    ? {
+        qtyMilliBase: BigInt(cached[0].qtyMilliBase),
+        weightedAvgCostMillipaisePerBase: BigInt(cached[0].weightedAvgCostMillipaisePerBase),
+      }
+    : EMPTY_STOCK;
+  const since = cached.length ? Number(cached[0].snapshotSeq) : 0;
+
   const rows = await tx
     .select({
+      seq: stockMovements.seq,
       movementType: stockMovements.movementType,
       quantityMilliBase: stockMovements.quantityMilliBase,
       unitCostMillipaisePerBase: stockMovements.unitCostMillipaisePerBase,
     })
     .from(stockMovements)
-    .where(and(eq(stockMovements.tenantId, tenantId), eq(stockMovements.ingredientId, ingredientId)))
+    .where(
+      and(
+        eq(stockMovements.tenantId, tenantId),
+        eq(stockMovements.ingredientId, ingredientId),
+        // Everything the cache has not seen. On a rebuild, `since` is 0, which is
+        // everything - seq is a bigserial and starts at 1.
+        gt(stockMovements.seq, since),
+      ),
+    )
     .orderBy(asc(stockMovements.seq)); // ledger order, never created_at
 
   const movements: Movement[] = rows.map((r) => ({
@@ -35,10 +104,12 @@ export async function recalculateStock(tx: Tx, tenantId: string, ingredientId: s
       r.unitCostMillipaisePerBase == null ? null : BigInt(r.unitCostMillipaisePerBase),
   }));
 
-  const next = replayLedger(movements);
+  const next = replayLedger(movements, from);
   const values = {
     qtyMilliBase: Number(next.qtyMilliBase),
     weightedAvgCostMillipaisePerBase: Number(next.weightedAvgCostMillipaisePerBase),
+    // Nothing new to fold leaves the watermark where it was.
+    snapshotSeq: rows.length ? Number(rows[rows.length - 1].seq) : since,
     updatedAt: new Date(),
   };
 
@@ -82,6 +153,19 @@ function auditAction(lines: MovementInput[]): string {
 export async function recordMovements(lines: MovementInput[], tx?: Tx) {
   if (lines.length === 0) throw new RangeError('no movements to record');
   const run = async (t: Tx) => {
+    // Deduped by ingredient: a receipt may name the same ingredient twice.
+    const affected = new Map(lines.map((l) => [l.ingredientId, l.tenantId]));
+
+    // LOCK FIRST, INSERT SECOND. Taking these after the insert would still stop two
+    // caches being written from stale reads, but it would let two transactions be
+    // assigned `seq` in one order and commit in the other - and the watermark in
+    // recalculateStock would then step past a movement that had not been folded in.
+    // Sorted, so two receipts naming the same ingredients in different orders queue up
+    // instead of deadlocking.
+    for (const [ingredientId, tenantId] of [...affected].sort(([a], [b]) => (a < b ? -1 : 1))) {
+      await lockIngredient(t, tenantId, ingredientId);
+    }
+
     await t.insert(stockMovements).values(lines);
     // Deliberately NOT folding `lines` in array order here. The cache is defined as
     // "replay the ledger in seq order", full stop, so recalculateStock re-reads what
@@ -91,12 +175,10 @@ export async function recordMovements(lines: MovementInput[], tx?: Tx) {
     // incremental update; the saving is a few rows and the cost is a class of bug
     // that only shows up on real receipts.
     //
-    // ponytail: full replay per insert is O(ledger) per movement - 87 ms at 50,000
-    // rows end to end, see AGENTS.md. Fine now; needs snapshotting before Month 3
-    // order confirmation starts writing a consumption movement per ingredient.
+    // Snapshotting landed 2026-09-09: recalculateStock folds only what arrived since the
+    // cached watermark, so this is O(new movements) rather than O(whole ledger). A full
+    // rebuild is still one call away and is what the tests check the cache against.
 
-    // Deduped by ingredient: a receipt may name the same ingredient twice.
-    const affected = new Map(lines.map((l) => [l.ingredientId, l.tenantId]));
     for (const [ingredientId, tenantId] of affected) {
       await recalculateStock(t, tenantId, ingredientId);
     }

@@ -64,7 +64,19 @@ export function applyMovement(state: StockState, m: Movement): StockState {
   };
 }
 
-/** Rebuild stock state from the full ledger, oldest movement first. */
-export function replayLedger(movements: readonly Movement[]): StockState {
-  return movements.reduce(applyMovement, EMPTY_STOCK);
+/**
+ * Fold movements into stock state, oldest first.
+ *
+ * `from` is what makes snapshotting possible without a second implementation of the
+ * arithmetic: a full rebuild folds the whole ledger from EMPTY_STOCK, and the
+ * incremental path folds only the movements after the cached watermark, starting from
+ * the cached state. Same reduce, same applyMovement, so the two cannot disagree about a
+ * number - which is the property AGENTS.md 'One implementation of the cost arithmetic'
+ * exists to protect, and the reason snapshotting was always going to be safe to add.
+ */
+export function replayLedger(
+  movements: readonly Movement[],
+  from: StockState = EMPTY_STOCK,
+): StockState {
+  return movements.reduce(applyMovement, from);
 }
