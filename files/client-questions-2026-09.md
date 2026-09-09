@@ -78,6 +78,28 @@ difference is in your favour and needs nothing from you.
 
 ---
 
+## 4b. Is this one cardamom or two?
+
+The sheet lists both, at a 23% difference:
+
+| Row | Name | Brand | Rate |
+|---|---|---|---|
+| 74 | Cardamom Green | Generic (bulk) | ₹3,250/kg |
+| 77 | Green Cardamom | Whole | ₹4,000/kg |
+
+If they are the same spice, whichever one a recipe happens to point at decides what that
+recipe costs, and the two will drift further apart every time one of them is restocked and
+the other is not. If they are genuinely different — one ground, one whole pods — then the
+names should say which is which, because nobody reading a recipe six months from now will
+remember.
+
+Two dark chocolates (55% and 46.5%) also appear twice and are clearly meant to, so those
+are left alone.
+
+**What we need:** one ingredient or two, and if two, better names.
+
+---
+
 ## 5. Two things with lead times, worth starting now
 
 - **Razorpay KYC.** Online payments are Month 4, but verification takes one to three weeks

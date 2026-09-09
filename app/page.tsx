@@ -5,7 +5,8 @@ import { listLowStock, countDeliveriesSince } from '../src/db/history.ts';
 import { listIngredients } from '../src/db/ingredients.ts';
 import { listRecipes } from '../src/db/recipes.ts';
 import { startOfDayIST } from '../src/lib/time.ts';
-import { milliBaseToPurchaseUnits } from '../src/lib/units.ts';
+import { formatINR, milliBaseToPurchaseUnits } from '../src/lib/units.ts';
+import { portionCostPaise } from '../src/lib/costing.ts';
 import { logoutAction } from './login/actions.ts';
 import { StatusBadge } from './ui/status-badge.tsx';
 
@@ -46,6 +47,18 @@ export default async function HomePage() {
     month: 'long',
     timeZone: 'Asia/Kolkata',
   });
+
+  /*
+   * What the shelf is worth: quantity times the weighted average, per ingredient, through
+   * the same rounding the rest of the app uses. portionCostPaise refuses a negative
+   * quantity - deliberately, since rounding a signed quantity is a Month 3 problem - so an
+   * oversold ingredient is valued by magnitude and subtracted, which is what it means.
+   */
+  const shelfValuePaise = ingredients.reduce((total, i) => {
+    const rate = BigInt(i.weightedAvgCostMillipaisePerBase);
+    const qty = BigInt(i.qtyMilliBase);
+    return qty < 0n ? total - portionCostPaise(rate, -qty) : total + portionCostPaise(rate, qty);
+  }, 0n);
 
   const nothingTracked = canView && ingredients.length === 0;
   const needsYou = low.length > 0 || uncosted.length > 0;
@@ -98,6 +111,23 @@ export default async function HomePage() {
                 <span className="stat__value text-4xl">{deliveries}</span>
                 <span className="stat__hint">
                   {deliveries === 0 ? 'none recorded yet' : 'recorded since midnight'}
+                </span>
+              </Link>
+            </li>
+
+            <li>
+              {/*
+               * The COUNT leads, not the money. The rupee figure is only as true as the
+               * quantities behind it, and those are nominal until someone counts the
+               * shelf - so it sits in the hint, with the reason it might be wrong next to
+               * it. A confident headline figure derived from placeholder quantities is
+               * precisely the kind of number this system exists not to print.
+               */}
+              <Link className="stat stat--link h-full" href="/ingredients">
+                <span className="stat__label">Ingredients</span>
+                <span className="stat__value text-4xl">{ingredients.length}</span>
+                <span className="stat__hint">
+                  {formatINR(shelfValuePaise)} at recorded quantities
                 </span>
               </Link>
             </li>
@@ -207,6 +237,39 @@ export default async function HomePage() {
           </p>
         ) : null}
 
+        {/* ---- The catalogue, reachable without a detour ---------------------- */}
+        {canView && !nothingTracked ? (
+          <>
+            <h2 className="section-title">What you stock</h2>
+            {/*
+             * A plain GET straight at the ingredients screen. Ninety-six ingredients is
+             * more than anyone scrolls: typing three letters of "cardamom" here is the
+             * shortest path to it, and it works with JavaScript off because it is a form
+             * and not a client-side filter.
+             */}
+            <form method="get" action="/ingredients" className="toolbar">
+              <div className="field grow max-w-md mb-0">
+                <label className="label" htmlFor="find">
+                  Find an ingredient
+                </label>
+                <input
+                  className="input"
+                  id="find"
+                  name="q"
+                  placeholder="cardamom, butter, pizza box"
+                  autoComplete="off"
+                />
+              </div>
+              <button className="btn" type="submit">
+                Search
+              </button>
+              <Link className="btn btn--secondary" href="/ingredients">
+                All {ingredients.length}
+              </Link>
+            </form>
+          </>
+        ) : null}
+
         {/* ---- The two things people come here to do -------------------------- */}
         {canRecord ? (
           <>
@@ -234,11 +297,6 @@ export default async function HomePage() {
             <ul className="navrow">
               {canView ? (
                 <>
-                  <li>
-                    <Link className="navchip" href="/ingredients">
-                      Ingredients
-                    </Link>
-                  </li>
                   <li>
                     <Link className="navchip" href="/stock/history">
                       Movement history
