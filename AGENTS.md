@@ -443,6 +443,23 @@ actually true, and the application check is the thing that can say `"Butter (uns
 a quantity above zero.` instead of `recipe_lines_qty_positive`. Keep both, and keep the
 database one authoritative.
 
+## Bulk imports go through the write path, and never invent a cost
+
+`scripts/import-price-list.ts` loads the client's price list. Two rules it keeps, which any
+future importer must keep too:
+
+- **No SQL.** Ingredients go through `createIngredient()` and prices through
+  `recordReceipt()`. A bulk path that writes rows directly is a second write path, and the
+  two will disagree about validation, rounding or the audit log eventually.
+- **No invented cost.** The source sheet has a typed per-kg column that contradicts its own
+  pack size and price paid in 11 places. Where the contradiction cannot be explained, the
+  ingredient is created with NO purchase, so the app reports it as uncosted by name. The
+  alternative - picking whichever number looks right - produces a confident wrong margin,
+  which is the failure this codebase is built to prevent.
+
+The reconciliation decisions live in `scripts/data/price-list-2026-09.csv`, checked in, so
+they are reviewable in a diff rather than buried in a script.
+
 ## One implementation of the cost arithmetic
 
 `src/lib/stock.ts` is pure - no database, no I/O - and holds the only implementation of

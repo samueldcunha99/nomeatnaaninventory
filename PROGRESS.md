@@ -1471,3 +1471,93 @@ The other three directions are still on the table and are not blocked by this on
 and a tab rail for the 10-inch tablet), and the rest of **Weight and rhythm** (a full type
 scale across the six table screens). This entry changed the home page and two shared
 classes; every other screen is untouched.
+
+### 2026-09-09 — The client's real price list is in
+
+`NEW PRODUT COSTING PER KG PER GM.xlsx` arrived: 113 rows, 8 sections, brands, pack sizes
+and a per-kg rate. 96 of them are now ingredients in the system. Housekeeping (Vim, Wheel,
+foil, garbage bags) was left out by decision — a monthly overhead is not a per-order cost,
+and it would only add noise to the low stock screen. Packaging was kept in, so a menu item
+can carry the ₹18 pizza box it leaves in.
+
+#### The sheet disagrees with itself in 11 places, and that is the point
+
+Pack size × price paid should equal the per-kg rate they cost with. It does not, for 11
+rows. Most are **stale pack labels rather than wrong prices**, and the arithmetic says
+which: ₹2100 at ₹42/kg is a 50 kg sack, not the "1 kg" the label claims; the tea formula is
+literally `=838/2`, so that pack is 2 kg; olives at ₹240/kg means ₹720 bought a 3 kg tin.
+Four rows were reconciled that way and imported.
+
+Five could not be explained and were **imported with no price at all**:
+
+| Item | Sheet says | Paid |
+|---|---|---|
+| Dry Yeast | ₹400/kg | ₹400 for a pack labelled 500 g |
+| White Compound Chocolate | ₹420/kg | ₹220 for 1 kg (Sheet2 says ₹236) |
+| Mascarpone Cheese | ₹750/kg | ₹1008 for 1 kg (Sheet2 also says ₹1008) |
+| Tomato Ketchup Sachet | ₹60/pkt | ₹65 |
+| White Vinegar (Can) | ₹30/litre | ₹30 for 750 ml |
+
+They exist as ingredients with no cost basis, so the app reports them by name as uncosted
+the moment a recipe uses one. **Guessing which of the two numbers was right would have been
+the worst available option** — a mascarpone at ₹750 instead of ₹1008 costs every tiramisu
+26% light, and nothing on screen would look wrong.
+
+Four more rows are ones where the ledger is simply more accurate than the sheet: Milk Maid
+is ₹1850 for 7.5 kg, which is ₹246.67/kg, not the ₹250 the sheet rounds to. The import
+records what was paid and lets the rate be derived, so the rounding disappears.
+
+This is the argument for the whole design, arriving on its own: a sheet with a typed per-kg
+column can contradict itself and nothing notices. A ledger that stores what arrived and
+what was paid cannot.
+
+#### `ingredients.brand`, migration 0003
+
+The sheet tracks brand deliberately — Aashirvaad, Amul, Van Houten 10/12 — and there was
+nowhere to put it. Nullable, because most of the bulk masala is bought loose.
+
+Its own column rather than part of the name: the two answer different questions. Recipes and
+cost breakdowns are read by ingredient ("butter"), reordering is done by brand ("the Amul
+1 kg, not the D'lecta"). Folding it into the name would also make a change of supplier a
+rename of something recipe lines point at. It shows as a muted second line under the name
+on the ingredients list, and it is a field on the ingredient form.
+
+#### The importer refuses two things
+
+`scripts/import-price-list.ts`, `npm run import:prices`. Dry run by default; `--commit`
+writes; `--tenant` is required and never guessed, because a development database fills up
+with test tenants and writing an opening balance to the wrong one is silent.
+
+- **It writes no SQL.** Every ingredient goes through `createIngredient()` and every price
+  through `recordReceipt()`, so the same validation, the same rounding and the same audit
+  log apply as when someone types it into the form. A bulk import that shortcuts the write
+  path is a second write path, and the two disagree eventually.
+- **It invents no cost.** See the five above.
+
+Its input is `scripts/data/price-list-2026-09.csv`, generated from the workbook and checked
+in, so the reconciliation decisions are reviewable in a diff and re-importing after the
+owner settles the five conflicts is an edit to a CSV.
+
+#### What landed
+
+88 new ingredients, one receipt of 83 lines noted "Opening balance from the September 2026
+price list", 5 ingredients with no cost basis by design. Verified against the database
+afterwards: atta ₹42/kg, maida ₹42/kg, butter ₹560/kg, matcha ₹12,790/kg, oil
+₹185.33/litre, pizza box ₹18 each, sticker ₹0.60 each, Milk Maid ₹246.67/kg.
+
+Quantities are nominal — one pack of each — until someone counts the shelf. That is safe by
+construction: an adjustment moves a quantity and never moves the average (test T9), so
+counting later cannot damage the prices imported here.
+
+#### Open — 8 ingredients still carry demo prices
+
+Eight names in the list already existed in the tenant from the development seed, so the
+import skipped them and left their seeded prices untouched: **Castor Sugar, Brown Sugar,
+Honey, Cocoa Powder, Baking Powder, Baking Soda, Paneer, Cream Cheese.**
+
+The tenant now holds 125 ingredients: 88 real, 37 from the demo seed, of which those 8 are
+duplicates in all but spelling ("Maida (refined flour)" and "Maida (Refined Wheat Flour)"
+are the same flour). **This needs a decision before the system is used in the cafe**, and
+there are only two sensible answers: retire the demo ingredients and rebuild the demo
+recipe on the real ones, or start the real cafe in its own tenant and keep the seeded one
+as a sandbox. Nothing is broken meanwhile; the figures on the demo recipe are still its own.

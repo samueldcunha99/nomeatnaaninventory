@@ -6,6 +6,7 @@ import type { FormState } from './actions.ts';
 export type FormValues = {
   id?: string;
   name: string;
+  brand: string;
   unitType: 'weight' | 'volume' | 'count';
   purchaseUnit: string;
   purchaseUnitInBase: number;
@@ -45,6 +46,26 @@ export function IngredientForm({
           Name
         </label>
         <input className="input" id="name" name="name" defaultValue={initial?.name} required maxLength={120} />
+      </div>
+
+      <div className="field">
+        <label className="label" htmlFor="brand">
+          Brand <span className="font-normal muted">(optional)</span>
+        </label>
+        <input
+          className="input"
+          id="brand"
+          name="brand"
+          defaultValue={initial?.brand}
+          maxLength={120}
+          placeholder="Aashirvaad, Amul, Van Houten"
+          aria-describedby="brand-hint"
+        />
+        <p id="brand-hint" className="prose-note mt-1">
+          Leave blank for anything bought loose. It is what the reorder list needs to say
+          which pack to buy, and it is kept out of the name so a change of supplier is not
+          a rename.
+        </p>
       </div>
 
       <div className="field max-w-xs">

@@ -17,6 +17,8 @@ export type FormState = { error: string | null };
 
 const Fields = z.object({
   name: z.string().trim().min(1, 'Name is required').max(120),
+  // Blank is a real answer: plenty of the masala is bought loose from a bulk trader.
+  brand: z.string().trim().max(120).nullable(),
   unitType: z.enum(['weight', 'volume', 'count']),
   purchaseUnit: z.string().trim().min(1, 'Purchase unit is required').max(40),
   purchaseUnitInBase: z.coerce
@@ -32,6 +34,7 @@ const Fields = z.object({
 function toInput(raw: z.infer<typeof Fields>): IngredientInput {
   return {
     name: raw.name,
+    brand: raw.brand,
     unitType: raw.unitType,
     purchaseUnit: raw.purchaseUnit,
     purchaseUnitInBase: raw.purchaseUnitInBase,
@@ -44,6 +47,7 @@ function toInput(raw: z.infer<typeof Fields>): IngredientInput {
 function parse(formData: FormData) {
   return Fields.safeParse({
     name: formData.get('name'),
+    brand: String(formData.get('brand') ?? '').trim() || null,
     unitType: formData.get('unitType'),
     purchaseUnit: formData.get('purchaseUnit'),
     purchaseUnitInBase: formData.get('purchaseUnitInBase'),

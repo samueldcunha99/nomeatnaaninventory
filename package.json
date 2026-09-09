@@ -12,6 +12,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=.env src/db/migrate.ts",
     "db:seed": "node --env-file-if-exists=.env src/db/seed.ts",
+    "import:prices": "node --env-file-if-exists=.env scripts/import-price-list.ts",
     "db:reset": "docker compose down -v && npm run db:up && npm run db:migrate && npm run db:seed",
     "bench:replay": "node --env-file-if-exists=.env scripts/bench-replay.ts",
     "stack:up": "docker compose up -d --build --wait",

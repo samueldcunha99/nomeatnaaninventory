@@ -98,6 +98,7 @@ export default async function EditIngredientPage({ params }: { params: Promise<{
           initial={{
             id: ingredient.id,
             name: ingredient.name,
+            brand: ingredient.brand ?? '',
             unitType: ingredient.unitType,
             purchaseUnit: ingredient.purchaseUnit,
             purchaseUnitInBase: ingredient.purchaseUnitInBase,

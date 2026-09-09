@@ -194,6 +194,17 @@ export const ingredients = pgTable(
       .notNull()
       .references(() => tenants.id),
     name: text('name').notNull(),
+    /**
+     * Who made it - "Aashirvaad", "Amul", "Van Houten 10/12". Nullable, because plenty of
+     * things are bought loose from a bulk trader with no brand at all.
+     *
+     * Its own column rather than part of the name, because the two answer different
+     * questions: recipes and cost breakdowns are read by ingredient ("butter"), while
+     * reordering is done by brand ("the Amul 1 kg, not the Dlecta"). Folding it into the
+     * name would also make a change of supplier a rename of something recipe lines point
+     * at. Added Month 2, when the client's real price list arrived carrying it.
+     */
+    brand: text('brand'),
     // Base unit label ('g' | 'ml' | 'unit') is derived from unit_type in code,
     // not stored - a column that can never diverge is a column that can be wrong.
     unitType: unitType('unit_type').notNull(),

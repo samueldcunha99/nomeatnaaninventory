@@ -107,6 +107,11 @@ export default async function IngredientsPage({
                         ) : (
                           r.name
                         )}
+                        {/* Subordinate to the name: what you scan for is the ingredient,
+                            what you need at the moment of reordering is the brand. */}
+                        {r.brand ? (
+                          <span className="block text-xs muted font-normal">{r.brand}</span>
+                        ) : null}
                       </th>
 
                       {/*

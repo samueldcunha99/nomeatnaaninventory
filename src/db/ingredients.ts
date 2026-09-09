@@ -12,6 +12,8 @@ import type { UnitType } from '../lib/units.ts';
 
 export type IngredientInput = {
   name: string;
+  /** Who made it. Null for anything bought loose, which is most of the bulk masala. */
+  brand?: string | null;
   unitType: UnitType;
   purchaseUnit: string;
   purchaseUnitInBase: number;
@@ -35,6 +37,7 @@ const NAME_CONSTRAINT = 'ingredients_tenant_name_uq';
 export type IngredientRow = {
   id: string;
   name: string;
+  brand: string | null;
   unitType: UnitType;
   purchaseUnit: string;
   purchaseUnitInBase: number;
@@ -50,6 +53,7 @@ function selectIngredients(where: ReturnType<typeof and>) {
     .select({
       id: ingredients.id,
       name: ingredients.name,
+      brand: ingredients.brand,
       unitType: ingredients.unitType,
       purchaseUnit: ingredients.purchaseUnit,
       purchaseUnitInBase: ingredients.purchaseUnitInBase,
