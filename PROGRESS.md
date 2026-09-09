@@ -117,7 +117,15 @@ keep when the warranty ends.
 account; as of 2026-08-21 that is a deferred step, not a gate on the rest of Month 2. A
 production compose file now exists (`deploy/docker-compose.prod.yml`) and has never been
 run against a server.
-### 🚫 BLOCKER on Module 4 — snapshotting must land before order confirmation goes live
+### ✅ CLEARED 2026-09-09 — snapshotting landed; this blocker is discharged
+
+Kept below for the reasoning, which is still the reasoning. `ingredient_stock.snapshot_seq`
+now records how far the cached row has been folded, so a movement folds only what arrived
+since: **flat ~7 ms whatever the ledger size**, against 95 ms at 50k rows and 161 ms at
+100k for a full rebuild. An order touching five ingredients adds ~35 ms, not ~0.4 s. See
+the log entry for 2026-09-09.
+
+### 🚫 (superseded) BLOCKER on Module 4 — snapshotting must land before order confirmation goes live
 
 Snapshotting must land before Month 3 order confirmation goes live. 87 ms fetch+fold at
 50k movements; an order touching 5 high-frequency ingredients adds ~0.4 s to confirmation.
@@ -1561,3 +1569,126 @@ are the same flour). **This needs a decision before the system is used in the ca
 there are only two sensible answers: retire the demo ingredients and rebuild the demo
 recipe on the real ones, or start the real cafe in its own tenant and keep the seeded one
 as a sandbox. Nothing is broken meanwhile; the figures on the demo recipe are still its own.
+
+### 2026-09-09 — The open problems, closed
+
+A pass over everything on the problem list. Five of the seven are fixed; the two that are
+not are not ours to fix, and are now drafted as questions instead.
+
+#### 1. Concurrent stock writes could silently corrupt the cache — FIXED
+
+**This was a real defect, verified in the code and then reproduced in a test before being
+fixed.** `recalculateStock` read the ledger, folded it in memory and wrote the result back,
+with no lock taken before the read, on default READ COMMITTED. Two transactions touching
+one ingredient both read before either committed, and the second write overwrote the
+first's movement out of the cache. Stock on hand and weighted-average cost both wrong,
+silently, until someone rebuilt.
+
+A row lock on `ingredient_stock` would not have fixed it: by the time the second
+transaction blocks on the write it has already read a stale ledger, and on a first purchase
+the row does not exist to lock. So it is a transaction-scoped **advisory lock keyed on the
+ingredient**, taken **before the movement is inserted** — not merely before the read,
+because that also keeps `seq` assignment in the same order as commits, which the watermark
+below depends on. Locks are taken in sorted order so two receipts naming the same
+ingredients cannot deadlock.
+
+The test forces the interleaving rather than hoping for it: the first transaction is held
+open after writing, the second is started and given 150 ms to reach the ledger read, and
+only then is the first allowed to commit. **Verified to have teeth** — with the lock
+removed it fails every run with "a movement was lost from the cache", and with it restored
+all four concurrency tests pass.
+
+#### 2. Ledger replay was O(whole history) per movement — FIXED
+
+The Month 4 blocker, closed early because #1 made it safe to reason about. `ingredient_stock`
+gains `snapshot_seq`, the seq of the last movement folded into the row. The ordinary path
+folds only what arrived since, starting from the cached state; a full rebuild is still one
+call away and is what the tests check the cache against.
+
+No second implementation of the arithmetic: `replayLedger(movements, from = EMPTY_STOCK)`
+gained one optional parameter, so the incremental path and the rebuild are the same reduce
+over the same `applyMovement`. AGENTS.md predicted this would be safe for exactly that
+reason, and it was.
+
+**The migration backfills the watermark**, which is the part that would have been a
+disaster to forget: every existing cached row was folded from the whole ledger, so a
+watermark of 0 would have told the next recalculation that none of those movements had been
+counted, and it would have folded them all in a second time. Stock and cost would have
+silently doubled.
+
+Measured with `npm run bench:replay`, which now reports both paths:
+
+```
+size        rebuild      incremental      speedup
+1000             7 ms          8.0 ms          1x
+10000           22 ms         10.4 ms          2x
+50000           95 ms          6.5 ms         15x
+100000         161 ms          6.8 ms         24x
+```
+
+The rebuild column reproduces the old numbers (87 ms and 171 ms were measured in August).
+The incremental column is **flat**: about 7 ms whatever the ledger size, because it is one
+insert, one lock and one row folded. An order touching five high-frequency ingredients now
+adds ~35 ms to confirmation instead of ~0.4 s, and it stays there. **The snapshotting
+blocker on Module 4 is discharged.**
+
+#### 3. The Docker image could not build — FIXED
+
+`output: 'standalone'` had been commented out in `next.config.ts` (commit `395da8e`,
+"output standalone conflict") while the Dockerfile still copied `.next/standalone`. Any CI
+image build would have failed. Re-enabled, and verified properly: `next build` produces
+`.next/standalone/server.js`, and `docker build --target runtime` completes.
+
+The build also warns `SecretsUsedInArgOrEnv` on `SEED_OWNER_PASSWORD`. It is a false
+positive — the value is the literal string `build-time-placeholder`, in a build stage that
+never becomes the runtime image, and it is there because `src/lib/env.ts` refuses to start
+without the variable set. Left alone.
+
+#### 4. Fake demo prices sitting in the real catalogue — FIXED
+
+The import had skipped eight names because the development seed already owned them, so
+Baking Powder, Paneer, Cream Cheese and five others still carried demo prices.
+
+The demo ingredients are now **retired rather than deleted**: the eight colliding names got
+a " (demo)" suffix to free the name, all 37 were deactivated, and the import was re-run to
+create the real versions. Baking Powder is now Weikfield at ₹80/kg with the demo row
+inactive at ₹33.70 beside it. Nothing was destroyed, so the demo recipes still cost, and
+the catalogue is 96 active real ingredients against 37 inactive demo ones.
+
+**A database reset was considered and rejected.** Checking what was actually in the tenant
+first turned up a recipe named "pizza", created 2026-08-22 at 01:43 IST — after that
+session ended, so it is the owner's own, made through the new editor. Wiping would have
+destroyed it. It is untouched, and it still costs, because deactivating an ingredient
+leaves its cost basis alone.
+
+That the recipe exists at all is the first evidence the editor works in somebody else's
+hands.
+
+#### 5. Test residue made the database unreadable — FIXED
+
+The database tests each build their own tenant and deliberately do not clean up, which is
+right: a failed run is far easier to diagnose with its rows still there. The cost had
+reached **151 tenants, 928 ingredients and 2037 movements**, enough that the price list
+importer had to refuse to guess which tenant it was writing to.
+
+`npm run db:clean-tests` (dry run by default, `--commit` to delete) removes them in one
+transaction, children before parents. It matches **tenants whose name ends in a UUID**,
+which every test tenant has and no real cafe does — precise, self-explanatory, and it
+cannot creep. 151 removed, 1 remaining, and the cafe verified untouched afterwards.
+
+#### 6 and 7 — not ours, now drafted
+
+The aggregator split (§ 10.1, which the spec says must be resolved before Month 3
+planning), resale items, GST registration, the five contradictory prices, Razorpay KYC, the
+server account, and the request that the owner finally break the receipt form: all of it is
+written up in `files/client-questions-2026-09.md`, in plain language and ready to send.
+
+Question 1 is the one that matters. If most orders arrive through Swiggy and Zomato, they
+never touch inventory, stock counts drift and the costing describes a minority of what the
+kitchen actually cooked. That reshapes Month 3 and it is worth knowing before the tables
+are designed rather than after.
+
+#### Verified
+
+160 tests, 0 failures, 0 skipped — four new, all four of them proven to fail when the fix
+is removed. `next build` exits 0, 15 routes. `docker build --target runtime` completes.

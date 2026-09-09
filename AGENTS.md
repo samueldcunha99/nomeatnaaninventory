@@ -3,7 +3,7 @@
 Conventions for the cafe management system. Read `files/PROJECT-SPEC.md` first — this
 file records what we decided that the spec does not say, and why.
 
-**156 tests passing against a live PostgreSQL, 0 skipped.**
+**160 tests passing against a live PostgreSQL, 0 skipped.**
 
 **Month 1 is complete and verified.** Schema, migrations, seed, unit conversion,
 weighted-average cost, auth, role enforcement, ingredient CRUD, stock receipts /
@@ -459,6 +459,43 @@ future importer must keep too:
 
 The reconciliation decisions live in `scripts/data/price-list-2026-09.csv`, checked in, so
 they are reviewable in a diff rather than buried in a script.
+
+## One ingredient, one writer at a time
+
+`recordMovements` takes a transaction-scoped advisory lock per affected ingredient
+**before inserting**, in sorted order. Do not move it, weaken it to a row lock, or drop it.
+
+Two transactions maintaining the same ingredient's cache both read the ledger before either
+commits, and the second write overwrites the first's movement out of the cache - wrong
+stock and wrong cost, silently, until a rebuild. A row lock on `ingredient_stock` does not
+help: the stale read has already happened by the time the write blocks, and on a first
+purchase there is no row to lock. Sorted acquisition is what stops two receipts naming the
+same ingredients from deadlocking.
+
+Locking before the INSERT rather than before the read is also what keeps `seq` assignment
+in commit order, which the watermark below depends on: a movement committed with a seq
+lower than one already folded in would be skipped forever.
+
+The regression test forces the interleaving instead of hoping for it, and was checked to
+fail when the lock is removed. A concurrency test that has never been seen to fail is
+decoration.
+
+## The stock cache is a snapshot, and the ledger is still the truth
+
+`ingredient_stock.snapshot_seq` is the seq of the last movement folded into the row. The
+ordinary path folds only movements after it, starting from the cached state;
+`recalculateStock(..., { rebuild: true })` throws the cache away and folds everything from
+empty. Both call the same `replayLedger()` - the only difference is the starting state and
+the range - so there is still exactly one implementation of the arithmetic.
+
+Two things follow, and both are load-bearing:
+
+- **A migration that adds or resets this column must backfill it** to each row's real
+  position. A watermark of 0 on a row already folded from the whole ledger makes the next
+  recalculation count every movement twice.
+- **The cache is never the source of truth.** Anything that needs certainty rebuilds. The
+  tests check the incremental result against a rebuild, which is the property that keeps
+  the snapshot honest.
 
 ## One implementation of the cost arithmetic
 
