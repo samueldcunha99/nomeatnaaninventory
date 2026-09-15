@@ -1,3 +1,4 @@
+import { WorkspaceHeader } from "../../ui/workspace-header.tsx";
 import Link from 'next/link';
 import { requirePermission } from '../../../src/auth/server.ts';
 import { loadOverheadRates } from '../../../src/db/recipes.ts';
@@ -19,16 +20,9 @@ export default async function CostingSettingsPage() {
 
   return (
     <>
-      <header className="brandbar">
-        <div className="brandbar__inner">
-          <Link className="brandbar__name text-on-navy no-underline" href="/">
-            NO MEAT NAAN
-          </Link>
-          <span className="text-sm opacity-85">Costing settings</span>
-        </div>
-      </header>
+      <WorkspaceHeader actor={actor} title="Costing settings" />
 
-      <main className="page">
+      <main className="page" id="main-content" tabIndex={-1}>
         <p>
           <Link href="/recipes">← Recipes</Link>
         </p>

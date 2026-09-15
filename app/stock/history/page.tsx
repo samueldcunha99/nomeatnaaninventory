@@ -1,3 +1,4 @@
+import { WorkspaceHeader } from "../../ui/workspace-header.tsx";
 import Link from 'next/link';
 import { requirePermission } from '../../../src/auth/server.ts';
 import { listMovements } from '../../../src/db/history.ts';
@@ -81,16 +82,9 @@ export default async function HistoryPage({
 
   return (
     <>
-      <header className="brandbar">
-        <div className="brandbar__inner">
-          <Link className="brandbar__name text-on-navy no-underline" href="/">
-            NO MEAT NAAN
-          </Link>
-          <span className="text-sm opacity-85">Movement history</span>
-        </div>
-      </header>
+      <WorkspaceHeader actor={actor} title="Movement history" />
 
-      <main className="page">
+      <main className="page" id="main-content" tabIndex={-1}>
         <h1>Movement history</h1>
         <p className="prose-note">
           Read-only. Corrections are new movements — nothing here is ever edited or deleted.

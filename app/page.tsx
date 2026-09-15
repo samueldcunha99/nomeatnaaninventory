@@ -1,3 +1,4 @@
+import { WorkspaceHeader } from "./ui/workspace-header.tsx";
 import Link from 'next/link';
 import { requireSession } from '../src/auth/server.ts';
 import { hasPermission } from '../src/lib/auth.ts';
@@ -5,9 +6,8 @@ import { listLowStock, countDeliveriesSince } from '../src/db/history.ts';
 import { listIngredients } from '../src/db/ingredients.ts';
 import { listRecipes } from '../src/db/recipes.ts';
 import { startOfDayIST } from '../src/lib/time.ts';
-import { formatINR, milliBaseToPurchaseUnits } from '../src/lib/units.ts';
+import { formatINR, formatQty, costPerPurchaseUnitPaise, milliBaseToPurchaseUnits } from '../src/lib/units.ts';
 import { portionCostPaise } from '../src/lib/costing.ts';
-import { logoutAction } from './login/actions.ts';
 import { StatusBadge } from './ui/status-badge.tsx';
 
 /**
@@ -65,28 +65,41 @@ export default async function HomePage() {
 
   return (
     <>
-      <header className="brandbar">
-        <div className="brandbar__inner">
-          <span className="brandbar__name">NO MEAT NAAN</span>
-          <span className="text-sm opacity-85">Management</span>
-          {/* The identity moves up here: it belongs beside the way out, and it was
-              crowding the first heading on the page. */}
-          <span className="ml-auto text-sm opacity-85">
-            {user.name} · {user.role}
-          </span>
-          <form action={logoutAction}>
-            <button className="btn btn--on-navy" type="submit">
-              Sign out
-            </button>
-          </form>
-        </div>
-      </header>
+      <WorkspaceHeader actor={user} title="Overview" />
 
-      <main className="page">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-4">
-          <h1>Today</h1>
-          <p className="muted">{today}</p>
-        </div>
+      <main className="page" id="main-content" tabIndex={-1}>
+        {canCost ? (
+          <section className="costing-hero">
+            <div>
+              <p className="eyebrow">No Meat Naan · {today}</p>
+              <h1>Know what every serving costs.</h1>
+              <p>Bring your ingredients, batch yields and selling prices together.<br className="hidden lg:block" /> See the cost behind every item on your menu.</p>
+            </div>
+            <div className="hero-actions">
+              {hasPermission(user.role, 'recipes.manage') ? <Link className="btn" href="/recipes/new">+ Create a recipe</Link> : null}
+              <Link className="btn btn--secondary" href="/recipes">View all recipes</Link>
+            </div>
+          </section>
+        ) : <div className="page-heading"><h1>Today</h1><p className="muted">{today}</p></div>}
+
+        {canCost && recipes.length > 0 ? (
+          <section className="mb-8" aria-labelledby="recent-recipes">
+            <div className="section-heading"><h2 id="recent-recipes">Your recipes</h2><Link href="/recipes">View all {recipes.length} →</Link></div>
+            <div className="recipe-grid">
+              {[...recipes].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, 3).map((recipe) => (
+                <Link className="recipe-card" key={recipe.id} href={`/recipes/${recipe.id}/cost`}>
+                  <span className="eyebrow">{recipe.usedByCount > 0 ? 'Sub-recipe' : 'Recipe'}</span>
+                  <h3>{recipe.name}</h3>
+                  <p>{recipe.lineCount} ingredients & components · Yields {formatQty(recipe.yieldQtyMilliBase, recipe.yieldUnitType)}</p>
+                  <div className="recipe-card__footer">
+                    <span>{recipe.cost.ok ? <><strong>{formatINR(costPerPurchaseUnitPaise(recipe.cost.rateMillipaisePerBase, recipe.yieldUnitType === 'count' ? 1 : 1000))}</strong><small> / {recipe.yieldUnitType === 'count' ? 'unit' : recipe.yieldUnitType === 'weight' ? 'kg' : 'litre'}</small></> : <span className="badge badge--low">Missing ingredient costs</span>}</span>
+                    <span aria-label="View breakdown">↗</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {canView ? (
           <ul className="statgrid">
@@ -142,7 +155,7 @@ export default async function HomePage() {
                   <span className="stat__value text-4xl">{uncosted.length}</span>
                   <span className="stat__hint">
                     {uncosted.length === 0
-                      ? `all ${recipes.length} recipes priced`
+                      ? `all ${recipes.length} have ingredient costs`
                       : 'missing a purchase price'}
                   </span>
                 </Link>

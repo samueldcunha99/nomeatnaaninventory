@@ -1,3 +1,4 @@
+import { WorkspaceHeader } from "../ui/workspace-header.tsx";
 import Link from 'next/link';
 import { requirePermission } from '../../src/auth/server.ts';
 import { hasPermission } from '../../src/lib/auth.ts';
@@ -28,16 +29,9 @@ export default async function IngredientsPage({
 
   return (
     <>
-      <header className="brandbar">
-        <div className="brandbar__inner">
-          <Link className="brandbar__name text-on-navy no-underline" href="/">
-            NO MEAT NAAN
-          </Link>
-          <span className="text-sm opacity-85">Ingredients</span>
-        </div>
-      </header>
+      <WorkspaceHeader actor={actor} title="Ingredients" />
 
-      <main className="page">
+      <main className="page" id="main-content" tabIndex={-1}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1>Ingredients</h1>
           {canManage ? (

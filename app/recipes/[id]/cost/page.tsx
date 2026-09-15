@@ -1,3 +1,4 @@
+import { WorkspaceHeader } from "../../../ui/workspace-header.tsx";
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requirePermission } from '../../../../src/auth/server.ts';
@@ -238,24 +239,16 @@ export default async function CostBreakdownPage({
 
   return (
     <>
-      <header className="brandbar">
-        <div className="brandbar__inner">
-          <Link className="brandbar__name text-on-navy no-underline" href="/">
-            NO MEAT NAAN
-          </Link>
-          <span className="text-sm opacity-85">Cost breakdown</span>
-        </div>
-      </header>
+      <WorkspaceHeader actor={actor} title="Cost breakdown" />
 
-      <main className="page">
+      <main className="page" id="main-content" tabIndex={-1}>
         <p>
           <Link href="/recipes">← Recipes</Link>
         </p>
         <h1>{view.recipe.name}</h1>
         <p className="prose-note">
           One batch yields {formatQty(view.recipe.yieldQtyMilliBase, view.recipe.yieldUnitType)}.
-          Costs come from the weighted average of what was actually paid, over the stock
-          ledger.
+          Ingredient costs use the weighted average of your recorded purchases.
         </p>
 
         {canManage ? (
@@ -264,7 +257,7 @@ export default async function CostBreakdownPage({
               Edit recipe
             </Link>
             <Link className="btn btn--secondary" href={`/recipes/${id}/menu`}>
-              Menu items
+              Portions & selling prices
             </Link>
           </p>
         ) : null}
@@ -342,7 +335,7 @@ export default async function CostBreakdownPage({
             <ul className="statgrid">
               <li className="stat">
                 <span className="stat__label">
-                  {view.explanation.overhead.applied ? 'Batch cost, all in' : 'Batch cost'}
+                  Calculated batch cost
                 </span>
                 <span className="stat__value">
                   {formatINR(view.explanation.totalBatchPaise)}

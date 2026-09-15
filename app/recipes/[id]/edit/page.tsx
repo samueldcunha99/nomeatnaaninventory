@@ -1,3 +1,4 @@
+import { WorkspaceHeader } from "../../../ui/workspace-header.tsx";
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requirePermission } from '../../../../src/auth/server.ts';
@@ -17,24 +18,16 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
 
   return (
     <>
-      <header className="brandbar">
-        <div className="brandbar__inner">
-          <Link className="brandbar__name text-on-navy no-underline" href="/">
-            NO MEAT NAAN
-          </Link>
-          <span className="text-sm opacity-85">Edit recipe</span>
-        </div>
-      </header>
+      <WorkspaceHeader actor={actor} title="Edit recipe" />
 
-      <main className="page">
+      <main className="page" id="main-content" tabIndex={-1}>
         <p>
           <Link href={`/recipes/${recipe.id}/cost`}>← {recipe.name}</Link>
         </p>
         <h1>Edit {recipe.name}</h1>
         <p className="prose-note">
-          Saving replaces the whole line list. The lines that were here are kept as history,
-          not deleted, and every cost figure is recalculated from the ledger on the next
-          screen.
+          Update the ingredients, usable batch yield and preparation time. Save to review
+          the revised cost breakdown.
         </p>
 
         <RecipeForm

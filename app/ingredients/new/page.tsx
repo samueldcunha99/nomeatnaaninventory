@@ -1,22 +1,16 @@
+import { WorkspaceHeader } from "../../ui/workspace-header.tsx";
 import Link from 'next/link';
 import { requirePermission } from '../../../src/auth/server.ts';
 import { createIngredientAction } from '../actions.ts';
 import { IngredientForm } from '../ingredient-form.tsx';
 
 export default async function NewIngredientPage() {
-  await requirePermission('ingredients.manage');
+  const actor = await requirePermission('ingredients.manage');
   return (
     <>
-      <header className="brandbar">
-        <div className="brandbar__inner">
-          <Link className="brandbar__name text-on-navy no-underline" href="/">
-            NO MEAT NAAN
-          </Link>
-          <span className="text-sm opacity-85">New ingredient</span>
-        </div>
-      </header>
+      <WorkspaceHeader actor={actor} title="New ingredient" />
 
-      <main className="page">
+      <main className="page" id="main-content" tabIndex={-1}>
         <p>
           <Link href="/ingredients">← Ingredients</Link>
         </p>

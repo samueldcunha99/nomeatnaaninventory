@@ -41,7 +41,7 @@ export function MenuItemForm({
   const id = initial?.id ?? 'new';
 
   return (
-    <form action={formAction} className="p-4 mb-4 bg-surface border-2 border-mist rounded-md">
+    <form action={formAction} className="form-section">
       <input type="hidden" name="recipeId" value={recipeId} />
       {initial?.id ? <input type="hidden" name="id" value={initial.id} /> : null}
 
@@ -60,7 +60,7 @@ export function MenuItemForm({
       <div className="flex flex-wrap items-start gap-4">
         <div className="field grow max-w-xs mb-0">
           <label className="label" htmlFor={`name-${id}`}>
-            Sold as
+            Menu item name
           </label>
           <input
             className="input"
@@ -75,7 +75,7 @@ export function MenuItemForm({
 
         <div className="field mb-0">
           <label className="label" htmlFor={`portionQty-${id}`}>
-            One portion
+            Quantity per serving
           </label>
           <div className="flex items-center gap-2">
             <input
@@ -94,7 +94,7 @@ export function MenuItemForm({
 
         <div className="field mb-0">
           <label className="label" htmlFor={`sellingPrice-${id}`}>
-            Sells for ₹
+            Selling price (₹)
           </label>
           <input
             className="input w-28 tabular-nums"

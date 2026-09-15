@@ -1,3 +1,4 @@
+import { WorkspaceHeader } from "../ui/workspace-header.tsx";
 import Link from 'next/link';
 import { requirePermission } from '../../src/auth/server.ts';
 import { hasPermission } from '../../src/lib/auth.ts';
@@ -32,18 +33,11 @@ export default async function RecipesPage({
 
   return (
     <>
-      <header className="brandbar">
-        <div className="brandbar__inner">
-          <Link className="brandbar__name text-on-navy no-underline" href="/">
-            NO MEAT NAAN
-          </Link>
-          <span className="text-sm opacity-85">Recipes</span>
-        </div>
-      </header>
+      <WorkspaceHeader actor={actor} title="Recipes" />
 
-      <main className="page">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1>Recipes</h1>
+      <main className="page" id="main-content" tabIndex={-1}>
+        <div className="page-heading">
+          <h1>Recipes & costing</h1>
           {canManage ? (
             <span className="flex flex-wrap gap-2">
               <Link className="btn btn--secondary" href="/settings/costing">
@@ -56,8 +50,8 @@ export default async function RecipesPage({
           ) : null}
         </div>
         <p className="prose-note">
-          Cost comes from the stock ledger and moves on its own when a delivery is
-          recorded at a new price. Nothing here sets a price.
+          Open a recipe to see its cost breakdown, portions and margins. Ingredient costs
+          update when you record a delivery at a new price.
         </p>
 
         <form method="get" className="toolbar">
@@ -68,12 +62,13 @@ export default async function RecipesPage({
             <input className="input" id="q" name="q" defaultValue={q ?? ''} placeholder="Recipe name" />
           </div>
           <button className="btn btn--secondary" type="submit">
-            Apply
+            Search
           </button>
+          {q ? <Link className="btn-quiet" href="/recipes">Clear search</Link> : null}
         </form>
 
         {rows.length === 0 ? (
-          <p className="prose-note">No recipes{q ? ` matching “${q}”` : ' yet'}.</p>
+          <div className="empty-panel"><h2>{q ? `No recipes matching “${q}”` : 'Your first recipe starts here'}</h2><p className="prose-note">{q ? 'Try a shorter name or clear your search.' : 'Add the ingredients and usable yield for one batch, then set your serving size and selling price.'}</p>{canManage && !q ? <Link className="btn" href="/recipes/new">+ Create a recipe</Link> : null}</div>
         ) : (
           <div className="table-wrap">
             <table className="table">

@@ -1,3 +1,4 @@
+import { WorkspaceHeader } from "../../ui/workspace-header.tsx";
 import Link from 'next/link';
 import { requirePermission } from '../../../src/auth/server.ts';
 import { listLineSources } from '../../../src/db/recipes.ts';
@@ -9,23 +10,16 @@ export default async function NewRecipePage() {
 
   return (
     <>
-      <header className="brandbar">
-        <div className="brandbar__inner">
-          <Link className="brandbar__name text-on-navy no-underline" href="/">
-            NO MEAT NAAN
-          </Link>
-          <span className="text-sm opacity-85">New recipe</span>
-        </div>
-      </header>
+      <WorkspaceHeader actor={actor} title="New recipe" />
 
-      <main className="page">
+      <main className="page" id="main-content" tabIndex={-1}>
         <p>
           <Link href="/recipes">← Recipes</Link>
         </p>
         <h1>New recipe</h1>
         <p className="prose-note">
-          No prices are entered here. What a recipe costs comes from the stock ledger and
-          moves on its own when a delivery is recorded.
+          Build one batch using your saved ingredients and recipes. Add its usable yield
+          and preparation time to calculate the cost.
         </p>
 
         {sources.length === 0 ? (

@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useRef, useState } from 'react';
+import Link from 'next/link';
 import { saveRecipeAction, type FormState } from './actions.ts';
 import { IngredientCombobox } from '../ui/ingredient-combobox.tsx';
 import { baseUnitLabel, type UnitType } from '../../src/lib/units.ts';
@@ -101,7 +102,7 @@ export function RecipeForm({
   }));
 
   return (
-    <form action={formAction}>
+    <form action={formAction} className="recipe-editor">
       {initial?.id ? <input type="hidden" name="id" value={initial.id} /> : null}
 
       {state.error ? (
@@ -116,9 +117,11 @@ export function RecipeForm({
         </div>
       ) : null}
 
+      <section className="form-section" aria-labelledby="batch-heading">
+      <h2 id="batch-heading"><span className="form-section-number">01</span> Batch & yield</h2>
       <div className="field max-w-xl">
         <label className="label" htmlFor="name">
-          Name
+          Recipe name
         </label>
         <input
           className="input"
@@ -127,7 +130,7 @@ export function RecipeForm({
           defaultValue={initial?.name}
           required
           maxLength={120}
-          placeholder="Cinnamon roll batch"
+          placeholder="e.g. Double chocolate chunk cookies"
         />
       </div>
 
@@ -171,39 +174,17 @@ export function RecipeForm({
           </div>
         </div>
         <p className="prose-note mt-1">
-          What comes out of the bowl, not what went into it. A dough batch that leaves 300 g
-          behind yields 4200 g — that loss belongs here, not on a line.
+          Enter the usable amount after preparation. For a batch of 85 cookies, choose
+          count and enter 85. For a sauce, enter its finished weight or volume.
         </p>
       </fieldset>
 
-      <div className="field max-w-xs">
-        <label className="label" htmlFor="batchMinutes">
-          Batch takes <span className="font-normal muted">(optional)</span>
-        </label>
-        <div className="flex items-center gap-2">
-          <input
-            className="input w-28 tabular-nums"
-            id="batchMinutes"
-            name="batchMinutes"
-            defaultValue={initial?.batchMinutes}
-            inputMode="numeric"
-            placeholder="90"
-            aria-describedby="batch-hint"
-          />
-          <span className="text-sm font-medium text-ink">minutes</span>
-        </div>
-        <p id="batch-hint" className="prose-note mt-1">
-          Start to finish, including proving and baking. Labour and kitchen overhead are
-          charged on this time. Leave it blank and the recipe is costed on its ingredients
-          alone — the breakdown will say so rather than pretend the time was free.
-        </p>
-      </div>
-
-      <h2 className="section-title">What goes into it</h2>
+      </section>
+      <section className="form-section" aria-labelledby="ingredients-heading">
+      <h2 id="ingredients-heading"><span className="form-section-number">02</span> Ingredients & components</h2>
       <p className="prose-note">
-        Quantities are in the unit of whatever the line uses, which is what the label beside
-        each one says. A line can draw on another recipe: that is a sub-recipe, and it costs
-        at its own rate.
+        Add everything used for the whole batch. You can include a saved recipe, such as
+        garlic butter filling, or a packaging ingredient. Each quantity uses the unit shown.
       </p>
 
       <div className="table-wrap max-w-3xl">
@@ -230,6 +211,7 @@ export function RecipeForm({
               return (
                 <tr key={row.key}>
                   <td>
+                    <span className="editor-step-label">Ingredient or recipe · {i + 1}</span>
                     <IngredientCombobox
                       fieldName={`lines[${i}][sourceId]`}
                       options={options}
@@ -254,6 +236,7 @@ export function RecipeForm({
                   </td>
 
                   <td>
+                    <span className="editor-step-label">Quantity</span>
                     <div className="flex items-center gap-2">
                       <input
                         className="input w-24 tabular-nums"
@@ -271,6 +254,7 @@ export function RecipeForm({
                   </td>
 
                   <td>
+                    <span className="editor-step-label">Wastage</span>
                     <div className="flex items-center gap-2">
                       <input
                         className="input w-20 tabular-nums"
@@ -306,9 +290,22 @@ export function RecipeForm({
 
       <p className="mt-3">
         <button className="btn btn--secondary" type="button" onClick={() => setRows((rs) => [...rs, blank()])}>
-          + Add line
+          + Add ingredient or recipe
         </button>
       </p>
+      <p className="prose-note mb-0">Wastage adds extra ingredient usage. Leave it at 0 if there is none. Batch losses are already reflected in your usable yield.</p>
+      </section>
+
+      <section className="form-section" aria-labelledby="time-heading">
+      <h2 id="time-heading"><span className="form-section-number">03</span> Time & method</h2>
+      <div className="field max-w-xl">
+        <label className="label" htmlFor="batchMinutes">Batch preparation time <span className="font-normal muted">(optional)</span></label>
+        <div className="flex items-center gap-2">
+          <input className="input w-28 tabular-nums" id="batchMinutes" name="batchMinutes" defaultValue={initial?.batchMinutes} inputMode="numeric" placeholder="90" aria-describedby="batch-hint" />
+          <span className="text-sm font-medium text-ink">minutes</span>
+        </div>
+        <p id="batch-hint" className="prose-note mt-1">Start to finish, including proving and baking. This time and your hourly rates determine the batch’s labour and kitchen costs. Leave blank if you have not timed it yet.</p>
+      </div>
 
       <div className="field max-w-xl">
         <label className="label" htmlFor="notes">
@@ -323,10 +320,13 @@ export function RecipeForm({
           defaultValue={initial?.notes}
         />
       </div>
-
-      <button className="btn" type="submit" disabled={pending}>
+      </section>
+      <div className="save-bar">
+      <p className="prose-note mb-0">Save your recipe, then review its cost and set serving prices.</p>
+      <div className="flex gap-3 items-center"><Link className="btn btn--secondary" href={initial?.id ? `/recipes/${initial.id}/cost` : '/recipes'}>Cancel</Link><button className="btn" type="submit" disabled={pending}>
         {pending ? 'Saving…' : submitLabel}
-      </button>
+      </button></div>
+      </div>
     </form>
   );
 }

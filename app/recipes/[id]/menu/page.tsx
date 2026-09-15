@@ -1,3 +1,4 @@
+import { WorkspaceHeader } from "../../../ui/workspace-header.tsx";
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requirePermission } from '../../../../src/auth/server.ts';
@@ -21,28 +22,20 @@ export default async function MenuItemsPage({ params }: { params: Promise<{ id: 
 
   return (
     <>
-      <header className="brandbar">
-        <div className="brandbar__inner">
-          <Link className="brandbar__name text-on-navy no-underline" href="/">
-            NO MEAT NAAN
-          </Link>
-          <span className="text-sm opacity-85">Menu items</span>
-        </div>
-      </header>
+      <WorkspaceHeader actor={actor} title="Menu items" />
 
-      <main className="page">
+      <main className="page" id="main-content" tabIndex={-1}>
         <p>
           <Link href={`/recipes/${recipe.id}/cost`}>← {recipe.name}</Link>
         </p>
-        <h1>What {recipe.name} sells as</h1>
+        <h1>Portions & selling prices</h1>
         <p className="prose-note">
-          One batch yields {formatQty(recipe.yieldQtyMilliBase, recipe.yieldUnitType)}. A portion
-          is how much of that batch one sale takes, so the cost of a portion follows the
-          ledger without anyone retyping it.
+          {recipe.name} yields {formatQty(recipe.yieldQtyMilliBase, recipe.yieldUnitType)} per batch.
+          Set how much goes into one serving and what the customer pays. You can add different sizes or packs.
         </p>
 
         {items.length === 0 ? (
-          <p className="prose-note">Nothing sells this yet.</p>
+          <p className="msg msg--info">Add a serving below to see its cost and margin on the recipe breakdown.</p>
         ) : (
           items.map((item) => (
             <section key={item.id}>
@@ -67,7 +60,7 @@ export default async function MenuItemsPage({ params }: { params: Promise<{ id: 
           ))
         )}
 
-        <h2 className="section-title mt-8">Add another</h2>
+        <h2 className="section-title mt-8">{items.length ? 'Add another serving or pack' : 'Add your first menu item'}</h2>
         <MenuItemForm
           recipeId={recipe.id}
           yieldUnitType={recipe.yieldUnitType}
