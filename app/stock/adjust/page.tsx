@@ -1,3 +1,4 @@
+import { WorkspaceHeader } from "../../ui/workspace-header.tsx";
 import Link from 'next/link';
 import { requirePermission } from '../../../src/auth/server.ts';
 import { listIngredients } from '../../../src/db/ingredients.ts';
@@ -9,23 +10,16 @@ export default async function AdjustPage() {
 
   return (
     <>
-      <header className="brandbar">
-        <div className="brandbar__inner">
-          <Link className="brandbar__name text-on-navy no-underline" href="/">
-            NO MEAT NAAN
-          </Link>
-          <span className="text-sm opacity-85">Adjustment / wastage</span>
-        </div>
-      </header>
+      <WorkspaceHeader actor={actor} title="Adjustment / wastage" />
 
-      <main className="page">
+      <main className="page" id="main-content" tabIndex={-1}>
       <h1>Adjustment or wastage</h1>
       <p className="prose-note">
         Corrections are new movements — nothing is edited or deleted. The running stock
         follows from the ledger.
       </p>
       <AdjustForm
-        ingredients={ingredients.map((i) => ({ id: i.id, name: i.name, purchaseUnit: i.purchaseUnit }))}
+        ingredients={ingredients.map((i) => ({ id: i.id, name: i.name, purchaseUnit: i.purchaseUnit, purchaseUnitInBase: i.purchaseUnitInBase }))}
       />
     </main>
     </>

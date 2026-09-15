@@ -263,3 +263,34 @@ test('kitchen staff cannot record stock movements', async (t) => {
   await assert.rejects(() => listSuppliers(kitchen), AuthzError);
   assert.equal((await movementsOf(ing)).length, 0);
 });
+
+/**
+ * Migration 0006. Every derived number in the system - stock on hand, the weighted
+ * average, every recipe cost above it - is a fold over these rows, and the cache trusts
+ * that a row, once written, never changes. Before 0006 only the application enforced
+ * that, so a stray UPDATE in a psql session rewrote purchase history and the snapshot
+ * watermark never noticed, because it only moves forward past new rows.
+ */
+test('the ledger refuses to be rewritten, even by the application role', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const ing = await makeIngredient('Immutable');
+  await recordReceipt(owner, {
+    lines: [{ ingredientId: ing, quantityMilliBase: 1_000_000n, totalCostPaise: 50_000n }],
+  });
+  const [before] = await movementsOf(ing);
+
+  // Drizzle wraps the driver error, so the trigger's message arrives as the cause.
+  const refused = (e: unknown) => /append-only/.test(String((e as { cause?: Error })?.cause?.message ?? e));
+
+  await assert.rejects(
+    () => db.update(stockMovements).set({ quantityMilliBase: 999 }).where(eq(stockMovements.id, before.id)),
+    refused,
+  );
+  await assert.rejects(
+    () => db.delete(stockMovements).where(eq(stockMovements.id, before.id)),
+    refused,
+  );
+
+  const [after] = await movementsOf(ing);
+  assert.equal(after.quantityMilliBase, before.quantityMilliBase, 'the row survived unchanged');
+});

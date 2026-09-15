@@ -253,7 +253,8 @@ export type LowStockRow = {
   purchaseUnitInBase: number;
   qtyMilliBase: number;
   lowStockThresholdMilliBase: number;
-  weightedAvgCostMillipaisePerBase: number;
+  /** Null when nothing has ever been bought, which is not the same as costing nothing. */
+  weightedAvgCostMillipaisePerBase: number | null;
 };
 
 /**
@@ -267,11 +268,18 @@ export type LowStockRow = {
  * Ingredients with a zero threshold are only listed once actually negative - otherwise
  * every ingredient nobody has set a threshold for would sit permanently in the list and
  * the list would stop being read.
+ *
+ * Left join, not inner: an ingredient has no ingredient_stock row until its first
+ * movement, so an inner join hid every newly created ingredient from the one page whose
+ * job is to notice that something needs buying. No row means no stock, which is exactly
+ * the case that should shout loudest. Cost stays null there - nothing has been bought,
+ * so nothing is known about what it costs, and that is not the same as zero.
  */
 export async function listLowStock(actor: Actor): Promise<LowStockRow[]> {
   assertPermission(actor.role, 'ingredients.view');
 
-  const severity = raw<number>`(${ingredients.lowStockThresholdMilliBase} - ${ingredientStock.qtyMilliBase})::numeric
+  const qty = raw<number>`coalesce(${ingredientStock.qtyMilliBase}, 0)`;
+  const severity = raw<number>`(${ingredients.lowStockThresholdMilliBase} - ${qty})::numeric
     / greatest(${ingredients.lowStockThresholdMilliBase}, 1)`;
 
   const rows = await db
@@ -281,12 +289,17 @@ export async function listLowStock(actor: Actor): Promise<LowStockRow[]> {
       unitType: ingredients.unitType,
       purchaseUnit: ingredients.purchaseUnit,
       purchaseUnitInBase: ingredients.purchaseUnitInBase,
+      // The COLUMN, not the coalesce above: a raw expression comes back from the driver as
+      // a string, because int8 does not fit a JS number in general and postgres.js will
+      // not guess. Drizzle knows how to map the column, so the null becomes a zero in JS,
+      // one line down. The coalesce stays in the where and order by, where it is compared
+      // in SQL and never crosses the boundary.
       qtyMilliBase: ingredientStock.qtyMilliBase,
       lowStockThresholdMilliBase: ingredients.lowStockThresholdMilliBase,
       weightedAvgCostMillipaisePerBase: ingredientStock.weightedAvgCostMillipaisePerBase,
     })
     .from(ingredients)
-    .innerJoin(
+    .leftJoin(
       ingredientStock,
       and(
         eq(ingredientStock.tenantId, ingredients.tenantId),
@@ -298,11 +311,13 @@ export async function listLowStock(actor: Actor): Promise<LowStockRow[]> {
         eq(ingredients.tenantId, actor.tenantId),
         eq(ingredients.isActive, true),
         isNull(ingredients.deletedAt),
-        raw`${ingredientStock.qtyMilliBase} <= ${ingredients.lowStockThresholdMilliBase}`,
-        raw`(${ingredients.lowStockThresholdMilliBase} > 0 or ${ingredientStock.qtyMilliBase} < 0)`,
+        raw`${qty} <= ${ingredients.lowStockThresholdMilliBase}`,
+        raw`(${ingredients.lowStockThresholdMilliBase} > 0 or ${qty} < 0)`,
       ),
     )
     .orderBy(desc(severity), asc(raw`lower(${ingredients.name})`));
 
-  return rows as LowStockRow[];
+  // No cache row means no movements, which means no stock. Cost stays null: never bought
+  // is not the same as costs nothing.
+  return rows.map((r) => ({ ...r, qtyMilliBase: r.qtyMilliBase ?? 0 })) as LowStockRow[];
 }

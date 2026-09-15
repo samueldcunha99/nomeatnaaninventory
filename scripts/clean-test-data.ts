@@ -70,6 +70,10 @@ if (!commit) {
 
 // One transaction: a half-deleted tenant is worse than an untouched one.
 await db.transaction(async (tx) => {
+  // Dropping a tenant takes its ledger with it. Migration 0006 makes stock_movements
+  // append-only, and this is the deliberate opt-out - transaction-local, so it lapses the
+  // moment this block ends.
+  await tx.execute(raw`set local app.ledger_maintenance = 'on'`);
   for (const table of TABLES) {
     await tx.execute(
       raw`delete from ${raw.identifier(table)}

@@ -1,0 +1,183 @@
+
+> test
+> node --env-file-if-exists=.env --test "src/**/*.test.ts"
+
+SKIPPING database auth tests: no reachable DATABASE_URL. Run `npm run db:up` first.
+﹣ login issues a session, and the raw token is never stored (30.7397ms) # no database
+﹣ a tampered token resolves to nobody (0.4045ms) # no database
+﹣ an expired session is rejected and deleted (0.3072ms) # no database
+﹣ the expired-session sweep removes only expired rows (0.2207ms) # no database
+﹣ logout destroys the session server-side (0.2106ms) # no database
+﹣ a counter user is blocked from user management at the database layer (0.2655ms) # no database
+﹣ a user cannot deactivate themselves or change their own role (0.301ms) # no database
+﹣ a manager cannot promote anyone to owner (0.1963ms) # no database
+﹣ deactivating a user kills their live sessions immediately (0.2232ms) # no database
+﹣ a deactivated user cannot log back in (0.1923ms) # no database
+✔ the driver error is found through the wrapper, not on the surface (4.2578ms)
+✔ a bare error, or none, resolves to null rather than throwing (0.3278ms)
+✔ a cause chain cannot loop forever (0.2328ms)
+✔ matching requires the constraint name, not just the code (1.9253ms)
+✔ check violations are matched separately (0.3354ms)
+✔ translating swaps known violations and passes everything else through (1.492ms)
+SKIPPING database history tests: no reachable DATABASE_URL. Run `npm run db:up` first.
+﹣ history is newest first, in seq order, with a running balance (43.3959ms) # no database
+﹣ a date filter narrows the rows but must NOT restart the balance (0.6013ms) # no database
+﹣ the balance is withheld when no single ingredient is chosen (0.3272ms) # no database
+﹣ multi-line receipts share a reference_id so they can be grouped (0.469ms) # no database
+﹣ lines within a single receipt group display in entry order (ascending seq) (0.4464ms) # no database
+﹣ history pages rather than fetching an unbounded ledger (0.9831ms) # no database
+﹣ low stock is sorted by severity, not by raw shortfall (0.3694ms) # no database
+﹣ an ingredient with no threshold set only appears once actually oversold (0.3153ms) # no database
+﹣ kitchen staff cannot read history or low stock (0.832ms) # no database
+﹣ history and low stock do not leak across tenants (0.3852ms) # no database
+﹣ every numeric field crossing the driver boundary is a number, not a string (0.359ms) # no database
+﹣ deliveries counts receipts, not the lines on them (0.2818ms) # no database
+✔ lines of one receipt read in entry order, newest groups still first (3.0198ms)
+✔ rows without a reference id are left exactly where they are (1.3823ms)
+✔ two adjacent receipts are ordered independently, not merged (0.5493ms)
+✔ reordering never adds, drops or duplicates a row (0.4502ms)
+✔ a receipt straddling a page boundary loses no rows and repeats none (0.5222ms)
+SKIPPING database ingredient tests: no reachable DATABASE_URL. Run `npm run db:up` first.
+﹣ create writes the ingredient and an audit entry (77.576ms) # no database
+﹣ update writes before and after to the audit log (0.6526ms) # no database
+﹣ deactivating hides an ingredient from the default list but keeps it fetchable (0.6068ms) # no database
+﹣ a duplicate name is refused with something an operator can act on (0.3619ms) # no database
+﹣ search and the low-stock indicator read off real stock (0.4047ms) # no database
+﹣ an ingredient with no movements yet lists at zero rather than vanishing (0.2334ms) # no database
+﹣ counter may view but not mutate; kitchen may not even view (0.2986ms) # no database
+﹣ one tenant cannot see or edit another tenant's ingredients (1.1815ms) # no database
+SKIPPING database movement tests: no reachable DATABASE_URL. Run `npm run db:up` first.
+﹣ a multi-line receipt lands as one reference group and costs out correctly (94.134ms) # no database
+﹣ a receipt with one bad line writes nothing at all (0.5562ms) # no database
+﹣ a second purchase moves the weighted average, per T2 (0.7367ms) # no database
+﹣ an adjustment changes quantity and leaves the average alone (0.9756ms) # no database
+﹣ wastage is its own movement type carrying its cause (0.4284ms) # no database
+﹣ the taxonomy is enforced: no adjustment reason on wastage, and vice versa (0.3433ms) # no database
+﹣ a note is required when the reason is other (0.456ms) # no database
+﹣ every movement operation writes an audit entry (0.4764ms) # no database
+﹣ the cache still matches a full ledger rebuild after mixed activity (0.723ms) # no database
+﹣ kitchen staff cannot record stock movements (0.4044ms) # no database
+SKIPPING database recipe tests: no reachable DATABASE_URL. Run `npm run db:up` first.
+﹣ the lookup returns the ledger weighted average, as bigint (69.187ms) # no database
+﹣ an ingredient with no movements at all throws, naming it (0.4232ms) # no database
+﹣ an adjustment-only ingredient throws, even though it HAS a stock row (0.306ms) # no database
+﹣ a purchase at nil value has a basis, and the basis is zero (0.2371ms) # no database
+﹣ stock counted down to zero keeps its basis (0.348ms) # no database
+﹣ P3 and P7 cost end to end from real purchase history (0.287ms) # no database
+﹣ an uncosted ingredient inside a recipe throws, naming it and the recipe path (0.2791ms) # no database
+﹣ P14 the loader excludes soft-deleted lines, and the cost is unchanged by one (0.3457ms) # no database
+﹣ P19b saving a line whose entry unit disagrees with its source is rejected (0.3492ms) # no database
+﹣ P17 saving an edit that closes a cycle is rejected, and nothing is written (0.3964ms) # no database
+﹣ P19a saving past the depth limit is rejected (0.2822ms) # no database
+﹣ kitchen staff can neither read costs nor save recipes (0.2139ms) # no database
+﹣ a line with no quantity is refused, and the message names the line (0.2161ms) # no database
+﹣ wastage outside 0-100% is refused before the database has to catch it (0.3038ms) # no database
+﹣ a recipe name that is already taken is refused in words, not in SQL (0.291ms) # no database
+﹣ changing what a recipe yields is refused while another recipe draws on it (0.1895ms) # no database
+﹣ getRecipeForEdit returns what was stored, exactly (0.172ms) # no database
+﹣ getRecipeForEdit refuses kitchen staff and returns null for a stranger (0.1687ms) # no database
+﹣ the line picker offers other recipes, never the one being edited (0.1886ms) # no database
+﹣ a deactivated ingredient stays available to the recipe already using it (0.2402ms) # no database
+﹣ a menu item is created, then edited, and comes back as bigint (0.2412ms) # no database
+﹣ a menu item priced at nothing is legal; the rest is not (0.2507ms) # no database
+﹣ a menu item name that is already taken is refused in words (0.2928ms) # no database
+﹣ a second butter delivery at a new price recosts the dough (0.1582ms) # no database
+✔ every seed price divides exactly into millipaise per base unit (2.4086ms)
+✔ millipaise actually buys the precision it exists for (0.5726ms)
+✔ seed data satisfies the schema check constraints (0.363ms)
+✔ ingredient names are unique case-insensitively (0.2851ms)
+SKIPPING database tests: no reachable DATABASE_URL. Run `npm run db:up` first.
+﹣ T11 - the cached stock equals a full rebuild from the ledger (68.6594ms) # no database
+﹣ T12 - a multi-line receipt with one bad line rolls back entirely (2.2868ms) # no database
+﹣ two receipts for one ingredient at the same moment cannot lose a movement (0.5695ms) # no database
+﹣ concurrent receipts across many ingredients still agree with the ledger (0.6392ms) # no database
+﹣ the incremental fold and a full rebuild stay identical over many movements (0.8043ms) # no database
+﹣ recalculating with nothing new to fold changes nothing (1.7452ms) # no database
+✔ session tokens are long and never repeat (6.4108ms)
+✔ a tampered token cannot hash to the stored value (2.3939ms)
+✔ token hash comparison is length-safe (0.3792ms)
+✔ expiry is enforced on the boundary, not after it (0.8296ms)
+✔ a counter user is blocked from user management (1.1485ms)
+✔ a user cannot deactivate themselves or change their own role (0.427ms)
+✔ only an owner may grant the owner role (0.3786ms)
+✔ P1 single ingredient, no wastage (2.4117ms)
+✔ P2 several ingredients, exact division (0.3855ms)
+✔ P3 non-terminating quotient rounds half-up to 13622 (0.2981ms)
+✔ P4 an exact .5 tie goes half-UP, not half-even (0.3441ms)
+✔ P5 wastage multiplies quantity and is applied exactly once (0.3015ms)
+✔ P6 wastage on some lines only (0.2269ms)
+✔ P7 a parent consumes the ROUNDED sub-recipe rate (0.253ms)
+✔ P8 wastage on a sub-recipe line, fractional intermediate not rounded early (0.23ms)
+✔ P9 two levels of nesting, wastage at both (0.4245ms)
+✔ P10 portion cost, margin and percentages (0.4897ms)
+✔ P11 a partial portion of a batch (0.253ms)
+✔ P12 no purchase history throws and names the ingredient; a zero-cost purchase does not (1.059ms)
+✔ P13 the throw propagates from three levels down, naming the ingredient and the path (0.6614ms)
+✔ P13b every uncosted ingredient is named, not just the first one found (0.3722ms)
+✔ P15 a what-if override recosts without writing anything (0.1898ms)
+✔ P16 costing is deterministic, and the catalogue agrees with the individuals (0.2822ms)
+✔ P17 a two-recipe cycle is rejected (0.5182ms)
+✔ P18 a longer cycle is rejected, and names the loop (0.3947ms)
+✔ P19a depth beyond the limit is rejected (0.5079ms)
+✔ P19b a weight-yielding recipe consumed by a line expecting volume is rejected (0.2502ms)
+✔ P20 the breakdown itemises the same arithmetic, and its column adds up (0.8903ms)
+✔ P21 wastage shows as an effective quantity without being rounded into the sum (0.8361ms)
+✔ P22 a rate computed over a missing ingredient is never cached (0.4794ms)
+✔ P23 an hourly rate becomes a batch cost, rounded once (0.1796ms)
+✔ P24 null is not zero: an untimed batch, or no rates, carries no overhead (0.1409ms)
+✔ P25 a timed batch carries its labour into its own rate (0.1808ms)
+✔ P26 a sub-recipe carries its labour upward, in proportion to what is used (0.6514ms)
+✔ P27 the total is what a portion is measured against (0.2214ms)
+✔ a complete production environment passes (2.1539ms)
+✔ every missing variable is named at once, not one per restart (0.4748ms)
+✔ SEED_OWNER_PASSWORD is only required outside development (0.2772ms)
+✔ a non-postgres DATABASE_URL is rejected (0.2347ms)
+✔ localhost in a production DATABASE_URL is caught, but only for a deployment (0.4539ms)
+✔ whitespace is not a value (0.232ms)
+✔ the failure message names what to fix and where to look (1.7304ms)
+✔ the scan reaches a real tree (0.971ms)
+✔ no source file contains a NUL byte (1.0415ms)
+✔ no source file starts with a UTF-8 BOM (0.2271ms)
+✔ no source file contains a zero-width or non-breaking character (3.0421ms)
+✔ source files use LF, not CRLF (0.4541ms)
+✔ the guards actually detect what they claim to (0.3167ms)
+✔ replaying 50000 movements stays under 150ms (37.5657ms)
+✔ replay cost grows linearly, not quadratically (57.302ms)
+✔ T1 - first purchase into empty stock uses the first-purchase rule (1.7759ms)
+✔ T2 - second purchase, exact quotient (0.3072ms)
+✔ T3 - non-terminating quotient rounds half-up once, at the end (0.1608ms)
+✔ T4 - an exact .5 tie rounds up, not to even (0.1987ms)
+✔ T5 - cheap ingredient precision canary (0.1519ms)
+✔ T6 - purchase at exactly zero stock ignores the stale average (0.1554ms)
+✔ T7 - purchase at negative stock must not weight in the deficit (0.3806ms)
+✔ T8 - wastage between purchases does not move the average (0.2503ms)
+✔ T9 - adjustment does not move the average (0.2653ms)
+✔ T10 - consumption and its reversal both leave the average alone (0.3516ms)
+✔ T11 - ledger replay equals the incrementally maintained state (2.7178ms)
+✔ purchases must carry a cost, other movement types must not (0.4676ms)
+✔ the day starts at 18:30 UTC the previous evening (2.796ms)
+✔ an evening in Kolkata still belongs to that Kolkata day (0.3472ms)
+✔ the boundary is midnight in Kolkata, whatever the date (83.5361ms)
+✔ the offset is the fixed one India actually keeps (0.1638ms)
+✔ base unit label is derived from unit type (1.2399ms)
+✔ half-up rounding, including exact ties (0.2218ms)
+✔ rounding refuses negative values outright (0.6114ms)
+✔ decimals parse exactly, at any scale (0.6385ms)
+✔ an entry finer than the scale is rejected, never rounded away (0.4299ms)
+✔ purchase units convert to milli-base (0.2848ms)
+✔ rupees convert to paise (0.1537ms)
+✔ unit cost derivation rejects impossible inputs (0.2762ms)
+✔ formatINR groups in the Indian convention (0.4008ms)
+✔ formatQty trims trailing zeros and keeps the base unit (0.4865ms)
+✔ stored cost converts to what a purchase unit costs (0.3591ms)
+✔ a stored quantity survives a round trip through an edit form unchanged (0.3527ms)
+✔ every stored scale has an exact inverse, for putting a value back in a box (0.2336ms)
+✔ low stock triggers at the threshold, not below it (0.1661ms)
+ℹ tests 165
+ℹ suites 0
+ℹ pass 95
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 70
+ℹ todo 0
+ℹ duration_ms 3291.6043

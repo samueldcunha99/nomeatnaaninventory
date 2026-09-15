@@ -8,7 +8,14 @@ import { db } from './client.ts';
 import { users, auditLog, sessions } from './schema.ts';
 import { hashPassword } from './auth.ts';
 import { translating } from './errors.ts';
-import { assertPermission, assertNotSelf, assertCanAssignRole, type Actor, type Role } from '../lib/auth.ts';
+import {
+  assertPermission,
+  assertNotSelf,
+  assertCanAssignRole,
+  assertCanActOnRole,
+  type Actor,
+  type Role,
+} from '../lib/auth.ts';
 
 /**
  * Same exposure ingredients had: users_tenant_email_uq is reachable from a form, and
@@ -84,6 +91,7 @@ export async function deactivateUser(actor: Actor, targetUserId: string) {
       .from(users)
       .where(and(eq(users.tenantId, actor.tenantId), eq(users.id, targetUserId)));
     if (!before) throw new Error('user not found');
+    assertCanActOnRole(actor, before.role, 'deactivate');
 
     const [after] = await tx
       .update(users)
@@ -117,6 +125,8 @@ export async function setUserRole(actor: Actor, targetUserId: string, role: Role
       .from(users)
       .where(and(eq(users.tenantId, actor.tenantId), eq(users.id, targetUserId)));
     if (!before) throw new Error('user not found');
+    // Guards the TARGET; assertCanAssignRole above guarded the new role.
+    assertCanActOnRole(actor, before.role, 'change the role of');
 
     const [after] = await tx
       .update(users)
@@ -132,6 +142,44 @@ export async function setUserRole(actor: Actor, targetUserId: string, role: Role
       entityId: targetUserId,
       beforeJson: { role: before.role },
       afterJson: { role: after.role },
+    });
+    return after;
+  });
+}
+
+/**
+ * Put a deactivated account back. DuplicateEmailError has been telling people to do this
+ * since Month 1 — "reactivate that account rather than creating a second one" — with no
+ * way to actually do it, so the only route back was a second account with a different
+ * email and a split audit trail.
+ *
+ * No session is restored: they sign in again, which is the point.
+ */
+export async function reactivateUser(actor: Actor, targetUserId: string) {
+  assertPermission(actor.role, 'users.manage');
+
+  return db.transaction(async (tx) => {
+    const [before] = await tx
+      .select()
+      .from(users)
+      .where(and(eq(users.tenantId, actor.tenantId), eq(users.id, targetUserId)));
+    if (!before) throw new Error('user not found');
+    assertCanActOnRole(actor, before.role, 'reactivate');
+
+    const [after] = await tx
+      .update(users)
+      .set({ isActive: true, updatedAt: new Date() })
+      .where(and(eq(users.tenantId, actor.tenantId), eq(users.id, targetUserId)))
+      .returning();
+
+    await tx.insert(auditLog).values({
+      tenantId: actor.tenantId,
+      userId: actor.id,
+      action: 'user.reactivate',
+      entityType: 'user',
+      entityId: targetUserId,
+      beforeJson: { isActive: before.isActive },
+      afterJson: { isActive: after.isActive },
     });
     return after;
   });

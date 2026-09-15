@@ -1,3 +1,4 @@
+import { WorkspaceHeader } from "../../ui/workspace-header.tsx";
 import Link from 'next/link';
 import { requirePermission } from '../../../src/auth/server.ts';
 import { hasPermission } from '../../../src/lib/auth.ts';
@@ -17,16 +18,9 @@ export default async function LowStockPage() {
 
   return (
     <>
-      <header className="brandbar">
-        <div className="brandbar__inner">
-          <Link className="brandbar__name text-on-navy no-underline" href="/">
-            NO MEAT NAAN
-          </Link>
-          <span className="text-sm opacity-85">Low stock</span>
-        </div>
-      </header>
+      <WorkspaceHeader actor={actor} title="Low stock" />
 
-      <main className="page">
+      <main className="page" id="main-content" tabIndex={-1}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1>Low stock</h1>
           {canRecord ? (
@@ -101,10 +95,20 @@ export default async function LowStockPage() {
                       </td>
 
                       <td className="num col-secondary whitespace-nowrap">
-                        {formatINR(
-                          costPerPurchaseUnitPaise(r.weightedAvgCostMillipaisePerBase, r.purchaseUnitInBase),
+                        {/* Never bought, so never priced. A zero here would read as free. */}
+                        {r.weightedAvgCostMillipaisePerBase === null ? (
+                          <span className="muted">Not yet priced</span>
+                        ) : (
+                          <>
+                            {formatINR(
+                              costPerPurchaseUnitPaise(
+                                r.weightedAvgCostMillipaisePerBase,
+                                r.purchaseUnitInBase,
+                              ),
+                            )}
+                            <span className="block text-xs muted">per {r.purchaseUnit}</span>
+                          </>
                         )}
-                        <span className="block text-xs muted">per {r.purchaseUnit}</span>
                       </td>
 
                       {/* Every row here is by definition an exception, so every row is badged. */}

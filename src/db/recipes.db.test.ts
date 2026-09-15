@@ -22,7 +22,7 @@ import assert from 'node:assert/strict';
 import { and, eq } from 'drizzle-orm';
 import { db } from './client.ts';
 import { dbReachable, closeDb } from './test-db.ts';
-import { tenants, users, ingredients, ingredientStock, recipeLines } from './schema.ts';
+import { tenants, users, ingredients, ingredientStock, recipes, recipeLines } from './schema.ts';
 import {
   loadRecipeGraph,
   loadCostLookup,
@@ -37,6 +37,7 @@ import {
 } from './recipes.ts';
 import { recordMovements } from './stock.ts';
 import {
+  assertAcyclicWithinDepth,
   recipeRateMillipaisePerBase,
   portionCostPaise,
   menuItemMargin,
@@ -669,6 +670,68 @@ test('a menu item name that is already taken is refused in words', async (t) => 
     saveMenuItem(owner, { name: name.toUpperCase(), ...body }),
     (e: unknown) => e instanceof DuplicateMenuItemError && !/duplicate key/.test(e.message),
   );
+});
+
+/**
+ * Two saves, at the same moment, neither of which is a cycle on its own.
+ *
+ * saveRecipe used to load the graph and prove the change acyclic BEFORE opening its
+ * transaction. Two operators could each validate against the same pre-edit graph - A
+ * gains a line for B, B gains a line for A - and both commit. The result is a cycle no
+ * single save could have made, and assertAcyclicWithinDepth then throws on every read of
+ * the catalogue, taking the recipe list and the home page with it.
+ *
+ * The fix puts the load, the validation and the write in one transaction behind one
+ * per-tenant advisory lock, so the second save sees the first one's commit. One of the
+ * two must lose. Which one is a race, and does not matter.
+ */
+test('two simultaneous saves cannot combine into a cycle', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const flour = await makeIngredient('Cycle flour');
+
+  const aId = await saveRecipe(owner, {
+    name: `Cycle A ${crypto.randomUUID().slice(0, 8)}`,
+    yieldUnitType: 'weight',
+    yieldQtyMilliBase: g(1000),
+    lines: [line({ ingredientId: flour }, 500)],
+  });
+  const bId = await saveRecipe(owner, {
+    name: `Cycle B ${crypto.randomUUID().slice(0, 8)}`,
+    yieldUnitType: 'weight',
+    yieldQtyMilliBase: g(1000),
+    lines: [line({ ingredientId: flour }, 500)],
+  });
+
+  const nameOf = async (id: string) =>
+    (await db.select({ name: recipes.name }).from(recipes).where(eq(recipes.id, id)))[0].name;
+  // Resolved BEFORE the race: an await between the two saveRecipe calls would let the
+  // first finish before the second starts, and the test would pass without a lock.
+  const [aName, bName] = await Promise.all([nameOf(aId), nameOf(bId)]);
+
+  // A takes a line on B, and B takes a line on A, launched together.
+  const results = await Promise.allSettled([
+    saveRecipe(owner, {
+      id: aId,
+      name: aName,
+      yieldUnitType: 'weight',
+      yieldQtyMilliBase: g(1000),
+      lines: [line({ ingredientId: flour }, 500), line({ subRecipeId: bId }, 100)],
+    }),
+    saveRecipe(owner, {
+      id: bId,
+      name: bName,
+      yieldUnitType: 'weight',
+      yieldQtyMilliBase: g(1000),
+      lines: [line({ ingredientId: flour }, 500), line({ subRecipeId: aId }, 100)],
+    }),
+  ]);
+
+  const kept = results.filter((r) => r.status === 'fulfilled');
+  assert.equal(kept.length, 1, 'exactly one of the two saves is allowed through');
+
+  // The real proof: the catalogue still loads and still costs. A cycle would throw here.
+  const graph = await loadRecipeGraph(owner);
+  for (const id of graph.keys()) assertAcyclicWithinDepth(id, graph);
 });
 
 /* --------------------------------------------------------------------------

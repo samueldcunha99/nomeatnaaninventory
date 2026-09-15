@@ -106,3 +106,17 @@ export function assertCanAssignRole(actor: Actor, newRole: Role): void {
     throw new AuthzError('only an owner may grant the owner role');
   }
 }
+
+/**
+ * The other half of that rule: only an owner may act ON an owner.
+ *
+ * Without this, a manager cannot promote themselves to owner but can deactivate every
+ * owner there is, or demote one to `counter` - which reaches the same place by removing
+ * everyone above them instead of climbing. The two guards have to exist together or
+ * neither does anything.
+ */
+export function assertCanActOnRole(actor: Actor, targetRole: Role, what: string): void {
+  if (targetRole === 'owner' && actor.role !== 'owner') {
+    throw new AuthzError(`only an owner may ${what} another owner`);
+  }
+}

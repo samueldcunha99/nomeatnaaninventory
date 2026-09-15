@@ -20,7 +20,28 @@ const Line = z.object({
   ingredientId: z.string().uuid(),
   quantity: z.string().trim().min(1),
   totalCost: z.string().trim().min(1),
+  /** The pack size the form displayed. Checked, never calculated with. See staleUnit. */
+  unitInBase: z.coerce.number().int().positive().optional(),
 });
+
+/**
+ * "2" against a 1 kg bag is two kilos; against a 25 kg sack it is fifty. The form shows
+ * which one it means, but the submission used to carry only an id and a number, so a
+ * manager editing the purchase pack while a receipt sat open on another screen turned
+ * that receipt into a different delivery - silently, and with a unit-cost preview that
+ * had been calculated against the old pack.
+ *
+ * So the form states the pack it priced against and the server compares. The claim is
+ * never used as a conversion factor: a tampered value can only produce this refusal.
+ */
+function staleUnit(claimed: number | undefined, actual: number, name: string): string | null {
+  if (claimed === undefined || claimed === actual) return null;
+  return (
+    `"${name}" was bought in a different pack size when this page opened, and someone has ` +
+    `changed it since. Nothing was saved. Reload the page and enter the delivery again so ` +
+    `the quantity means what you intend.`
+  );
+}
 
 const Receipt = z.object({
   supplierId: z.string().uuid().nullable(),
@@ -57,12 +78,14 @@ export async function recordReceiptAction(_prev: FormState, formData: FormData):
 
   try {
     // Quantity is entered in the ingredient's own purchase unit, so each line needs its
-    // conversion factor. Fetched rather than trusted from the form - a hidden field
-    // holding purchase_unit_in_base would be an input the client controls.
+    // conversion factor. Always the fetched one, never the submitted one: the form's
+    // hidden unitInBase is a claim about what it displayed, and staleUnit compares it.
     const converted = [];
     for (const line of parsed.data.lines) {
       const ingredient = await getIngredient(actor, line.ingredientId);
       if (!ingredient) return { error: 'One of the ingredients no longer exists.', ok: null };
+      const stale = staleUnit(line.unitInBase, ingredient.purchaseUnitInBase, ingredient.name);
+      if (stale) return { error: stale, ok: null };
       converted.push({
         ingredientId: line.ingredientId,
         quantityMilliBase: purchaseUnitsToMilliBase(line.quantity, ingredient.purchaseUnitInBase),
@@ -90,6 +113,7 @@ const Correction = z.object({
   quantity: z.string().trim().min(1, 'Enter a quantity.'),
   reason: z.enum(['count_correction', 'theft', 'spoilage', 'expiry', 'burnt', 'dropped', 'trim', 'other']),
   note: z.string().trim().max(500).nullable(),
+  unitInBase: z.coerce.number().int().positive().optional(),
 });
 
 export async function recordCorrectionAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -102,12 +126,15 @@ export async function recordCorrectionAction(_prev: FormState, formData: FormDat
     quantity: formData.get('quantity'),
     reason: formData.get('reason'),
     note: String(formData.get('note') ?? '').trim() || null,
+    unitInBase: formData.get('unitInBase') ?? undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message, ok: null };
 
   try {
     const ingredient = await getIngredient(actor, parsed.data.ingredientId);
     if (!ingredient) return { error: 'That ingredient no longer exists.', ok: null };
+    const stale = staleUnit(parsed.data.unitInBase, ingredient.purchaseUnitInBase, ingredient.name);
+    if (stale) return { error: stale, ok: null };
 
     const magnitude = purchaseUnitsToMilliBase(parsed.data.quantity, ingredient.purchaseUnitInBase);
     // Sign is applied here, once, from an explicit direction choice - never by asking

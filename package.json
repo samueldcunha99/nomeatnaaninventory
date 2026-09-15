@@ -16,6 +16,8 @@
     "db:clean-tests": "node --env-file-if-exists=.env scripts/clean-test-data.ts",
     "db:reset": "docker compose down -v && npm run db:up && npm run db:migrate && npm run db:seed",
     "bench:replay": "node --env-file-if-exists=.env scripts/bench-replay.ts",
+    "db:backup": "sh deploy/backup.sh",
+    "db:restore-check": "sh deploy/restore-check.sh",
     "stack:up": "docker compose up -d --build --wait",
     "stack:down": "docker compose down",
     "stack:logs": "docker compose logs -f",

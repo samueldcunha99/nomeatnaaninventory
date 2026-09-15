@@ -3,7 +3,7 @@
 import { useActionState, useState } from 'react';
 import { recordCorrectionAction, type FormState } from '../actions.ts';
 
-export type IngredientOption = { id: string; name: string; purchaseUnit: string };
+export type IngredientOption = { id: string; name: string; purchaseUnit: string; purchaseUnitInBase: number };
 
 const ADJUSTMENT_REASONS = [
   ['count_correction', 'Count correction'],
@@ -30,7 +30,8 @@ export function AdjustForm({ ingredients }: { ingredients: IngredientOption[] })
   const [ingredientId, setIngredientId] = useState('');
 
   const reasons = kind === 'wastage' ? WASTAGE_REASONS : ADJUSTMENT_REASONS;
-  const unit = ingredients.find((i) => i.id === ingredientId)?.purchaseUnit ?? '';
+  const chosen = ingredients.find((i) => i.id === ingredientId);
+  const unit = chosen?.purchaseUnit ?? '';
 
   const switchKind = (next: 'adjustment' | 'wastage') => {
     setKind(next);
@@ -40,6 +41,9 @@ export function AdjustForm({ ingredients }: { ingredients: IngredientOption[] })
   return (
     <form action={formAction} className="max-w-xl">
       <input type="hidden" name="kind" value={kind} />
+      {/* The pack this quantity is being typed in. Compared server-side, never used as a
+          conversion factor - see staleUnit in ../actions.ts. */}
+      {chosen ? <input type="hidden" name="unitInBase" value={chosen.purchaseUnitInBase} /> : null}
 
       {state.error ? (
         <div className="msg msg--error" role="alert">

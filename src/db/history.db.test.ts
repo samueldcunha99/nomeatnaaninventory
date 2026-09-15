@@ -7,7 +7,7 @@
  */
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { eq } from 'drizzle-orm';
+import { eq, sql as raw } from 'drizzle-orm';
 import { db } from './client.ts';
 import { dbReachable, closeDb } from './test-db.ts';
 import { tenants, users, ingredients, stockMovements } from './schema.ts';
@@ -89,8 +89,16 @@ test('a date filter narrows the rows but must NOT restart the balance', async (t
   const ing = await makeIngredient('Filtered');
 
   await recordReceipt(owner, { lines: [{ ingredientId: ing, quantityMilliBase: 5_000_000n, totalCostPaise: 250_000n }] });
-  // Backdate the opening receipt so it sits before the filter window.
-  await db.update(stockMovements).set({ createdAt: new Date('2026-01-01T00:00:00Z') }).where(eq(stockMovements.ingredientId, ing));
+  // Backdate the opening receipt so it sits before the filter window. The ledger is
+  // append-only at the database (migration 0006), so this fixture states plainly that it
+  // is maintenance, not business logic. Transaction-local: it lapses on commit.
+  await db.transaction(async (tx) => {
+    await tx.execute(raw`set local app.ledger_maintenance = 'on'`);
+    await tx
+      .update(stockMovements)
+      .set({ createdAt: new Date('2026-01-01T00:00:00Z') })
+      .where(eq(stockMovements.ingredientId, ing));
+  });
 
   await recordCorrection(owner, 'adjustment', {
     ingredientId: ing,

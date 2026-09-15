@@ -49,7 +49,42 @@ Left, once the account exists:
    only the app needs to reach the database.
 6. Add the four repository secrets and uncomment the `deploy` job in `ci.yml`.
 7. Nightly `pg_dump` to Cloudflare R2, **and a tested restore** — PROJECT-SPEC § 10.5 is
-   explicit that the restore is what gets tested, not the backup.
+   explicit that the restore is what gets tested, not the backup. The two scripts exist
+   (see Backups below); what is left is putting `backup.sh` in cron on the real box and
+   pointing `R2_REMOTE` at the bucket.
+
+## Backups, and the restore that proves them
+
+Two scripts, both meant to run on the VPS beside `docker-compose.prod.yml`.
+
+**`backup.sh`** — one `pg_dump -Fc` per night, written `.partial` and moved on success,
+refused if the result is implausibly small, copied off the box, then old ones pruned. In
+that order: a prune that runs after a failed copy deletes the backups that still worked.
+
+    # /etc/crontab on the VPS
+    0 2 * * *  cd /srv/cafe && R2_REMOTE=r2:cafe-backups ./backup.sh >> /var/log/cafe-backup.log 2>&1
+
+`R2_REMOTE` is an [rclone](https://rclone.org/) remote. **Without it the script still runs
+and warns**: a backup on the same disk as the database survives a bad migration and
+nothing else — not a dead disk, not a deleted instance, not ransomware.
+
+**`restore-check.sh`** — restores the newest dump into a scratch database next to the live
+one, compares row counts table by table, checks the append-only trigger came back, and
+drops the scratch database. The live database is only ever read.
+
+    cd /srv/cafe && ./restore-check.sh
+
+Monthly, and **once before go-live with the output kept** — that output is the handover
+deliverable in § 12, not the existence of the scripts.
+
+It reports a restored count *lower* than live as rows newer than the backup, which is
+normal, and an *empty* table where live has rows as a failure. `pg_restore` runs with
+`--exit-on-error`, because it otherwise prints a screen of warnings, exits 0, and leaves
+you with half a database and a passing check.
+
+Both scripts default to `docker-compose.prod.yml`; set `COMPOSE="docker compose"` to
+rehearse against a local stack. That is how the first successful restore was run on
+16 September 2026 — ten tables, every count matching, trigger present.
 
 ## Rules that outlive this file
 

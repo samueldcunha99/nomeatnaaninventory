@@ -13,7 +13,7 @@
  * Not part of `npm test`: it writes 50,000 rows and takes a while. It cleans up after
  * itself, but point it at a scratch database if you care about the contents.
  */
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql as raw } from 'drizzle-orm';
 import { db, sql } from '../src/db/client.ts';
 import {
   tenants,
@@ -112,9 +112,13 @@ for (const size of SIZES) {
       `${(cold / Math.max(warm, 0.01)).toFixed(0).padStart(11)}x`,
   );
 
-  await db.delete(ingredientStock).where(and(eq(ingredientStock.tenantId, tenant.id), eq(ingredientStock.ingredientId, ing.id)));
-  await db.delete(stockMovements).where(and(eq(stockMovements.tenantId, tenant.id), eq(stockMovements.ingredientId, ing.id)));
-  await db.delete(ingredients).where(and(eq(ingredients.tenantId, tenant.id), eq(ingredients.id, ing.id)));
+  // One transaction so `set local` holds: migration 0006 refuses a ledger delete without it.
+  await db.transaction(async (tx) => {
+    await tx.execute(raw`set local app.ledger_maintenance = 'on'`);
+    await tx.delete(ingredientStock).where(and(eq(ingredientStock.tenantId, tenant.id), eq(ingredientStock.ingredientId, ing.id)));
+    await tx.delete(stockMovements).where(and(eq(stockMovements.tenantId, tenant.id), eq(stockMovements.ingredientId, ing.id)));
+    await tx.delete(ingredients).where(and(eq(ingredients.tenantId, tenant.id), eq(ingredients.id, ing.id)));
+  });
 }
 
 // recordMovements writes an audit entry per operation, and those reference the user.

@@ -10,7 +10,10 @@
 #   GHCR_REPO           lowercase owner/repo, e.g. samueldcunha/nomeatnaan
 #   IMAGE_TAG           sha-xxxxxxx from CI. Never `latest` — rollback is editing this line.
 #   SITE_ADDRESS        the real hostname, e.g. order.cafename.com
-#   POSTGRES_PASSWORD   not the local default
+#   POSTGRES_PASSWORD   not the local default. The MIGRATOR's password — owns the schema.
+#   APP_DB_PASSWORD     a different password, for the role the app runs as. The migrator
+#                       creates that role and grants it data access and nothing else, so
+#                       the process serving the login page cannot alter the schema.
 #   SEED_OWNER_PASSWORD
 
 services:
@@ -36,6 +39,9 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgres://${POSTGRES_USER:-cafe}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-cafe}
       SEED_OWNER_PASSWORD: ${SEED_OWNER_PASSWORD:?set SEED_OWNER_PASSWORD in .env}
+      # Creates/refreshes the app's own role on every deploy, including grants for any
+      # table a new migration just added.
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set APP_DB_PASSWORD in .env - not the same as POSTGRES_PASSWORD}
     depends_on:
       db:
         condition: service_healthy
@@ -46,7 +52,8 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgres://${POSTGRES_USER:-cafe}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-cafe}
+      # cafe_app, not cafe: data access only. The migrator above holds the owner password.
+      DATABASE_URL: postgres://cafe_app:${APP_DB_PASSWORD}@db:5432/${POSTGRES_DB:-cafe}
       SEED_OWNER_PASSWORD: ${SEED_OWNER_PASSWORD}
     depends_on:
       db:

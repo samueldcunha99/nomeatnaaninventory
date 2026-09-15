@@ -13,7 +13,7 @@ import { db } from './client.ts';
 import { dbReachable, closeDb } from './test-db.ts';
 import { tenants, users, sessions } from './schema.ts';
 import { login, getSessionUser, destroySession, hashPassword, deleteExpiredSessions } from './auth.ts';
-import { deactivateUser, setUserRole, createUser, listUsers } from './users.ts';
+import { deactivateUser, reactivateUser, setUserRole, createUser, listUsers } from './users.ts';
 import { hashToken, generateSessionToken, AuthzError, type Actor } from '../lib/auth.ts';
 
 let reachable = false;
@@ -170,6 +170,44 @@ test('a manager cannot promote anyone to owner', async (t) => {
 
   const [row] = await db.select().from(users).where(eq(users.id, target.id));
   assert.equal(row.role, 'kitchen');
+});
+
+/**
+ * The other half of "only an owner may grant the owner role".
+ *
+ * A manager who cannot promote themselves can still reach the same place by removing
+ * everyone above them - deactivate every owner, or demote one to kitchen. The promotion
+ * guard on its own is a locked front door next to an open window.
+ */
+test('a manager cannot deactivate or demote an owner', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const manager = asActor(await makeUser('manager'));
+  const target = await makeUser('owner');
+
+  await assert.rejects(() => deactivateUser(manager, target.id), AuthzError);
+  await assert.rejects(() => setUserRole(manager, target.id, 'kitchen'), AuthzError);
+  await assert.rejects(() => reactivateUser(manager, target.id), AuthzError);
+
+  const [row] = await db.select().from(users).where(eq(users.id, target.id));
+  assert.equal(row.role, 'owner');
+  assert.equal(row.isActive, true);
+
+  // An owner may, which is what makes the refusal above about rank and not about the row.
+  const owner = asActor(await makeUser('owner'));
+  await assert.doesNotReject(() => setUserRole(owner, target.id, 'manager'));
+});
+
+test('a deactivated account can be put back, rather than duplicated', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const owner = asActor(await makeUser('owner'));
+  const target = await makeUser('counter');
+
+  await deactivateUser(owner, target.id);
+  const back = await reactivateUser(owner, target.id);
+  assert.equal(back.isActive, true);
+
+  // And they can sign in again, which is the only proof that matters.
+  assert.ok(await login(target.email, PASSWORD));
 });
 
 test('deactivating a user kills their live sessions immediately', async (t) => {

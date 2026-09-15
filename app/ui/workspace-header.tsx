@@ -15,6 +15,7 @@ export function WorkspaceHeader({ actor, title }: { actor: Actor & { name?: stri
     { href: '/stock/low', label: 'Low stock', group: 'Inventory', icon: 'm12 3 10 18H2L12 3ZM12 9v5M12 17v1' },
   );
   if (hasPermission(actor.role, 'recipes.manage')) items.push({ href: '/settings/costing', label: 'Hourly rates', group: 'Settings', icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 7v5l4 2' });
+  if (hasPermission(actor.role, 'users.manage')) items.push({ href: '/settings/users', label: 'Staff', group: 'Settings', icon: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8' });
   return <>
     <a className="skip-link" href="#main-content">Skip to content</a>
     <WorkspaceNav items={items} />

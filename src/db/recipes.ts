@@ -49,13 +49,22 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
  * The whole catalogue rather than one recipe on purpose: costing a recipe needs its
  * sub-recipes, and theirs, and a per-recipe fetch would either N+1 or re-implement the
  * walk in SQL. A catalogue is hundreds of rows.
+ *
+ * `conn` defaults to the pool. saveRecipe passes its own transaction, so the graph it
+ * validates and the graph it writes into are one snapshot rather than two - and so the
+ * two queries below cannot straddle somebody else's commit and pair an old yield with
+ * new lines. Same shape as replayLedger's optional starting state: one parameter, no
+ * second implementation.
  */
-export async function loadRecipeGraph(actor: Actor): Promise<Map<string, Recipe>> {
+export async function loadRecipeGraph(
+  actor: Actor,
+  conn: Tx | typeof db = db,
+): Promise<Map<string, Recipe>> {
   assertPermission(actor.role, 'recipes.view');
   const tenantId = actor.tenantId;
 
   const [recipeRows, lineRows] = await Promise.all([
-    db
+    conn
       .select({
         id: recipes.id,
         name: recipes.name,
@@ -66,7 +75,7 @@ export async function loadRecipeGraph(actor: Actor): Promise<Map<string, Recipe>
       .from(recipes)
       .where(and(eq(recipes.tenantId, tenantId), isNull(recipes.deletedAt)))
       .orderBy(asc(recipes.name)),
-    db
+    conn
       .select({
         recipeId: recipeLines.recipeId,
         ingredientId: recipeLines.ingredientId,
@@ -340,91 +349,110 @@ export async function saveRecipe(actor: Actor, input: RecipeInput): Promise<stri
 
   const recipeId = input.id ?? crypto.randomUUID();
 
-  const [graph, ingredientRows] = await Promise.all([
-    loadRecipeGraph(actor),
-    db
-      .select({ id: ingredients.id, name: ingredients.name, unitType: ingredients.unitType })
-      .from(ingredients)
-      .where(eq(ingredients.tenantId, actor.tenantId)),
-  ]);
-  const ingredientsById = new Map(ingredientRows.map((r) => [r.id, r]));
-
-  if (input.id && !graph.has(input.id)) {
-    throw new RangeError(`recipe ${input.id} does not exist in this tenant`);
-  }
-
-  // Changing what a recipe YIELDS changes what every parent line means. A parent that
-  // entered "2160 g of dough" cannot silently become 2160 ml, and nothing re-validates a
-  // stored line - it carries no unit of its own, by design. So the change is refused
-  // while a parent still draws on this recipe, naming the parents to remove it from.
-  const before = input.id ? graph.get(input.id) : undefined;
-  if (before && before.yieldUnitType !== input.yieldUnitType) {
-    const parents = [...graph.values()].filter(
-      (r) => r.id !== recipeId && r.lines.some((l) => l.subRecipeId === recipeId),
-    );
-    if (parents.length > 0) {
-      throw new RangeError(
-        `"${before.name}" is measured by ${before.yieldUnitType} and is used by ` +
-          `${parents.map((p) => `"${p.name}"`).join(', ')}. Remove it from ` +
-          `${parents.length === 1 ? 'that recipe' : 'those recipes'} before changing what it yields.`,
-      );
-    }
-  }
-
-  // Unit compatibility, line by line, against what the source actually measures in.
-  for (const line of input.lines) {
-    if (!line.ingredientId === !line.subRecipeId) {
-      throw new RangeError('a line must reference exactly one of an ingredient or a sub-recipe');
-    }
-
-    let label: string;
-    let provides: UnitType;
-    if (line.ingredientId) {
-      const ingredient = ingredientsById.get(line.ingredientId);
-      if (!ingredient) throw new RangeError(`ingredient ${line.ingredientId} is not in this tenant`);
-      label = ingredient.name;
-      provides = ingredient.unitType;
-    } else {
-      const sub = graph.get(line.subRecipeId!);
-      if (!sub) throw new RangeError(`recipe ${line.subRecipeId} is not in this tenant`);
-      label = sub.name;
-      provides = sub.yieldUnitType;
-    }
-    assertLineUnitCompatible(line.entryUnitType, provides, label);
-
-    // Both of these are database checks as well. They are caught here so the operator is
-    // told which LINE is wrong, by name, rather than being handed a constraint violation
-    // that names a table and a column.
-    if (line.quantityMilliBase <= 0n) {
-      throw new RangeError(`"${label}" needs a quantity above zero.`);
-    }
-    const wastage = line.wastageMillipercent ?? 0n;
-    if (wastage < 0n || wastage > 100_000n) {
-      throw new RangeError(`Wastage on "${label}" must be between 0% and 100%.`);
-    }
-  }
-
-  // Cycles and depth, against the graph as it WOULD be. Checked from every recipe, not
-  // just this one: editing a leaf can push a parent past the depth limit, and walking
-  // downward from the edited recipe alone would never see that.
-  const prospective = new Map(graph);
-  prospective.set(recipeId, {
-    id: recipeId,
-    name: input.name,
-    yieldUnitType: input.yieldUnitType,
-    yieldQtyMilliBase: input.yieldQtyMilliBase,
-    batchMinutes: input.batchMinutes ?? null,
-    lines: input.lines.map((l) => ({
-      ingredientId: l.ingredientId ?? null,
-      subRecipeId: l.subRecipeId ?? null,
-      quantityMilliBase: l.quantityMilliBase,
-      wastageMillipercent: l.wastageMillipercent ?? 0n,
-    })),
-  });
-  for (const id of prospective.keys()) assertAcyclicWithinDepth(id, prospective);
-
   const run = () =>
     db.transaction(async (tx: Tx) => {
+      /*
+       * Everything below - loading the graph, every validation, and the write - is inside
+       * one transaction behind one lock.
+       *
+       * It used to validate first and open the transaction afterwards. Two operators saving
+       * at the same moment each read the same graph, each proved their own change acyclic
+       * against it, and both committed: A→B and B→A, a cycle that no single save could have
+       * created. assertAcyclicWithinDepth then throws on every read of the catalogue, which
+       * takes out the recipe list and the home page until someone edits the database.
+       *
+       * The lock is per tenant, not per recipe, because the property being protected is a
+       * property of the whole graph - a cycle belongs to no single recipe in it. Recipe
+       * saves are a few per day by one or two people, so serialising them tenant-wide costs
+       * nothing that anyone can perceive. Same hashtextextended advisory lock stock writes
+       * take, so the two never deadlock against each other: different keyspace, and neither
+       * holds one while waiting for the other.
+       */
+      await tx.execute(raw`select pg_advisory_xact_lock(hashtextextended(${`recipes:${actor.tenantId}`}, 0))`);
+
+      const [graph, ingredientRows] = await Promise.all([
+        loadRecipeGraph(actor, tx),
+        tx
+          .select({ id: ingredients.id, name: ingredients.name, unitType: ingredients.unitType })
+          .from(ingredients)
+          .where(eq(ingredients.tenantId, actor.tenantId)),
+      ]);
+      const ingredientsById = new Map(ingredientRows.map((r) => [r.id, r]));
+
+      if (input.id && !graph.has(input.id)) {
+        throw new RangeError(`recipe ${input.id} does not exist in this tenant`);
+      }
+
+      // Changing what a recipe YIELDS changes what every parent line means. A parent that
+      // entered "2160 g of dough" cannot silently become 2160 ml, and nothing re-validates a
+      // stored line - it carries no unit of its own, by design. So the change is refused
+      // while a parent still draws on this recipe, naming the parents to remove it from.
+      const before = input.id ? graph.get(input.id) : undefined;
+      if (before && before.yieldUnitType !== input.yieldUnitType) {
+        const parents = [...graph.values()].filter(
+          (r) => r.id !== recipeId && r.lines.some((l) => l.subRecipeId === recipeId),
+        );
+        if (parents.length > 0) {
+          throw new RangeError(
+            `"${before.name}" is measured by ${before.yieldUnitType} and is used by ` +
+              `${parents.map((p) => `"${p.name}"`).join(', ')}. Remove it from ` +
+              `${parents.length === 1 ? 'that recipe' : 'those recipes'} before changing what it yields.`,
+          );
+        }
+      }
+
+      // Unit compatibility, line by line, against what the source actually measures in.
+      for (const line of input.lines) {
+        if (!line.ingredientId === !line.subRecipeId) {
+          throw new RangeError('a line must reference exactly one of an ingredient or a sub-recipe');
+        }
+
+        let label: string;
+        let provides: UnitType;
+        if (line.ingredientId) {
+          const ingredient = ingredientsById.get(line.ingredientId);
+          if (!ingredient) throw new RangeError(`ingredient ${line.ingredientId} is not in this tenant`);
+          label = ingredient.name;
+          provides = ingredient.unitType;
+        } else {
+          const sub = graph.get(line.subRecipeId!);
+          if (!sub) throw new RangeError(`recipe ${line.subRecipeId} is not in this tenant`);
+          label = sub.name;
+          provides = sub.yieldUnitType;
+        }
+        assertLineUnitCompatible(line.entryUnitType, provides, label);
+
+        // Both of these are database checks as well. They are caught here so the operator is
+        // told which LINE is wrong, by name, rather than being handed a constraint violation
+        // that names a table and a column.
+        if (line.quantityMilliBase <= 0n) {
+          throw new RangeError(`"${label}" needs a quantity above zero.`);
+        }
+        const wastage = line.wastageMillipercent ?? 0n;
+        if (wastage < 0n || wastage > 100_000n) {
+          throw new RangeError(`Wastage on "${label}" must be between 0% and 100%.`);
+        }
+      }
+
+      // Cycles and depth, against the graph as it WOULD be. Checked from every recipe, not
+      // just this one: editing a leaf can push a parent past the depth limit, and walking
+      // downward from the edited recipe alone would never see that.
+      const prospective = new Map(graph);
+      prospective.set(recipeId, {
+        id: recipeId,
+        name: input.name,
+        yieldUnitType: input.yieldUnitType,
+        yieldQtyMilliBase: input.yieldQtyMilliBase,
+        batchMinutes: input.batchMinutes ?? null,
+        lines: input.lines.map((l) => ({
+          ingredientId: l.ingredientId ?? null,
+          subRecipeId: l.subRecipeId ?? null,
+          quantityMilliBase: l.quantityMilliBase,
+          wastageMillipercent: l.wastageMillipercent ?? 0n,
+        })),
+      });
+      for (const id of prospective.keys()) assertAcyclicWithinDepth(id, prospective);
+
       const values = {
         tenantId: actor.tenantId,
         name: input.name,

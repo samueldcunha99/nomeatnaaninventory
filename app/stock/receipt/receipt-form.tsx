@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { recordReceiptAction, type FormState } from '../actions.ts';
 import { IngredientCombobox } from '../../ui/ingredient-combobox.tsx';
 import {
@@ -57,6 +57,24 @@ export function ReceiptForm({
     ok: null,
   });
   const [rows, setRows] = useState<Row[]>([blank(), blank(), blank()]);
+
+  /*
+   * A saved receipt leaves the lines on screen, the button re-enabled and no new-receipt
+   * step, and recordReceipt mints a fresh reference every call - so a second click, or a
+   * retry after a lost response, writes the delivery twice. The ledger is append-only, so
+   * undoing that means a counter-movement rather than a delete. Clearing on success is
+   * the cheap half of the fix.
+   *
+   * useActionState hands back a new state object per submission, so this fires on every
+   * success, including two identical ones in a row.
+   *
+   * ponytail: no idempotency key. Two rapid clicks on the SAME render can still both land
+   * before this runs. A submission token checked server-side is the real fix, and Month 3
+   * needs one anyway for orders - do both there.
+   */
+  useEffect(() => {
+    if (state.ok) setRows([blank(), blank(), blank()]);
+  }, [state]);
 
   const set = (i: number, patch: Partial<Row>) =>
     setRows((rs) => rs.map((r, k) => (k === i ? { ...r, ...patch } : r)));
@@ -143,6 +161,20 @@ export function ReceiptForm({
                       <span className="text-sm font-medium text-ink whitespace-nowrap">
                         {ing?.purchaseUnit ?? ''}
                       </span>
+                      {/*
+                        The pack this row was PRICED against, as displayed. The server
+                        never calculates with it - it compares it with the ingredient's
+                        current pack and refuses the receipt if someone has changed the
+                        definition since this page loaded. A tampered value can only
+                        cause a refusal, never a wrong quantity.
+                      */}
+                      {ing ? (
+                        <input
+                          type="hidden"
+                          name={`lines[${i}][unitInBase]`}
+                          value={ing.purchaseUnitInBase}
+                        />
+                      ) : null}
                     </div>
                   </td>
 
