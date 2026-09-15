@@ -1,0 +1,80 @@
+name,brand,unit_type,purchase_unit,purchase_unit_in_base,opening_qty,opening_cost_rupees,source_row,note
+Ice,,weight,kg,1000,,,recipe PDF,used by 52 recipes; fill in the pack size and what you paid
+Milk (full cream),,volume,litre,1000,,,recipe PDF,used by 25 recipes; fill in the pack size and what you paid
+Water,,volume,litre,1000,,,recipe PDF,used by 23 recipes; fill in the pack size and what you paid
+Bread (slice),,count,piece,1,,,recipe PDF,used by 13 recipes; fill in the pack size and what you paid
+Ice Cream,,weight,kg,1000,,,recipe PDF,used by 14 recipes; fill in the pack size and what you paid
+Sprite,,volume,litre,1000,,,recipe PDF,used by 12 recipes; fill in the pack size and what you paid
+Cola,,volume,litre,1000,,,recipe PDF,used by 2 recipes; fill in the pack size and what you paid
+Onion,,weight,kg,1000,,,recipe PDF,used by 10 recipes; fill in the pack size and what you paid
+Sugar Syrup,,volume,litre,1000,,,recipe PDF,used by 10 recipes; fill in the pack size and what you paid
+Garlic,,weight,kg,1000,,,recipe PDF,used by 8 recipes; fill in the pack size and what you paid
+Mixed Herbs,,weight,kg,1000,,,recipe PDF,used by 13 recipes; fill in the pack size and what you paid
+Cheese (unspecified),,weight,kg,1000,,,recipe PDF,used by 7 recipes; fill in the pack size and what you paid
+Mixed Vegetables,,weight,kg,1000,,,recipe PDF,used by 7 recipes; fill in the pack size and what you paid
+Black Pepper,,weight,kg,1000,,,recipe PDF,used by 5 recipes; fill in the pack size and what you paid
+Cumin Powder,,weight,kg,1000,,,recipe PDF,used by 4 recipes; fill in the pack size and what you paid
+Tomato,,weight,kg,1000,,,recipe PDF,used by 4 recipes; fill in the pack size and what you paid
+Banana,,count,piece,1,,,recipe PDF,used by 3 recipes; fill in the pack size and what you paid
+Blueberry Crush,,volume,litre,1000,,,recipe PDF,used by 4 recipes; fill in the pack size and what you paid
+Chat Masala,,weight,kg,1000,,,recipe PDF,used by 3 recipes; fill in the pack size and what you paid
+Green Chilli,,weight,kg,1000,,,recipe PDF,used by 3 recipes; fill in the pack size and what you paid
+Vanilla Essence,,volume,litre,1000,,,recipe PDF,used by 4 recipes; fill in the pack size and what you paid
+Apple,,count,piece,1,,,recipe PDF,used by 2 recipes; fill in the pack size and what you paid
+Blueberry Filling,,weight,kg,1000,,,recipe PDF,used by 4 recipes; fill in the pack size and what you paid
+Chocolate (unspecified),,weight,kg,1000,,,recipe PDF,used by 2 recipes; fill in the pack size and what you paid
+Dark Chocolate (unspecified),,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+White Chocolate (unspecified),,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Cinnamon Powder,,weight,kg,1000,,,recipe PDF,used by 2 recipes; fill in the pack size and what you paid
+Coconut Cream,,weight,kg,1000,,,recipe PDF,used by 3 recipes; fill in the pack size and what you paid
+Coconut Milk,,volume,litre,1000,,,recipe PDF,used by 2 recipes; fill in the pack size and what you paid
+Coconut Milk Powder,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Coconut Powder,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Coconut Water,,volume,litre,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Cookie,,count,piece,1,,,recipe PDF,used by 2 recipes; fill in the pack size and what you paid
+Green Capsicum,,weight,kg,1000,,,recipe PDF,used by 3 recipes; fill in the pack size and what you paid
+Irish Flavour Syrup,,volume,litre,1000,,,recipe PDF,used by 2 recipes; fill in the pack size and what you paid
+Mango Crush,,volume,litre,1000,,,recipe PDF,used by 2 recipes; fill in the pack size and what you paid
+Mojito Lime Syrup,,volume,litre,1000,,,recipe PDF,used by 2 recipes; fill in the pack size and what you paid
+Mojito Mint Syrup,,volume,litre,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Oat Milk,,volume,litre,1000,,,recipe PDF,used by 2 recipes; fill in the pack size and what you paid
+Peanut Butter,,weight,kg,1000,,,recipe PDF,used by 3 recipes; fill in the pack size and what you paid
+Thyme,,weight,kg,1000,,,recipe PDF,used by 2 recipes; fill in the pack size and what you paid
+Ginger,,weight,kg,1000,,,recipe PDF,used by 2 recipes; fill in the pack size and what you paid
+Ajwain,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Almond Butter,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Basil,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Blueberries,,weight,kg,1000,,,recipe PDF,used by 2 recipes; fill in the pack size and what you paid
+Brownie,,count,piece,1,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Citric Acid,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Coriander (fresh),,weight,kg,1000,,,recipe PDF,used by 2 recipes; fill in the pack size and what you paid
+Curry Leaves,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Dates,,count,piece,1,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Cardamom Powder,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Garam Masala,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Ginger Ale,,volume,litre,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Ginger Ale Syrup,,volume,litre,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Ginger Garlic Paste,,weight,kg,1000,,,recipe PDF,used by 2 recipes; fill in the pack size and what you paid
+Green Tea,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Gulkand,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Jasmine Tea,,weight,kg,1000,,,recipe PDF,used by 0 recipes; fill in the pack size and what you paid
+Kala Khatta Syrup,,volume,litre,1000,,,recipe PDF,used by 2 recipes; fill in the pack size and what you paid
+Kashmiri Chilli,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Kasuri Methi,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Lemon,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Lime Zest,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Makai Atta (Maize Flour),,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Mushroom,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Mulberry,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Nachos Masala,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Peach Powder,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Potato,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Red Chilli (fresh),,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Rock Salt,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Roasted Chana,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Sabja Seed,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Sandwich Masala,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Spinach,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Tropical Tea,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Vanilla Foam,,weight,kg,1000,,,recipe PDF,used by 1 recipes; fill in the pack size and what you paid
+Yuzu Syrup,,volume,litre,1000,,,recipe PDF,used by 2 recipes; fill in the pack size and what you paid

@@ -1,0 +1,620 @@
+recipe,source_kind,source,as_written,quantity,unit
+Cappuccino,ingredient,Coffee Beans,Coffee beans,20,g
+Cappuccino,new-ingredient,Milk (full cream),Milk,100,ml
+Cafe latte,ingredient,Coffee Beans,Coffee beans,20,g
+Cafe latte,new-ingredient,Milk (full cream),Milk,150,ml
+White chocolate mocha,ingredient,Coffee Beans,Coffee beans,20,g
+White chocolate mocha,recipe,White cho ghanash,White ganash,70,g
+White chocolate mocha,ingredient,Sugar Sachet,Sugar sachet,1,pcs
+White chocolate mocha,new-ingredient,Milk (full cream),Milk,100,ml
+Cafe mocha,ingredient,Coffee Beans,Coffee beans,20,g
+Cafe mocha,recipe,Chocolate ghanash,Chocolate ganash,50,g
+Cafe mocha,ingredient,Cocoa Powder,Coco powder,5,g
+Cafe mocha,new-ingredient,Milk (full cream),Milk,100,ml
+Hot chocolate,ingredient,Chocolate Topping,Chocolate dressing,25,g
+Hot chocolate,recipe,Chocolate ghanash,Chocolate ganash,100,g
+Hot chocolate,ingredient,Cocoa Powder,Coco powder,10,g
+Hot chocolate,new-ingredient,Milk (full cream),Milk,200,ml
+Americano,ingredient,Coffee Beans,Coffee beans,20,g
+Americano,new-ingredient,Water,Hot water,200,ml
+Mexican spiced Americano,ingredient,Coffee Beans,Coffee beans,20,g
+Mexican spiced Americano,new-ingredient,Water,Hot water,200,ml
+Mexican spiced Americano,ingredient,Brown Sugar,Brown sugar,20,g
+Mexican spiced Americano,new-ingredient,Cinnamon Powder,Cinnemon powder,2,g
+Instant hot coffee,new-ingredient,Milk (full cream),Milk,200,ml
+Instant hot coffee,ingredient,Instant Coffee Powder,Coffee powder,5,g
+Instant hot coffee,ingredient,Sugar (White),Sugar,10,g
+Espresso short,ingredient,Coffee Beans,Coffee beans,20,g
+Affogato,ingredient,Coffee Beans,Coffee beans,20,g
+Affogato,new-ingredient,Ice Cream,Ice cream,80,g
+Tiramisu latte,ingredient,Coffee Beans,Coffee beans,20,g
+Tiramisu latte,recipe,Vanilla milk,Vanilla milk,135,g
+Tiramisu latte,recipe,Tiramisu cream,Tiramissu cream,50,g
+Matcha latte,recipe,Vanilla milk,Vanilla milk,150,g
+Matcha latte,ingredient,Matcha Powder,Matcha powder,2,g
+Irish cafe latte,ingredient,Coffee Beans,Coffee beans,20,g
+Irish cafe latte,new-ingredient,Milk (full cream),Milk,,ml
+Irish cafe latte,new-ingredient,Irish Flavour Syrup,Irish flaver,,ml
+Irish coffee,new-ingredient,Water,Hot water,120,ml
+Irish coffee,new-ingredient,Irish Flavour Syrup,Irish flaver,30,ml
+Irish coffee,ingredient,Coffee Beans,Espresso,30,ml
+Irish coffee,ingredient,Sugar Sachet,Sugar sachet,1,pcs
+Hot durty matcha,ingredient,Matcha Powder,Matcha,2,g
+Hot durty matcha,recipe,Vanilla milk,Vanilla milk,140,g
+Hot durty matcha,ingredient,Coffee Beans,Coffee,20,g
+Hot durty matcha,new-ingredient,Sugar Syrup,Sugar syrup,20,g
+Matcha latte (vanilla milk),ingredient,Matcha Powder,Matcha,2.5,g
+Matcha latte (vanilla milk),recipe,Vanilla milk,Vanilla milk,120,g
+Caramal matcha latte,ingredient,Matcha Powder,Matcha powder,2.5,g
+Caramal matcha latte,ingredient,Caramal Topping,Caramal,50,g
+Caramal matcha latte,recipe,Vanilla milk,Vanilla milk,135,g
+White chocolate mocha new,recipe,White cho ghanash,White chocolate ghanash,40,g
+White chocolate mocha new,recipe,Vanilla milk,Vanilla milk,140,ml
+White chocolate mocha new,ingredient,Coffee Beans,Coffee bens,20,g
+Oat milk matcha latte,ingredient,Matcha Powder,Matcha powder,3,g
+Oat milk matcha latte,new-ingredient,Oat Milk,Oat milk,230,ml
+Elaichi chai,new-ingredient,Milk (full cream),Milk,250,g
+Elaichi chai,ingredient,Sugar (White),Sugar,15,g
+Elaichi chai,ingredient,Tea Powder,Tea powder,5,g
+Elaichi chai,new-ingredient,Cardamom Powder,Elaichi powder,3,g
+Aadrak chai,new-ingredient,Milk (full cream),Milk,250,g
+Aadrak chai,ingredient,Tea Powder,Tea powder,5,g
+Aadrak chai,new-ingredient,Ginger,Aadrak,30,g
+Aadrak chai,ingredient,Sugar (White),Sugar,15,g
+Jasmin tea,recipe,Jasmin tea,Jasmin tea,5,g
+Jasmin tea,new-ingredient,Water,Hot water,200,g
+Tropical green tea,new-ingredient,Water,Hot water,200,g
+Tropical green tea,new-ingredient,Tropical Tea,Troppical tea,2,g
+Chamomile tea,new-ingredient,Water,Hot water,200,g
+Chamomile tea,new-ingredient,Green Tea,Green tea,2,g
+Ice coffee,ingredient,Coffee Beans,Coffee beans,20,g
+Ice coffee,recipe,Vanilla milk,Vanilla milk,135,g
+Ice coffee,new-ingredient,Ice,Ice cube,5,g
+Ice latte,ingredient,Coffee Beans,Coffee beans,20,g
+Ice latte,new-ingredient,Milk (full cream),Normal milk,135,g
+Ice latte,new-ingredient,Ice,Ice cube,,g
+Ice caramel macchiato,ingredient,Coffee Beans,Coffee beans,20,g
+Ice caramel macchiato,ingredient,Caramal Topping,Caramle,50,g
+Ice caramel macchiato,recipe,Vanilla milk,Vanilla milk,135,g
+Ice caramel macchiato,new-ingredient,Ice,Ice,,g
+Ice americano,ingredient,Coffee Beans,Coffee beans,20,g
+Ice americano,new-ingredient,Water,Normle water,135,g
+Ice americano,new-ingredient,Ice,Ice cube,,g
+Spiced americano (iced),ingredient,Coffee Beans,Coffee beans,20,g
+Spiced americano (iced),ingredient,Brown Sugar,Brown sugar,20,g
+Spiced americano (iced),new-ingredient,Cinnamon Powder,Cinnemon powder,2,g
+Spiced americano (iced),new-ingredient,Water,Hot water,100,g
+Spiced americano (iced),new-ingredient,Ice,Ice,,g
+Vietnamese coffee,ingredient,Coffee Beans,Coffee beans,20,g
+Vietnamese coffee,ingredient,MILK MAID,Milk made,30,g
+Vietnamese coffee,recipe,Vanilla milk,Vanilla milk,50,g
+Vietnamese coffee,new-ingredient,Ice,Ice,,g
+Vietnamese cold brew,recipe,Cold brew,Cold brew,90,g
+Vietnamese cold brew,recipe,Vanilla milk,Vanilla milk,50,g
+Vietnamese cold brew,ingredient,MILK MAID,Milk made,30,g
+Vietnamese cold brew,new-ingredient,Ice,Ice,,g
+Ice cold brew,recipe,Cold brew,Cold brew,60,ml
+Ice cold brew,new-ingredient,Water,Water,135,g
+Ice cold brew,new-ingredient,Ice,Ice,,g
+Cold brew with vanilla foam,recipe,Cold brew,Cold brew,60,g
+Cold brew with vanilla foam,new-ingredient,Water,Water,50,g
+Cold brew with vanilla foam,new-ingredient,Ice,Ice,,g
+Cold brew with vanilla foam,new-ingredient,Vanilla Foam,Vanilla foam,50,g
+Tiramisu ice coffee,ingredient,Coffee Beans,Coffee beans,20,g
+Tiramisu ice coffee,recipe,Vanilla milk,Vanilla milk,135,g
+Tiramisu ice coffee,new-ingredient,Ice,Ice,,g
+Tiramisu ice coffee,recipe,Tiramisu cream,Tiramissu cream,50,g
+Yuzu honey cold brew,recipe,Cold brew,Cold brew,60,g
+Yuzu honey cold brew,ingredient,Honey,Honey,20,g
+Yuzu honey cold brew,new-ingredient,Yuzu Syrup,Yuzu syrap,15,g
+Yuzu honey cold brew,new-ingredient,Ice,Ice,,g
+Ice matcha shakerato,recipe,Vanilla milk,Vanilla milk,135,g
+Ice matcha shakerato,ingredient,Matcha Powder,Matcha powder,2,g
+Ice matcha shakerato,new-ingredient,Ice,Ice,,g
+Cold brew with vanilla milk,recipe,Cold brew,Cold brew,60,g
+Cold brew with vanilla milk,new-ingredient,Water,Water,100,g
+Cold brew with vanilla milk,new-ingredient,Ice,Ice cube,,g
+Cold brew with vanilla milk,recipe,Vanilla milk,Vanilla milk,50,ml
+Coke cold brew,new-ingredient,Sugar Syrup,Sugar syrup,25,ml
+Coke cold brew,recipe,Cold brew,Cold brew,65,g
+Coke cold brew,new-ingredient,Cola,Colke,90,ml
+Coke cold brew,ingredient,Table Salt,Salt,,g
+Coke cold brew,ingredient,Lemon Seasoning Powder,Lemon powder,,g
+Coke cold brew,new-ingredient,Ice,Ice cube,,g
+Durty cola,new-ingredient,Cola,Cola,150,g
+Durty cola,recipe,Vanilla milk,Vanilla milk,50,g
+Durty cola,new-ingredient,Sugar Syrup,Sugar syrup,20,g
+Durty cola,new-ingredient,Ice,Ice cube,,g
+Ginger ale cold brew,new-ingredient,Sugar Syrup,Sugar syrup,25,ml
+Ginger ale cold brew,recipe,Cold brew,Cold brew,80,ml
+Ginger ale cold brew,new-ingredient,Ice,Ice,,g
+Ginger ale cold brew,new-ingredient,Ginger Ale,Ginger ale,120,ml
+Ginger ale cold brew,new-ingredient,Ginger Ale Syrup,Ginger ale syrup,20,ml
+Iced mocha,recipe,Chocolate ghanash,Chocolate ganash,40,ml
+Iced mocha,ingredient,Coffee Beans,Espresso shot,30,ml
+Iced mocha,recipe,Vanilla milk,Vanilla milk,140,ml
+Kala khatta cold brew,recipe,Cold brew,Cold brew,60,g
+Kala khatta cold brew,new-ingredient,Kala Khatta Syrup,Kala khatta,15,g
+Kala khatta cold brew,ingredient,Sugar (White),Sugar,25,g
+Kala khatta cold brew,new-ingredient,Water,Water,150,ml
+Iced white cho mocha,recipe,White cho ghanash,White cho ghanache,40,g
+Iced white cho mocha,recipe,Vanilla milk,Vanilla milk,140,ml
+Iced white cho mocha,ingredient,Coffee Beans,Espresso,30,ml
+Iced white cho mocha,new-ingredient,Ice,Ice cube,,g
+Coconut vietnamese,new-ingredient,Coconut Cream,Coconut cream milk,135,ml
+Coconut vietnamese,ingredient,Coffee Beans,Esspresso,30,ml
+Coconut vietnamese,new-ingredient,Ice,Ice cube,,g
+Brazilian creaminess extract,ingredient,MILK MAID,Condensed milk,80,g
+Brazilian creaminess extract,new-ingredient,Coconut Milk Powder,Coconut milk powder,20,g
+Brazilian creaminess extract,new-ingredient,Water,Hot water,30,ml
+Brazilian creaminess extract,new-ingredient,Ice,Ice,,g
+Brazilian creaminess extract,ingredient,Coffee Beans,Espresso,20,g
+Brazilian creaminess extract,new-ingredient,Sugar Syrup,Sugar syrup,20,g
+Blueberry matcha latte,recipe,Vanilla milk,Vanilla milk,140,ml
+Blueberry matcha latte,recipe,Blueberry compote,Blueberry compote,40,g
+Blueberry matcha latte,ingredient,Matcha Powder,Matcha,2,g
+Blueberry matcha latte,new-ingredient,Ice,Ice,,g
+Dirty matcha latte,ingredient,Matcha Powder,Matcha,2,g
+Dirty matcha latte,recipe,Vanilla milk,Vanilla milk,140,ml
+Dirty matcha latte,ingredient,Coffee Beans,Espresso,60,ml
+Dirty matcha latte,new-ingredient,Sugar Syrup,Sugar syrup,10,ml
+Dirty matcha latte,new-ingredient,Ice,Ice,,g
+Iced caramal matcha latte,ingredient,Matcha Powder,Matcha powder,2.5,g
+Iced caramal matcha latte,ingredient,Caramal Topping,Caramal,50,g
+Iced caramal matcha latte,recipe,Vanilla milk,Vanilla milk,135,g
+Iced caramal matcha latte,new-ingredient,Ice,Ice cube,,g
+Strawberry ice matcha latte,unknown,Strawberry compote,Strawberry compote,30,g
+Strawberry ice matcha latte,recipe,Vanilla milk,Vanilla milk,135,g
+Strawberry ice matcha latte,ingredient,Matcha Powder,Matcha powder,2.5,g
+Coconut iced matcha,new-ingredient,Coconut Water,Coconut water,120,ml
+Coconut iced matcha,new-ingredient,Sugar Syrup,Syrup,30,ml
+Coconut iced matcha,ingredient,Matcha Powder,Matcha,2.5,g
+Coconut iced matcha,new-ingredient,Ice,Ice,,g
+Iced durty matcha,ingredient,Matcha Powder,Matcha,2,g
+Iced durty matcha,recipe,Vanilla milk,Vanilla milk,140,g
+Iced durty matcha,ingredient,Coffee Beans,Coffee,20,g
+Iced durty matcha,new-ingredient,Sugar Syrup,Sugar syrup,20,g
+Iced durty matcha,new-ingredient,Ice,Ice cube,,g
+Iced oat milk matcha latte,ingredient,Matcha Powder,Matcha powder,2,g
+Iced oat milk matcha latte,new-ingredient,Oat Milk,Oat milk,150,ml
+Iced oat milk matcha latte,new-ingredient,Ice,Ice cube,,g
+Blue berry matcha latte,recipe,Blueberry compote,Blueberry compote,40,g
+Blue berry matcha latte,ingredient,Matcha Powder,Matcha,2.5,g
+Blue berry matcha latte,recipe,Vanilla milk,Vanilla milk,135,g
+Blue berry matcha latte,new-ingredient,Ice,Ice cube,,g
+Chocolate milk shake,new-ingredient,Ice Cream,Ice cream,200,g
+Chocolate milk shake,new-ingredient,Ice,Ice,,g
+Chocolate milk shake,recipe,Chocolate ghanash,Chocolate ghanash,70,g
+Chocolate milk shake,ingredient,Cocoa Powder,Coco powder,5,g
+Chocolate milk shake,ingredient,Chocolate Topping,Chocolate dressing,25,g
+Chocolate milk shake,new-ingredient,Rock Salt,Rock salt,5,g
+Oreo milkshake,new-ingredient,Ice Cream,Icecream,200,g
+Oreo milkshake,ingredient,Oreo Biscuits,Orio biskit,7,pcs
+Oreo milkshake,new-ingredient,Milk (full cream),Milk,20,g
+Oreo milkshake,new-ingredient,Ice,Ice,,g
+Vanilla milkshake,new-ingredient,Ice Cream,Ice cream,200,g
+Vanilla milkshake,new-ingredient,Vanilla Essence,Vanilla essence,5,ml
+Vanilla milkshake,new-ingredient,Milk (full cream),Milk,50,ml
+Vanilla milkshake,new-ingredient,Ice,Ice cube,,g
+Strawberry milk shake,new-ingredient,Ice Cream,Ice cream,200,g
+Strawberry milk shake,ingredient,Strowberry Crush,Strawberry crush,60,g
+Strawberry milk shake,new-ingredient,Milk (full cream),Milk,50,g
+Strawberry milk shake,new-ingredient,Ice,Ice cube,,g
+Blueberry milk shake,new-ingredient,Ice Cream,Ice cream,200,g
+Blueberry milk shake,new-ingredient,Ice,Ice cube,,g
+Blueberry milk shake,new-ingredient,Blueberry Crush,Bluberry crush,60,g
+Blueberry milk shake,new-ingredient,Milk (full cream),Milk,50,g
+Banana & choco milkshake,new-ingredient,Ice Cream,Ice cream,200,g
+Banana & choco milkshake,new-ingredient,Ice,Ice cube,,g
+Banana & choco milkshake,recipe,Chocolate ghanash,Chocolate ghanash,50,g
+Banana & choco milkshake,new-ingredient,Banana,Banana,1,pcs
+Banana & choco milkshake,new-ingredient,Milk (full cream),Milk,50,g
+Banana & choco milkshake,ingredient,Cocoa Powder,Coco powder,5,g
+Browni milkshake,new-ingredient,Ice Cream,Ice cream,200,g
+Browni milkshake,new-ingredient,Ice,Ice cube,,g
+Browni milkshake,new-ingredient,Brownie,Browni,1,pcs
+Browni milkshake,new-ingredient,Milk (full cream),Milk,50,g
+Browni milkshake,new-ingredient,Chocolate (unspecified),Chocolate,50,g
+Browni milkshake,ingredient,Cocoa Powder,Coco powder,5,g
+Apple milkshake,new-ingredient,Ice Cream,Ice cream,150,g
+Apple milkshake,new-ingredient,Ice,Ice cube,,g
+Apple milkshake,new-ingredient,Milk (full cream),Milk,50,ml
+Apple milkshake,new-ingredient,Apple,Apple,1,pcs
+Banana milkshake,new-ingredient,Ice Cream,Ice cream,150,g
+Banana milkshake,new-ingredient,Ice,Ice cube,,g
+Banana milkshake,new-ingredient,Milk (full cream),Milk,50,ml
+Banana milkshake,new-ingredient,Banana,Banana,2,pcs
+Strawberry milkshake (150g),new-ingredient,Ice Cream,Ice cream,150,g
+Strawberry milkshake (150g),new-ingredient,Ice,Ice cubes,50,g
+Strawberry milkshake (150g),ingredient,Strowberry Crush,Strawberry crush,100,g
+Strawberry milkshake (150g),new-ingredient,Milk (full cream),Milk,50,g
+Blueberry milkshake (150g),new-ingredient,Ice Cream,Ice cream,150,g
+Blueberry milkshake (150g),new-ingredient,Ice,Ice cubes,50,g
+Blueberry milkshake (150g),new-ingredient,Blueberry Crush,Blueberry crush,100,g
+Blueberry milkshake (150g),new-ingredient,Blueberry Filling,Blueberry fealing,20,g
+Blueberry milkshake (150g),new-ingredient,Milk (full cream),Milk,50,g
+Dates & banana milk shake,new-ingredient,Banana,Banana,30,g
+Dates & banana milk shake,new-ingredient,Dates,Dates,10,pcs
+Dates & banana milk shake,new-ingredient,Ice,Ice cube,,g
+Dates & banana milk shake,new-ingredient,Ice Cream,Ice cream,80,g
+Dates & banana milk shake,new-ingredient,Milk (full cream),Milk,80,g
+Yuzu lemonade,new-ingredient,Yuzu Syrup,Yuzu syrup,30,g
+Yuzu lemonade,new-ingredient,Ice,Ice,,g
+Yuzu lemonade,new-ingredient,Sprite,Sprite,200,g
+Peach ice tea,new-ingredient,Peach Powder,Peach powder,12,g
+Peach ice tea,ingredient,Lemon Seasoning Powder,Lemon powder,3,g
+Peach ice tea,new-ingredient,Ice,Ice cube,,g
+Peach ice tea,new-ingredient,Sprite,Sprite,200,ml
+Lemon ice tea,new-ingredient,Water,Water,120,g
+Lemon ice tea,ingredient,Lemon Seasoning Powder,Lemon powder,7,g
+Lemon ice tea,new-ingredient,Sugar Syrup,Sugar syrup,60,g
+Lemon ice tea,new-ingredient,Ice,Ice,,g
+Vargin mojito,new-ingredient,Mojito Mint Syrup,Mojito mint,15,ml
+Vargin mojito,new-ingredient,Mojito Lime Syrup,Mojito lime,15,ml
+Vargin mojito,ingredient,Lemon Seasoning Powder,Lemon powder,3,g
+Vargin mojito,new-ingredient,Sprite,Sprite,200,ml
+Vargin mojito,new-ingredient,Ice,Ice,120,g
+Mint tea shikanji,new-ingredient,Water,Water,50,g
+Mint tea shikanji,new-ingredient,Sabja Seed,Sabja seed,10,g
+Mint tea shikanji,new-ingredient,Mojito Lime Syrup,Mojito lime,5,g
+Mint tea shikanji,new-ingredient,Chat Masala,Chat masala,6,g
+Mint tea shikanji,new-ingredient,Sprite,Sprite,100,ml
+Mint tea shikanji,new-ingredient,Ice,Ice,100,g
+Blueberry cream soda,new-ingredient,Blueberry Crush,Blueberry crush,60,ml
+Blueberry cream soda,new-ingredient,Blueberry Filling,Blueberry filling,40,ml
+Blueberry cream soda,ingredient,Fresh Cream,Fresh cream,20,ml
+Blueberry cream soda,ingredient,Lemon Seasoning Powder,Lemon powder,2,g
+Blueberry cream soda,new-ingredient,Sprite,Sprite,200,ml
+Blueberry cream soda,new-ingredient,Ice,Ice,120,g
+Strawberry cream soda,ingredient,Strowberry Crush,Strawberry crush,60,ml
+Strawberry cream soda,ingredient,Fresh Cream,Fresh cream,20,ml
+Strawberry cream soda,ingredient,Lemon Seasoning Powder,Lemon powder,2,g
+Strawberry cream soda,new-ingredient,Sprite,Sprite,200,ml
+Strawberry cream soda,new-ingredient,Ice,Ice,120,g
+Mango cream soda,new-ingredient,Mango Crush,Mango crush,60,ml
+Mango cream soda,ingredient,Fresh Cream,Fresh cream,20,ml
+Mango cream soda,ingredient,Lemon Seasoning Powder,Lemon powder,2,g
+Mango cream soda,new-ingredient,Sprite,Sprite,200,ml
+Mango cream soda,new-ingredient,Ice,Ice,120,g
+Strawberry lemonade,ingredient,Strowberry Crush,Strawberry crush,60,ml
+Strawberry lemonade,ingredient,Lemon Seasoning Powder,Lemon powder,2,g
+Strawberry lemonade,new-ingredient,Sprite,Sprite,200,ml
+Strawberry lemonade,new-ingredient,Ice,Ice,120,g
+Blueberry lemonade,new-ingredient,Blueberry Filling,Blueberry filling,40,ml
+Blueberry lemonade,new-ingredient,Blueberry Crush,Blueberry crush,50,ml
+Blueberry lemonade,ingredient,Lemon Seasoning Powder,Lemon powder,2,g
+Blueberry lemonade,new-ingredient,Sprite,Sprite,200,ml
+Blueberry lemonade,new-ingredient,Ice,Ice,120,g
+Mango lemonade,new-ingredient,Mango Crush,Mango crush,60,ml
+Mango lemonade,ingredient,Lemon Seasoning Powder,Lemon powder,2,g
+Mango lemonade,new-ingredient,Sprite,Sprite,200,ml
+Mango lemonade,new-ingredient,Ice,Ice,120,ml
+Kala khatta lemonade,new-ingredient,Ice,Ice,130,g
+Kala khatta lemonade,new-ingredient,Kala Khatta Syrup,Kalakhatta syrup,15,g
+Kala khatta lemonade,new-ingredient,Sprite,Sprite,150,g
+Kala khatta lemonade,new-ingredient,Chat Masala,Chat masala,,g
+Brazilian lemonade (serve),recipe,Brazilian lemonade syrup,Brazilian lemonade syrup,60,ml
+Brazilian lemonade (serve),new-ingredient,Sprite,Sprite,120,ml
+Brazilian lemonade (serve),new-ingredient,Ice,Ice cube,,g
+Brazilian lemonade (serve),new-ingredient,Coconut Cream,Coconut cream,30,g
+Bombay sandwich,new-ingredient,Bread (slice),Bread,3,pcs
+Bombay sandwich,ingredient,Butter,Butter,30,g
+Bombay sandwich,recipe,Green chutny,Green chutny,15,g
+Bombay sandwich,ingredient,Prosses Cheese,Prossed cheese,60,g
+Bombay sandwich,new-ingredient,Onion,Onion,10,g
+Bombay sandwich,new-ingredient,Green Capsicum,Green capcium,10,g
+Bombay sandwich,new-ingredient,Potato,Potato,20,g
+Bombay sandwich,new-ingredient,Tomato,Tomato,20,g
+Paneer makhni sandwich,new-ingredient,Bread (slice),Bread,2,pcs
+Paneer makhni sandwich,ingredient,Butter,Butter,20,g
+Paneer makhni sandwich,ingredient,Prosses Cheese,Prossed cheese,30,g
+Paneer makhni sandwich,ingredient,Paneer,Paneer,50,g
+Paneer makhni sandwich,unknown,Makhni sauce,Makhni sauce,50,g
+Rajma been sandwich,new-ingredient,Bread (slice),Bread,2,pcs
+Rajma been sandwich,ingredient,Butter,Butter,20,g
+Rajma been sandwich,ingredient,Prosses Cheese,Prossed cheese,30,g
+Rajma been sandwich,recipe,Rajma curry,Raja subji,100,g
+Rajma been sandwich,new-ingredient,Onion,Onion,10,g
+Rajma been sandwich,new-ingredient,Chat Masala,Chat masala,,g
+Ultimate mashroom sandwich,new-ingredient,Bread (slice),Bread,2,pcs
+Ultimate mashroom sandwich,ingredient,Butter,Butter,20,g
+Ultimate mashroom sandwich,ingredient,Prosses Cheese,Prossed cheese,30,g
+Ultimate mashroom sandwich,new-ingredient,Onion,Onion,10,g
+Ultimate mashroom sandwich,recipe,Mashroom bhaji,Mashroom bhaji,100,g
+Ultimate mashroom sandwich,ingredient,Black Olives (Pitted),Black olive,10,g
+Ultimate mashroom sandwich,new-ingredient,Cheese (unspecified),Cheese,30,g
+Ultimate mashroom sandwich,new-ingredient,Mixed Herbs,All harbs,,g
+Cheese garlic bread,new-ingredient,Bread (slice),Bread,2,pcs
+Cheese garlic bread,ingredient,Fresh Cream,Fresh cream,50,g
+Cheese garlic bread,ingredient,Mozerella Cheese,Mozzarella cheese,50,g
+Cheese garlic bread,ingredient,Prosses Cheese,Prossed cheese,50,g
+Cheese garlic bread,new-ingredient,Mixed Herbs,All harbs,,g
+Cheese garlic bread,new-ingredient,Garlic,Garlic,20,g
+American grill cheese,new-ingredient,Bread (slice),Bread,2,pcs
+American grill cheese,ingredient,Butter,Butter,20,g
+American grill cheese,ingredient,Mozerella Cheese,Mozzarella cheese,30,g
+American grill cheese,ingredient,Prosses Cheese,Prossed cheese,30,g
+American grill cheese,new-ingredient,Mixed Herbs,All harbs,,g
+Pesto vegetables sandwich,new-ingredient,Bread (slice),Bread,2,pcs
+Pesto vegetables sandwich,ingredient,Butter,Butter,20,g
+Pesto vegetables sandwich,recipe,Pesto sauce,Pesto sauce,50,g
+Pesto vegetables sandwich,new-ingredient,Mixed Vegetables,All vegitable,100,g
+Pesto vegetables sandwich,ingredient,Prosses Cheese,Prossed cheese,30,g
+Pesto vegetables sandwich,new-ingredient,Mixed Herbs,All harbs,,g
+Paneer tikka sandwich,unknown,Paneer tikka bhaji,Paneer tikka bhaji,100,g
+Paneer tikka sandwich,new-ingredient,Bread (slice),Bread,2,pcs
+Paneer tikka sandwich,new-ingredient,Cheese (unspecified),Cheese,30,g
+Paneer tikka sandwich,ingredient,Butter,Butter,40,g
+Peanut butter & blueberry jam,new-ingredient,Peanut Butter,Peanut butter,40,g
+Peanut butter & blueberry jam,new-ingredient,Blueberries,Blueberry,30,g
+Peanut butter & blueberry jam,new-ingredient,Bread (slice),Bread,2,pcs
+Peanut butter sandwich,new-ingredient,Peanut Butter,Peanut butter,50,g
+Peanut butter sandwich,new-ingredient,Bread (slice),Bread,2,pcs
+Pinut butter & gulkand,new-ingredient,Bread (slice),Bread,2,pcs
+Pinut butter & gulkand,new-ingredient,Peanut Butter,Pinut butter,30,g
+Pinut butter & gulkand,new-ingredient,Gulkand,Gulkand,30,g
+Simple almond butter sandwich,new-ingredient,Almond Butter,Almond butter,50,g
+Simple almond butter sandwich,new-ingredient,Bread (slice),Bread,2,pcs
+Masala sandwich,new-ingredient,Bread (slice),Bread,2,pcs
+Masala sandwich,ingredient,Butter,Butter,20,g
+Masala sandwich,recipe,Masala sandwich masala,Sandwich fealing,,g
+Masala sandwich,new-ingredient,Cheese (unspecified),Cheese,30,g
+Farmers market pizza,recipe,Pizza dough,Pizza dough,310,g
+Farmers market pizza,recipe,Tomato sauce,Tomato sauce,50,g
+Farmers market pizza,ingredient,Mozerella Cheese,Mozzarella cheese,140,g
+Farmers market pizza,new-ingredient,Mixed Vegetables,All vegitable,100,g
+Farmers market pizza,new-ingredient,Mixed Herbs,All harbs,,g
+Pizza margarita,recipe,Pizza dough,Pizza dough,310,g
+Pizza margarita,recipe,Tomato sauce,Tomato sauce,50,g
+Pizza margarita,ingredient,Mozerella Cheese,Mozzarella cheese,140,g
+Pizza margarita,new-ingredient,Mixed Herbs,All hearbs,,g
+Pizza capricciosa,recipe,Pizza dough,Pizza dough,310,g
+Pizza capricciosa,recipe,Tomato sauce,Tomato sauce,50,g
+Pizza capricciosa,ingredient,Mozerella Cheese,Mozzarella cheese,140,g
+Pizza capricciosa,new-ingredient,Mixed Herbs,All hearbs,,g
+Pizza capricciosa,recipe,Mashroom bhaji,Mashroom bhaji,100,g
+Pizza capricciosa,new-ingredient,Onion,Onion,20,g
+Pizza capricciosa,ingredient,Black Olives (Pitted),Olive,10,g
+Indian delight pizza,recipe,Pizza dough,Pizza dough,310,g
+Indian delight pizza,unknown,Paneer makhni sauce,Paneer makhni sauce,50,g
+Indian delight pizza,ingredient,Mozerella Cheese,Mozzarella cheese,140,g
+Indian delight pizza,recipe,Paneer bhaji,Paneer sabji,100,g
+Indian delight pizza,unknown,Onion/green capcicum,Onion/green capcicum,50,g
+Pesto pizza,recipe,Pizza dough,Pizza dough,310,g
+Pesto pizza,recipe,Tomato sauce,Tomato sauce,50,g
+Pesto pizza,ingredient,Mozerella Cheese,Mozzarella cheese,140,g
+Pesto pizza,recipe,Pesto sauce,Pesto sauce,100,g
+Pesto pizza,ingredient,Black Olives (Pitted),Black olive,10,g
+Pesto pizza,new-ingredient,Black Pepper,Black papper,,g
+Paneer tikka pizza,unknown,Paneer tikka bhaji,Paneer tikka bhaji,100,g
+Paneer tikka pizza,recipe,Pizza dough,Pizza dough,310,g
+Paneer tikka pizza,ingredient,Mozerella Cheese,Mozzarella cheese,140,g
+Paneer tikka pizza,new-ingredient,Mixed Vegetables,Vegitable,50,g
+Mashroom calzone,recipe,Pizza dough,Pizza dough,310,g
+Mashroom calzone,recipe,Tomato sauce,Tomato sauce,50,g
+Mashroom calzone,ingredient,Mozerella Cheese,Mozzarella cheese,100,g
+Mashroom calzone,new-ingredient,Mixed Herbs,All hearbs,,g
+Mashroom calzone,recipe,Mashroom bhaji,Mashroom bhaji,100,g
+Mashroom calzone,new-ingredient,Onion,Onion,20,g
+Mashroom calzone,ingredient,Black Olives (Pitted),Black olive,10,g
+Garlic calzone,recipe,Pizza dough,Pizza dough,310,g
+Garlic calzone,recipe,Tomato sauce,Tomato sauce,50,g
+Garlic calzone,ingredient,Mozerella Cheese,Mozzarella cheese,100,g
+Garlic calzone,recipe,Garlic bhaji,Garlic bhaji,20,g
+Paneer makhani calzone,recipe,Pizza dough,Pizza dough,310,g
+Paneer makhani calzone,unknown,Paneer makhni sauce,Paneer makhni sauce,50,g
+Paneer makhani calzone,ingredient,Mozerella Cheese,Mozzarella cheese,100,g
+Paneer makhani calzone,recipe,Paneer bhaji,Paneer bhaji,100,g
+Paneer makhani calzone,new-ingredient,Onion,Onion,20,g
+Paneer makhani calzone,new-ingredient,Green Capsicum,Green capcicum,20,g
+Paneer tikka calzone,unknown,Paneer tikka bhaji,Paneer tikka bhaji,100,g
+Paneer tikka calzone,recipe,Pizza dough,Pizza dough,310,g
+Paneer tikka calzone,ingredient,Mozerella Cheese,Mozzarella cheese,140,g
+Paneer tikka calzone,new-ingredient,Mixed Vegetables,Vegitable,50,g
+Triple cheese pizza,recipe,Pizza dough,Pizza dough,310,g
+Triple cheese pizza,recipe,Tomato sauce,Tomato sauce,50,g
+Triple cheese pizza,ingredient,Mozerella Cheese,Mozzarella cheese,100,g
+Triple cheese pizza,ingredient,Prosses Cheese,Process cheese,50,g
+Triple cheese pizza,new-ingredient,Mixed Herbs,All hearbs,,g
+Mornay sauce pasta,new-ingredient,Mixed Vegetables,All vegitable,100,g
+Mornay sauce pasta,ingredient,Refined Soybean Oil (Tin),Oil,10,g
+Mornay sauce pasta,recipe,Garlic bhaji,Garlic bhaji,30,g
+Mornay sauce pasta,new-ingredient,Milk (full cream),Milk,50,g
+Mornay sauce pasta,new-ingredient,Cheese (unspecified),Cheese,50,g
+Mornay sauce pasta,new-ingredient,Mixed Herbs,All hearbs,,g
+Mornay sauce pasta,ingredient,Penne Pasta,Pasta,120,g
+Provencal sauce pasta,new-ingredient,Mixed Vegetables,All vegitable,100,g
+Provencal sauce pasta,ingredient,Refined Soybean Oil (Tin),Oil,10,g
+Provencal sauce pasta,recipe,Garlic bhaji,Garlic bhaji,30,g
+Provencal sauce pasta,recipe,Tomato sauce,Tomato sauce,100,g
+Provencal sauce pasta,new-ingredient,Cheese (unspecified),Cheese,40,g
+Provencal sauce pasta,new-ingredient,Mixed Herbs,All hearbs,,g
+Provencal sauce pasta,new-ingredient,Water,Water,20,g
+Provencal sauce pasta,ingredient,Penne Pasta,Pasta,120,g
+Pesto sauce pasta,new-ingredient,Mixed Vegetables,All vegitable,100,g
+Pesto sauce pasta,ingredient,Refined Soybean Oil (Tin),Oil,10,g
+Pesto sauce pasta,recipe,Pesto sauce,Pesto sauce,100,g
+Pesto sauce pasta,new-ingredient,Black Pepper,Black papper,,g
+Pesto sauce pasta,new-ingredient,Cheese (unspecified),Cheese,40,g
+Pesto sauce pasta,ingredient,Penne Pasta,Pasta,120,g
+Spinach & mashroom spaghetti pasta,recipe,Mashroom bhaji,Mashroom bhaji,30,g
+Spinach & mashroom spaghetti pasta,unknown,Spinach & paneer bhaji,Spinach & paneer bhaji,70,g
+Spinach & mashroom spaghetti pasta,ingredient,Speghethi Pasta,Speghetti pasta,120,g
+Spinach & mashroom spaghetti pasta,ingredient,Butter,Butter,10,g
+Old scool cinnemon roll,unknown,Cinnemon roll,Cinnemon roll,1,pcs
+Old scool cinnemon roll,recipe,Cream cheese icing,Icing,70,g
+Cookie monstar cinnemon roll,unknown,Cinnemon roll,Cinnemon roll,1,pcs
+Cookie monstar cinnemon roll,recipe,Cream cheese icing,Icing,70,g
+Cookie monstar cinnemon roll,new-ingredient,Cookie,Cookie,20,g
+Cookie monstar cinnemon roll,new-ingredient,Chocolate (unspecified),Chocolate,20,g
+Coffee magic cinnemon roll,unknown,Cinnemon roll,Cinnemon roll,1,pcs
+Coffee magic cinnemon roll,recipe,Cream cheese icing,Icing,70,g
+Coffee magic cinnemon roll,ingredient,Coffee Beans,Coffee,2,g
+Coffee magic cinnemon roll,ingredient,Oreo Biscuits,Orio,20,g
+Blueberry cinnemon roll,unknown,Cinnemon roll,Cinnemon roll,1,pcs
+Blueberry cinnemon roll,recipe,Cream cheese icing,Icing,70,g
+Blueberry cinnemon roll,new-ingredient,Coconut Powder,Coconut powder,2,g
+Blueberry cinnemon roll,new-ingredient,Blueberry Filling,Blueberry fealing,10,g
+Apple caramal cinnemon roll,unknown,Cinnemon roll,Cinnemon roll,1,pcs
+Apple caramal cinnemon roll,recipe,Cream cheese icing,Icing,70,g
+Apple caramal cinnemon roll,new-ingredient,Apple,Apple,30,g
+Apple caramal cinnemon roll,ingredient,Caramal Topping,Caramal,20,g
+Hot cho & cookies,unknown,Cinnemon roll,Cinnemon roll,1,pcs
+Hot cho & cookies,unknown,Cho+icing,Cho+icing,70,g
+Hot cho & cookies,new-ingredient,Cookie,Cookie,20,g
+Strawberry nutella cinnemon roll,unknown,Cinnemon roll,Cinnemon roll,1,pcs
+Strawberry nutella cinnemon roll,recipe,Cream cheese icing,Icing,70,g
+Biscoff bliss,unknown,Cinnemon roll,Cinnemon roll,1,pcs
+Biscoff bliss,recipe,Cream cheese icing,Icing,70,g
+Biscoff bliss,ingredient,Lotus Biscoff Biscuits,Lotus Cookie,20,g
+Vanilla milk,new-ingredient,Milk (full cream),Milk,1000,g
+Vanilla milk,ingredient,MILK MAID,Milk maid,400,g
+Vanilla milk,new-ingredient,Sugar Syrup,Sugar syrup,120,g
+Vanilla milk,new-ingredient,Vanilla Essence,Vanilla essence,,ml
+Tiramisu cream,ingredient,Mascarpone Cheese,Mascoporn cream,300,g
+Tiramisu cream,ingredient,Whipping Cream (Non-Dairy),Whipping cream,250,g
+Tiramisu cream,new-ingredient,Vanilla Essence,Vanilla esence,5,g
+Tiramisu cream,ingredient,Sugar (White),Sugar,80,g
+Cream cheese icing,ingredient,Cream Cheese,Cream cheese,600,g
+Cream cheese icing,ingredient,Sugar (White),Sugar,600,g
+Cream cheese icing,new-ingredient,Milk (full cream),Milk,400,ml
+Cream cheese icing,new-ingredient,Vanilla Essence,Vanilla essence,25,g
+Cream cheese icing,ingredient,Butter,Butter,150,g
+White cho ghanash,new-ingredient,White Chocolate (unspecified),White chocolate,100,g
+White cho ghanash,ingredient,Fresh Cream,Fresh cream,70,g
+Chocolate ghanash,new-ingredient,Dark Chocolate (unspecified),Dark chocolate,100,g
+Chocolate ghanash,ingredient,Fresh Cream,Fresh cream,100,g
+Cold brew,ingredient,Coffee Beans,Cold brew coffee,500,g
+Cold brew,new-ingredient,Water,Water,3000,ml
+Cold brew,ingredient,Sugar Sachet,Sugar sachet,4,pcs
+Pesto sauce,new-ingredient,Basil,Basil,1200,g
+Pesto sauce,ingredient,Cashew Pieces (Tukda),Cashew,450,g
+Pesto sauce,ingredient,Refined Soybean Oil (Tin),Oil,300,g
+Pesto sauce,new-ingredient,Garlic,Garlic,10,g
+Pesto sauce,ingredient,Table Salt,Salt,50,g
+Pesto sauce,new-ingredient,Black Pepper,Black papper,4,g
+Pesto sauce,new-ingredient,Cheese (unspecified),Cheese,300,g
+Mashroom bhaji,new-ingredient,Mushroom,Mashroom,600,g
+Mashroom bhaji,new-ingredient,Garlic,Garlic,160,g
+Mashroom bhaji,new-ingredient,Onion,Onion,250,g
+Mashroom bhaji,new-ingredient,Thyme,Thyme,7,g
+Mashroom bhaji,ingredient,Chilli Flakes (Bulk),Chilly flaxe,7,g
+Mashroom bhaji,ingredient,Oregano (Bulk),Origano,7,g
+Mashroom bhaji,new-ingredient,Black Pepper,Black papper,7,g
+Mashroom bhaji,ingredient,Refined Soybean Oil (Tin),Oil,100,g
+Green chutny,new-ingredient,Coriander (fresh),Coriander,870,g
+Green chutny,new-ingredient,Spinach,Spinach,170,g
+Green chutny,new-ingredient,Green Chilli,Green chilly,30,g
+Green chutny,new-ingredient,Garlic,Garlic,70,g
+Green chutny,new-ingredient,Sandwich Masala,Sandwich masala,30,g
+Green chutny,new-ingredient,Curry Leaves,Curry leaves,14,g
+Green chutny,ingredient,Table Salt,Salt,10,g
+Green chutny,new-ingredient,Roasted Chana,Rosted chana,70,g
+Paneer bhaji,ingredient,Paneer,Paneer,1000,g
+Paneer bhaji,ingredient,Refined Soybean Oil (Tin),Oil,100,g
+Paneer bhaji,new-ingredient,Ginger Garlic Paste,Ginger garlic paste,100,g
+Paneer bhaji,ingredient,Red Chilli Powder,Red chilly powder,20,g
+Paneer bhaji,ingredient,Coriander Powder,Coriander powder,20,g
+Paneer bhaji,ingredient,Kitchen King Masala,Kitchen king masala,20,g
+Paneer bhaji,ingredient,Black Salt,Black salt,10,g
+Paneer bhaji,ingredient,Amchoor powder,Dry mango powder,10,g
+Paneer bhaji,new-ingredient,Cumin Powder,Cumin powder,3,g
+Paneer bhaji,ingredient,Fresh Cream,Fresh cream,150,g
+Red chutney,new-ingredient,Red Chilli (fresh),Red chilly,150,g
+Red chutney,new-ingredient,Green Chilli,Green chilly,150,g
+Red chutney,new-ingredient,Garlic,Garlic,150,g
+Red chutney,new-ingredient,Cumin Powder,Cumin powder,30,g
+Red chutney,ingredient,Black Salt,Black salt,15,g
+Red chutney,ingredient,Table Salt,Salt,20,g
+Red chutney,ingredient,Lemon Seasoning Powder,Lemon powder,30,g
+Red chutney,new-ingredient,Water,Water,50,g
+Tomato sauce,ingredient,Refined Soybean Oil (Tin),Oil,100,g
+Tomato sauce,new-ingredient,Garlic,Garlic,180,g
+Tomato sauce,new-ingredient,Onion,Onion,500,g
+Tomato sauce,new-ingredient,Green Capsicum,Green capcicum,300,g
+Tomato sauce,new-ingredient,Tomato,Tomato,3300,g
+Tomato sauce,ingredient,Tomato Ketchup,Tomato ketchup,40,g
+Tomato sauce,ingredient,White Vinegar (Can),White vineger,70,g
+Tomato sauce,new-ingredient,Mixed Herbs,Mix harbs,7,g
+Tomato sauce,ingredient,Oregano (Bulk),Origano,7,g
+Tomato sauce,ingredient,Table Salt,Salt,20,g
+Tomato sauce,new-ingredient,Thyme,Thyme,4,g
+Makhani sauce,ingredient,Refined Soybean Oil (Tin),Oil,100,g
+Makhani sauce,new-ingredient,Garlic,Garlic,30,g
+Makhani sauce,new-ingredient,Onion,Onion,420,g
+Makhani sauce,new-ingredient,Green Chilli,Green chilly,25,g
+Makhani sauce,new-ingredient,Tomato,Tomato,2240,g
+Makhani sauce,ingredient,Jeera (Cumin Seeds),Cumin seeds,20,g
+Makhani sauce,new-ingredient,Ginger,Ginger,35,g
+Makhani sauce,new-ingredient,Kashmiri Chilli,Kashmiri chilly,35,g
+Makhani sauce,ingredient,Cashew Pieces (Tukda),Cashew nuts,90,g
+Makhani sauce,new-ingredient,Water,Water,200,g
+Makhani tadka,ingredient,Refined Soybean Oil (Tin),Oil,70,g
+Makhani tadka,ingredient,Butter,Butter,30,g
+Makhani tadka,ingredient,Red Chilli Powder,Red chilly powder,25,g
+Makhani tadka,ingredient,Coriander Powder,Coriander powder,25,g
+Makhani tadka,ingredient,Sugar (White),Sugar,65,g
+Makhani tadka,ingredient,Table Salt,Salt,40,g
+Makhani tadka,ingredient,Kitchen King Masala,Kitchen king,11,g
+Makhani tadka,new-ingredient,Kasuri Methi,Kasturi methi,3,g
+Makhani tadka,ingredient,Fresh Cream,Fresh cream,150,g
+Makhani tadka,new-ingredient,Coriander (fresh),Fresh coriander,30,g
+Pizza dough,new-ingredient,Water,Water,900,g
+Pizza dough,ingredient,Table Salt,Salt,30,g
+Pizza dough,ingredient,Dry Yeast,Dry yeast,12,g
+Pizza dough,ingredient,Maida (Refined Wheat Flour),Flour,1330,g
+Rajma curry,ingredient,Refined Soybean Oil (Tin),Oil,60,g
+Rajma curry,new-ingredient,Ginger Garlic Paste,Ginger garlic past,87,g
+Rajma curry,new-ingredient,Onion,Onion,385,g
+Rajma curry,ingredient,Coriander Powder,Coriander powder,11,g
+Rajma curry,new-ingredient,Cumin Powder,Cumin powder,16,g
+Rajma curry,ingredient,Kitchen King Masala,Kitchen king powder,16,g
+Rajma curry,ingredient,Red Chilli Powder,Red chilly powder,16,g
+Rajma curry,new-ingredient,Tomato,Tomato,664,g
+Rajma curry,ingredient,Rajma (Kidney Beans),Boiled rajma,1000,g
+Rajma curry,ingredient,Table Salt,Salt,,g
+Garlic bhaji,new-ingredient,Garlic,Garlic,100,g
+Garlic bhaji,ingredient,Refined Soybean Oil (Tin),Oil,50,g
+Garlic bhaji,new-ingredient,Mixed Herbs,All hearbs,,g
+Nachos,new-ingredient,Makai Atta (Maize Flour),Makai aata,125,g
+Nachos,ingredient,Maida (Refined Wheat Flour),Maida,75,g
+Nachos,ingredient,Jeera (Cumin Seeds),Jeera,1.5,g
+Nachos,ingredient,Table Salt,Salt,3,g
+Nachos,new-ingredient,Black Pepper,Black papper powder,1,g
+Nachos,new-ingredient,Ajwain,Ajwain,1.5,g
+Nachos,ingredient,Turmeric Powder,Haldi,1,g
+Nachos,ingredient,Refined Soybean Oil (Tin),Oil,4,g
+Nachos,ingredient,Butter,Butter,12,g
+Nachos,new-ingredient,Nachos Masala,Nachos masala,20,g
+Blueberry compote,new-ingredient,Blueberries,Blueberries,250,g
+Blueberry compote,new-ingredient,Mulberry,Mulburry,250,g
+Blueberry compote,ingredient,Sugar (White),Sugar,170,g
+Blueberry compote,ingredient,Corn Flour,Corn flour,11,g
+Blueberry compote,ingredient,Lemon Seasoning Powder,Lemon powder,1,g
+Brazilian lemonade syrup,new-ingredient,Lemon,Lemon,850,g
+Brazilian lemonade syrup,ingredient,Castor Sugar,Caster sugar,70,g
+Brazilian lemonade syrup,new-ingredient,Water,Water,400,ml
+Brazilian lemonade syrup,new-ingredient,Lime Zest,Lime zest,,g
+Brazilian lemonade syrup,new-ingredient,Citric Acid,Citric acid,1.5,g
+Brazillian syrup,ingredient,Sugar (White),Sugar,700,g
+Brazillian syrup,new-ingredient,Water,Water,400,ml
+Brazillian syrup,ingredient,Lemon Seasoning Powder,Lemon powder,10,g
+Coconut vietnamese syrup,new-ingredient,Coconut Cream,Coconut cream,80,g
+Coconut vietnamese syrup,new-ingredient,Coconut Milk,Coconut milk,160,g
+Coconut vietnamese syrup,ingredient,Table Salt,Salt,,g
+Coconut vietnamese syrup,ingredient,MILK MAID,Condensed milk,100,g
+Brazilian cream,ingredient,MILK MAID,Milk maid,80,g
+Brazilian cream,new-ingredient,Coconut Milk,Coconut milk,20,g
+Brazilian cream,new-ingredient,Water,Hot water,30,ml
+Clasic cold coffee,new-ingredient,Ice Cream,Ice cream,9200,g
+Clasic cold coffee,ingredient,Sugar (White),Sugar,2000,g
+Clasic cold coffee,new-ingredient,Ice,Ice cube,3200,g
+Clasic cold coffee,new-ingredient,Milk (full cream),Milk,7000,ml
+Clasic cold coffee,ingredient,Instant Coffee Powder,Coffee powder,370,g
+Masala sandwich masala,ingredient,Butter,Butter,20,g
+Masala sandwich masala,new-ingredient,Cumin Powder,Cumin powder,2,g
+Masala sandwich masala,ingredient,Coriander Powder,Coriander powder,2,g
+Masala sandwich masala,ingredient,Turmeric Powder,Turmeric powder,1,g
+Masala sandwich masala,ingredient,Red Chilli Powder,Red chilly powder,2,g
+Masala sandwich masala,new-ingredient,Garam Masala,Garam masala,1,g
+Masala sandwich masala,ingredient,Table Salt,Salt,2,g

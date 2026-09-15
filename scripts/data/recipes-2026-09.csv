@@ -1,0 +1,140 @@
+name,kind,yield_qty,yield_unit,batch_minutes,note
+Cappuccino,serving,,,,
+Cafe latte,serving,,,,
+White chocolate mocha,serving,,,,
+Cafe mocha,serving,,,,
+Hot chocolate,serving,,,,
+Americano,serving,,,,
+Mexican spiced Americano,serving,,,,
+Instant hot coffee,serving,,,,
+Espresso short,serving,,,,
+Affogato,serving,,,,
+Tiramisu latte,serving,,,,
+Matcha latte,serving,,,,
+Irish cafe latte,serving,,,,PDF gives no quantities for milk or Irish flavour
+Irish coffee,serving,,,,
+Hot durty matcha,serving,,,,
+Matcha latte (vanilla milk),serving,,,,
+Caramal matcha latte,serving,,,,
+White chocolate mocha new,serving,,,,
+Oat milk matcha latte,serving,,,,
+Elaichi chai,serving,,,,
+Aadrak chai,serving,,,,
+Jasmin tea,serving,,,,
+Tropical green tea,serving,,,,
+Chamomile tea,serving,,,,
+Ice coffee,serving,,,,
+Ice latte,serving,,,,"ice is ""3/4 cup"" in the PDF"
+Ice caramel macchiato,serving,,,,"ice is ""3/4 cup"""
+Ice americano,serving,,,,"ice is ""3/4 cup"""
+Spiced americano (iced),serving,,,,"ice is ""3/4 cup"""
+Vietnamese coffee,serving,,,,"ice is ""3/4 cup"""
+Vietnamese cold brew,serving,,,,"ice is ""3/4 cup"""
+Ice cold brew,serving,,,,"ice is ""3/4 cup"""
+Cold brew with vanilla foam,serving,,,,"ice is ""3/4 cup"""
+Tiramisu ice coffee,serving,,,,"ice is ""3/4 cup"""
+Yuzu honey cold brew,serving,,,,"ice is ""3/4 cup"""
+Ice matcha shakerato,serving,,,,"ice is ""3/4 cup"""
+Cold brew with vanilla milk,serving,,,,"ice is ""3/4 th"""
+Coke cold brew,serving,,,,"salt ""1 pinch"", lemon powder ""1 tsp"", ice ""3/4 cup"""
+Durty cola,serving,,,,"ice is ""3/4 cup"""
+Ginger ale cold brew,serving,,,,"ice is ""3/4 th"""
+Iced mocha,serving,,,,
+Kala khatta cold brew,serving,,,,
+Iced white cho mocha,serving,,,,"ice is ""3/4 cup"""
+Coconut vietnamese,serving,,,,"no prices in the PDF; ice is ""1/4 cup"""
+Brazilian creaminess extract,serving,,,,"ice is ""1/4 cup"""
+Blueberry matcha latte,serving,,,,"ice is ""3/4 th"""
+Dirty matcha latte,serving,,,,"espresso is ""2 shots (30 ml each)""; ice is ""3/4 th"""
+Iced caramal matcha latte,serving,,,,"ice is ""3/4 cup"""
+Strawberry ice matcha latte,serving,,,,
+Coconut iced matcha,serving,,,,"ice is ""3/4 cup"""
+Iced durty matcha,serving,,,,"ice is ""3/4 cup"""
+Iced oat milk matcha latte,serving,,,,"ice is ""1 cup"""
+Blue berry matcha latte,serving,,,,"ice is ""3/4 cup"""
+Chocolate milk shake,serving,,,,"ice is ""3/4 cup"""
+Oreo milkshake,serving,,,,"ice is ""half cup"""
+Vanilla milkshake,serving,,,,"ice is ""half cup"""
+Strawberry milk shake,serving,,,,"ice is ""half cup"""
+Blueberry milk shake,serving,,,,"ice is ""half cup"""
+Banana & choco milkshake,serving,,,,"ice is ""half cup"""
+Browni milkshake,serving,,,,"ice is ""half cup"""
+Apple milkshake,serving,,,,"ice is ""half cup"""
+Banana milkshake,serving,,,,"ice is ""half cup"""
+Strawberry milkshake (150g),serving,,,,
+Blueberry milkshake (150g),serving,,,,
+Dates & banana milk shake,serving,,,,"ice is ""half"""
+Yuzu lemonade,serving,,,,"ice is ""3/4 cup"""
+Peach ice tea,serving,,,,"ice is ""3/4 cup"""
+Lemon ice tea,serving,,,,"ice is ""1 cold cup"""
+Vargin mojito,serving,,,,
+Mint tea shikanji,serving,,,,
+Blueberry cream soda,serving,,,,
+Strawberry cream soda,serving,,,,
+Mango cream soda,serving,,,,
+Strawberry lemonade,serving,,,,
+Blueberry lemonade,serving,,,,
+Mango lemonade,serving,,,,
+Kala khatta lemonade,serving,,,,"chat masala ""1 pinch"""
+Brazilian lemonade (serve),serving,,,,"ice is ""3/4 cup"""
+Bombay sandwich,serving,,,,"PDF also lists ""Bombay masala"" with no quantity"
+Paneer makhni sandwich,serving,,,,
+Rajma been sandwich,serving,,,,"chat masala ""1 pinch"""
+Ultimate mashroom sandwich,serving,,,,herbs have no quantity
+Cheese garlic bread,serving,,,,
+American grill cheese,serving,,,,
+Pesto vegetables sandwich,serving,,,,"PDF total is blank and marked ""cheak"""
+Paneer tikka sandwich,serving,,,,
+Peanut butter & blueberry jam,serving,,,,
+Peanut butter sandwich,serving,,,,
+Pinut butter & gulkand,serving,,,,
+Simple almond butter sandwich,serving,,,,
+Masala sandwich,serving,,,,sandwich filling has no quantity in the PDF
+Farmers market pizza,serving,,,,
+Pizza margarita,serving,,,,
+Pizza capricciosa,serving,,,,
+Indian delight pizza,serving,,,,
+Pesto pizza,serving,,,,"pepper ""1 pinch""; PDF total is blank"
+Paneer tikka pizza,serving,,,,
+Mashroom calzone,serving,,,,
+Garlic calzone,serving,,,,
+Paneer makhani calzone,serving,,,,PDF total is blank
+Paneer tikka calzone,serving,,,,
+Triple cheese pizza,serving,,,,
+Mornay sauce pasta,serving,,,,
+Provencal sauce pasta,serving,,,,
+Pesto sauce pasta,serving,,,,PDF total is blank
+Spinach & mashroom spaghetti pasta,serving,,,,
+Old scool cinnemon roll,serving,,,,
+Cookie monstar cinnemon roll,serving,,,,
+Coffee magic cinnemon roll,serving,,,,
+Blueberry cinnemon roll,serving,,,,
+Apple caramal cinnemon roll,serving,,,,
+Hot cho & cookies,serving,,,,
+Strawberry nutella cinnemon roll,serving,,,,PDF total is 44 but lists only two lines
+Biscoff bliss,serving,,,,
+Vanilla milk,prep,1520,g,,"PDF gives two versions; this is the later one. Essence is ""2 drop"""
+Tiramisu cream,prep,635,g,,
+Cream cheese icing,prep,1775,g,,
+White cho ghanash,prep,150,g,,
+Chocolate ghanash,prep,170,g,,
+Cold brew,prep,3200,g,,
+Pesto sauce,prep,2320,g,,
+Mashroom bhaji,prep,1100,g,,
+Green chutny,prep,1230,g,,
+Paneer bhaji,prep,1300,g,,
+Red chutney,prep,550,g,,
+Tomato sauce,prep,3900,g,,
+Makhani sauce,prep,3000,g,,
+Makhani tadka,prep,420,g,,
+Pizza dough,prep,2170,g,,"PDF says ""7 dough, 1 ball = 310 gm""; 7 x 310 = 2170 g. Confirm the yield."
+Rajma curry,prep,2100,g,,salt has no quantity in the PDF
+Garlic bhaji,prep,130,g,,
+Nachos,prep,150,g,,
+Blueberry compote,prep,525,g,,
+Brazilian lemonade syrup,prep,800,ml,,
+Brazillian syrup,prep,1000,g,,
+Coconut vietnamese syrup,prep,,g,,"PDF has no yield; salt ""1 pinch"""
+Brazilian cream,prep,120,g,,
+Clasic cold coffee,prep,,ml,,"PDF says ""82 glasses at 25 per glass"" - confirm the yield in ml"
+Masala sandwich masala,prep,,g,,PDF has no yield
