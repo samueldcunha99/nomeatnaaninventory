@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import type { Route } from 'next';
+import { Emblem, Wordmark } from './brand-mark.tsx';
 
 export type NavigationItem = { href: Route; label: string; group: string; icon: string };
 
@@ -18,8 +19,8 @@ export function WorkspaceNav({ items }: { items: NavigationItem[] }) {
       </button>
       <aside id="workspace-nav" className={`workspace-sidebar${open ? ' is-open' : ''}`}>
         <Link className="workspace-brand" href="/" onClick={() => setOpen(false)}>
-          <span className="brand-monogram" aria-hidden="true">nm<span>n</span></span>
-          <span>No Meat Naan<small>Café & bakery</small></span>
+          <span className="brand-emblem-badge"><Emblem size={26} /></span>
+          <Wordmark />
         </Link>
         <nav aria-label="Main navigation">
           {['Workspace', 'Inventory', 'Settings'].map((group) => {

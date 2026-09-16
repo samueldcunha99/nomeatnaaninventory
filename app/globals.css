@@ -69,6 +69,17 @@
   --spacing-row: 56px; /* table row: a fingertip, not a mouse pointer */
 
   --font-sans: var(--font-poppins), system-ui, -apple-system, sans-serif;
+
+  /*
+   * DISPLAY FACE. The brand book's primary type is Copperplate, which is not licensed
+   * for us to serve but ships with macOS, so it is asked for first. Cinzel (loaded in
+   * layout.tsx) is the fallback: the same inscriptional Roman caps with small glyphic
+   * serifs, which is the thing that reads as "Copperplate" at a glance.
+   *
+   * Headings and the wordmark only. It has no lowercase worth the name at UI sizes and
+   * no tabular figures, so it never touches a table, a number or body text.
+   */
+  --font-display: 'Copperplate', 'Copperplate Gothic Light', var(--font-display-web), Georgia, serif;
 }
 
 @layer base {
@@ -84,8 +95,17 @@
     line-height: 1.5;
   }
 
+  /*
+   * H1 is the one place the display face earns its keep: one per screen, large, and the
+   * first thing read. Small caps rather than full caps - the book sets the wordmark in
+   * caps but a sentence like "Portions & selling prices" in caps is a shout, and these
+   * screens are read forty times a shift.
+   */
   h1 {
-    @apply text-navy text-2xl font-semibold leading-tight;
+    @apply text-navy text-2xl leading-tight;
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: 0.01em;
   }
 
   h2,
@@ -222,21 +242,6 @@
 
   .msg--ok {
     @apply text-fern-ink bg-ok-surface border-fern;
-  }
-
-  /* ---- Brand bar ---------------------------------------------------------- */
-
-  .brandbar {
-    @apply bg-navy text-on-navy py-4;
-  }
-
-  .brandbar__inner {
-    width: min(100% - 2rem, 72rem);
-    @apply mx-auto flex items-center gap-3;
-  }
-
-  .brandbar__name {
-    @apply text-lg font-bold tracking-wide;
   }
 
   /* ---- Navigation cards ---------------------------------------------------- */
@@ -797,5 +802,189 @@
 @layer utilities {
   .muted {
     @apply text-ink-muted;
+  }
+}
+
+/* ==========================================================================
+ * Brand marks — the emblem, the wordmark, the star, the dashed rule
+ *
+ * Added when the brand book arrived (16 Sept 2026). Four assets do nearly all the
+ * identifying work in that book: the quatrefoil frame, Copperplate caps, the eight-point
+ * star, and dashed rules. They are applied here to the chrome — sidebar, headings,
+ * dividers, empty states — and deliberately NOT to tables, badges or form controls.
+ *
+ * The tier note at the top of this file still holds. These screens are read at arm's
+ * length under glare by someone holding a tray, so brand decoration stops where
+ * legibility starts: no display face below 18px, no sage or sky carrying text, no
+ * pattern behind anything with a number in it.
+ * ========================================================================== */
+
+@layer components {
+  .brand-emblem {
+    flex-shrink: 0;
+    stroke-linejoin: round;
+  }
+
+  /* ---- Wordmark ----------------------------------------------------------- */
+
+  .wordmark {
+    display: block;
+    line-height: 1.15;
+  }
+
+  .wordmark__name {
+    display: block;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /*
+   * The descriptor sits under a dashed rule, as it does inside the emblem. Tiny, wide
+   * and quiet: it names the trade, it is not navigation.
+   */
+  .wordmark__descriptor {
+    display: block;
+    margin-top: 5px;
+    padding-top: 5px;
+    border-top: 1px dashed color-mix(in srgb, currentColor 35%, transparent);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.75;
+  }
+
+  /* ---- Sidebar, wearing the brand ----------------------------------------- */
+
+  .workspace-brand {
+    color: var(--color-navy);
+    align-items: center;
+  }
+
+  /*
+   * Replaces the "nmn" monogram that stood in before there was artwork. Navy fill with
+   * the emblem reversed out, which is the book's own dark-ground treatment.
+   */
+  .brand-emblem-badge {
+    display: grid;
+    place-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: var(--color-navy);
+    color: var(--color-on-navy);
+    flex-shrink: 0;
+  }
+
+  /* Nav group labels get the star as punctuation, the way the book flanks ESTD. 2021. */
+  .workspace-navlabel {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .workspace-navlabel::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    flex-shrink: 0;
+    background: var(--color-sky);
+    /* A tiny four-point star, cheap enough to draw in CSS rather than ship an SVG. */
+    clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+  }
+
+  .workspace-note {
+    border-top: 1px dashed var(--color-mist);
+  }
+
+  .workspace-note .workspace-navlabel {
+    color: var(--color-navy);
+  }
+
+  /* ---- Login: the one screen with room for the full treatment -------------- */
+
+  /*
+   * Nobody signs in during a rush with a tray in one hand — they sign in once, at the
+   * start of a shift. So this screen gets the emblem at size, the line work and the
+   * quatrefoil frame, and every other screen does not.
+   */
+  .auth {
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    padding: 32px 16px;
+    background: var(--color-navy);
+    /*
+     * The book's packaging pattern, reduced to its grammar: a fine grid with a diagonal
+     * cross, tiled. Two gradients, no image request, and faint enough at 6% that it
+     * never competes with the form on top of it.
+     */
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        color-mix(in srgb, var(--color-sky) 6%, transparent) 0 1px,
+        transparent 1px 44px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--color-sky) 6%, transparent) 0 1px,
+        transparent 1px 44px
+      );
+  }
+
+  .auth__card {
+    width: min(100%, 26rem);
+    background: var(--color-bone);
+    border-radius: 18px;
+    padding: 40px 32px 36px;
+    /* The double frame the book draws around everything, in miniature. */
+    box-shadow:
+      0 0 0 1px var(--color-navy),
+      0 0 0 5px var(--color-bone),
+      0 0 0 6px color-mix(in srgb, var(--color-sky) 55%, transparent),
+      0 18px 50px rgb(0 0 0 / 0.28);
+  }
+
+  .auth__crest {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 28px;
+    color: var(--color-navy);
+    text-align: center;
+  }
+
+  .auth__crest .wordmark__name {
+    font-size: 22px;
+    letter-spacing: 0.08em;
+  }
+
+  .auth__estd {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    color: var(--color-ink-muted);
+  }
+
+  .auth__card h1 {
+    font-size: 20px;
+    text-align: center;
+  }
+
+  .auth__card .prose-note {
+    text-align: center;
+  }
+
+  @media (max-width: 480px) {
+    .auth__card {
+      padding: 32px 22px 28px;
+    }
   }
 }

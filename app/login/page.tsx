@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react';
 import { loginAction } from './actions.ts';
+import { Emblem, Star, Wordmark } from '../ui/brand-mark.tsx';
 
 /** One eye, drawn once. The slash is added over it when the password is showing. */
 const EYE =
@@ -16,18 +17,23 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <>
-      <header className="brandbar">
-        <div className="brandbar__inner">
-          {/* No logo asset was supplied, so the wordmark is set in Poppins for now. */}
-          <span className="brandbar__name">NO MEAT NAAN</span>
-          <span className="text-sm opacity-85">
-            Management
+    /*
+     * The one screen that gets the full brand treatment. Signing in happens once at the
+     * start of a shift, standing still - not mid-rush with a tray - so this is where the
+     * emblem, the line work and the double frame belong, and why no other screen has them.
+     */
+    <main className="auth" id="main-content">
+      <div className="auth__card">
+        <div className="auth__crest">
+          <Emblem size={76} detail />
+          <span className="auth__estd">
+            <Star size={9} />
+            ESTD. 2021
+            <Star size={9} />
           </span>
+          <Wordmark />
         </div>
-      </header>
 
-      <main className="page page--narrow">
         <h1>Sign in</h1>
         <p className="prose-note">
           Staff access only.
@@ -121,7 +127,7 @@ export default function LoginPage() {
             {pending ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
-      </main>
-    </>
+      </div>
+    </main>
   );
 }
