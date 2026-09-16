@@ -1,0 +1,167 @@
+name,unit_type,purchase_unit,purchase_unit_in_base,observed_qty_base,observed_rupees,source_recipe
+Ice,weight,kg,1000,3200,58,Clasic cold coffee
+Ice,weight,kg,1000,130,6,Kala khatta lemonade
+Ice,weight,kg,1000,120,6,Vargin mojito
+Ice,weight,kg,1000,120,6,Blueberry Cream Soda
+Ice,weight,kg,1000,100,6,Mint tea shikanji
+Ice,weight,kg,1000,50,6,Strawberry Milkshake
+Milk (full cream),volume,litre,1000,7000,490,Clasic cold coffee
+Milk (full cream),volume,litre,1000,1000,70,Vanilla milk
+Milk (full cream),volume,litre,1000,400,28,Cream cheese icing
+Milk (full cream),volume,litre,1000,250,18,Elaichi chai
+Milk (full cream),volume,litre,1000,200,14,Hot chocolate
+Milk (full cream),volume,litre,1000,150,11,Cafe latte
+Milk (full cream),volume,litre,1000,135,10,Ice latte
+Milk (full cream),volume,litre,1000,100,7,Cappuccino
+Milk (full cream),volume,litre,1000,80,6,Dates & banana milk shake
+Milk (full cream),volume,litre,1000,50,4,Orio milkshake
+Water,volume,litre,1000,400,1,Brazilian lemonade
+Water,volume,litre,1000,200,1,Americano
+Water,volume,litre,1000,150,1,kala khatta cold brew
+Water,volume,litre,1000,135,1,Ice americano
+Water,volume,litre,1000,100,1,Cold brew with vanilla milk
+Water,volume,litre,1000,50,1,Cold brew with vanilla foam
+Bread (slice),count,piece,1,3,15,Bombay sandwich
+Bread (slice),count,piece,1,2,10,Paneer makhni sandwich
+Ice Cream,weight,kg,1000,9200,885,Clasic cold coffee
+Ice Cream,weight,kg,1000,200,19,Chocolate milk shake
+Ice Cream,weight,kg,1000,200,20,Orio milkshake
+Ice Cream,weight,kg,1000,150,15,Apple milkshake
+Ice Cream,weight,kg,1000,150,18,Strawberry Milkshake
+Ice Cream,weight,kg,1000,80,9,Dates & banana milk shake
+Sprite,volume,litre,1000,200,20,Yuzu lemoned
+Sprite,volume,litre,1000,200,20,Vargin mojito
+Sprite,volume,litre,1000,200,20,Blueberry Cream Soda
+Sprite,volume,litre,1000,150,18,Kala khatta lemonade
+Sprite,volume,litre,1000,120,18,Brazilian lemonade drink
+Sprite,volume,litre,1000,100,20,Mint tea shikanji
+Cola,volume,litre,1000,150,17,Durty cola
+Cola,volume,litre,1000,90,20,Coke Cold brew
+Onion,weight,kg,1000,500,15,Tomato sauce
+Onion,weight,kg,1000,420,15,Makhani sauce
+Onion,weight,kg,1000,385,20,Rajma curry
+Onion,weight,kg,1000,250,8,Mashroom bhaji
+Onion,weight,kg,1000,20,2,Pizza capricciosa
+Sugar Syrup,volume,litre,1000,120,3,Vanilla milk
+Sugar Syrup,volume,litre,1000,60,2,Lemon ice tea
+Sugar Syrup,volume,litre,1000,30,1,Coconut iced matcha
+Sugar Syrup,volume,litre,1000,25,1,Ginger Ale Cold Brew
+Sugar Syrup,volume,litre,1000,25,2,Coke Cold brew
+Sugar Syrup,volume,litre,1000,20,2,Durty cola
+Garlic,weight,kg,1000,180,27,Tomato sauce
+Garlic,weight,kg,1000,160,26,Mashroom bhaji
+Garlic,weight,kg,1000,150,23,Red chutney
+Garlic,weight,kg,1000,100,15,Garlic bhaji
+Garlic,weight,kg,1000,70,11,Green chutny
+Garlic,weight,kg,1000,30,5,Makhani sauce
+Garlic,weight,kg,1000,20,3,Cheese garlic bread
+Mixed Herbs,weight,kg,1000,7,3,Tomato sauce
+Cheese (unspecified),weight,kg,1000,300,171,Pesto sauce
+Cheese (unspecified),weight,kg,1000,50,27,Mornay sauce pasta
+Cheese (unspecified),weight,kg,1000,40,22,provencal sauce pasta
+Cheese (unspecified),weight,kg,1000,30,16,Ultimate mashroom sandwich
+Cheese (unspecified),weight,kg,1000,30,17,Paneer tikka sandwich
+Mixed Vegetables,weight,kg,1000,100,15,Farmers market pizza
+Mixed Vegetables,weight,kg,1000,50,5,Paneer tikka pizza
+Black Pepper,weight,kg,1000,7,2,Mashroom bhaji
+Black Pepper,weight,kg,1000,4,4,Pesto sauce
+Cumin Powder,weight,kg,1000,30,30,Red chutney
+Cumin Powder,weight,kg,1000,16,16,Rajma curry
+Cumin Powder,weight,kg,1000,3,3,Paneer bhaji
+Cumin Powder,weight,kg,1000,2,2,Masala sandwich masala
+Tomato,weight,kg,1000,3300,132,Tomato sauce
+Tomato,weight,kg,1000,2240,90,Makhani sauce
+Tomato,weight,kg,1000,664,27,Rajma curry
+Tomato,weight,kg,1000,20,2,Bombay sandwich
+Banana,count,piece,1,2,10,Banana milkshake
+Banana,count,piece,1,1,5,Banana & cho milkshake
+Blueberry Crush,volume,litre,1000,100,34,Blueberry Milkshake
+Blueberry Crush,volume,litre,1000,60,20,Blueberry milk shake
+Blueberry Crush,volume,litre,1000,60,20,Blueberry Cream Soda
+Blueberry Crush,volume,litre,1000,50,17,Blueberry Lemonade
+Chat Masala,weight,kg,1000,6,3,Mint tea shikanji
+Green Chilli,weight,kg,1000,150,20,Red chutney
+Green Chilli,weight,kg,1000,30,5,Green chutny
+Green Chilli,weight,kg,1000,25,5,Makhani sauce
+Vanilla Essence,volume,litre,1000,25,9,Cream cheese icing
+Vanilla Essence,volume,litre,1000,5,2,Tiramisu cream
+Apple,count,piece,1,1,38,Apple milkshake
+Blueberry Filling,weight,kg,1000,40,16,Blueberry Cream Soda
+Blueberry Filling,weight,kg,1000,40,16,Blueberry Lemonade
+Blueberry Filling,weight,kg,1000,20,8,Blueberry Milkshake
+Blueberry Filling,weight,kg,1000,10,8,Blueberry cinnemon roll
+Chocolate (unspecified),weight,kg,1000,50,16,Browni milkshake
+Chocolate (unspecified),weight,kg,1000,20,6,Cookie monstar cinnemon roll
+Dark Chocolate (unspecified),weight,kg,1000,100,34,chocolate ghanash
+White Chocolate (unspecified),weight,kg,1000,100,38,white cho ghanash
+Cinnamon Powder,weight,kg,1000,2,1,Mexican spiced Americano
+Coconut Cream,weight,kg,1000,80,56,coconut vietnamese syrup
+Coconut Cream,weight,kg,1000,30,21,Brazilian lemonade drink
+Coconut Milk,volume,litre,1000,160,92,coconut vietnamese syrup
+Coconut Milk,volume,litre,1000,20,12,Brazilian cream
+Coconut Milk Powder,weight,kg,1000,20,12,Brazilian creaminess extract
+Coconut Powder,weight,kg,1000,2,2,Blueberry cinnemon roll
+Coconut Water,volume,litre,1000,120,20,Coconut iced matcha
+Cookie,count,piece,1,1,18,Cookie monstar cinnemon roll
+Cookie,count,piece,1,1,10,Biscoff bliss
+Green Capsicum,weight,kg,1000,300,10,Tomato sauce
+Green Capsicum,weight,kg,1000,20,3,Paneer Makhani calzone
+Green Capsicum,weight,kg,1000,10,2,Bombay sandwich
+Irish Flavour Syrup,volume,litre,1000,30,24,IRISH COFFE
+Mango Crush,volume,litre,1000,60,7,Mango Cream Soda
+Mojito Lime Syrup,volume,litre,1000,15,5,Vargin mojito
+Mojito Lime Syrup,volume,litre,1000,5,2,Mint tea shikanji
+Mojito Mint Syrup,volume,litre,1000,15,10,Vargin mojito
+Oat Milk,volume,litre,1000,230,115,Oat milk matcha latte
+Oat Milk,volume,litre,1000,150,75,Iced Oat milk matcha latte
+Peanut Butter,weight,kg,1000,50,70,Peanut Butter sandwich
+Peanut Butter,weight,kg,1000,40,56,Peanut Butter & Blueberry Jam
+Peanut Butter,weight,kg,1000,30,44,Pinut butter & gulkand
+Thyme,weight,kg,1000,7,4,Mashroom bhaji
+Thyme,weight,kg,1000,4,2,Tomato sauce
+Ginger,weight,kg,1000,35,10,Makhani sauce
+Ginger,weight,kg,1000,30,2,Aadrak chai
+Ajwain,weight,kg,1000,1.5,1,Nachos
+Almond Butter,weight,kg,1000,50,211,Simple almond butter sandwhich
+Basil,weight,kg,1000,1200,240,Pesto sauce
+Blueberries,weight,kg,1000,250,88,Blueberry compote
+Blueberries,weight,kg,1000,30,10,Peanut Butter & Blueberry Jam
+Brownie,count,piece,1,1,19,Browni milkshake
+Citric Acid,weight,kg,1000,1.5,3,Brazilian lemonade
+Coriander (fresh),weight,kg,1000,870,20,Green chutny
+Coriander (fresh),weight,kg,1000,30,10,Makhani Tadka
+Curry Leaves,weight,kg,1000,14,10,Green chutny
+Dates,count,piece,1,10,28,Dates & banana milk shake
+Cardamom Powder,weight,kg,1000,3,10,Elaichi chai
+Garam Masala,weight,kg,1000,1,1,Masala sandwich masala
+Ginger Ale,volume,litre,1000,120,60,Ginger Ale Cold Brew
+Ginger Ale Syrup,volume,litre,1000,20,17,Ginger Ale Cold Brew
+Ginger Garlic Paste,weight,kg,1000,100,10,Paneer bhaji
+Ginger Garlic Paste,weight,kg,1000,87,15,Rajma curry
+Green Tea,weight,kg,1000,2,8,chamomile tea
+Gulkand,weight,kg,1000,30,60,Pinut butter & gulkand
+Jasmine Tea,weight,kg,1000,5,38,Jasmin tea
+Kala Khatta Syrup,volume,litre,1000,15,13,kala khatta cold brew
+Kala Khatta Syrup,volume,litre,1000,15,13,Kala khatta lemonade
+Kashmiri Chilli,weight,kg,1000,35,8,Makhani sauce
+Kasuri Methi,weight,kg,1000,3,3,Makhani Tadka
+Lemon,weight,kg,1000,850,102,Brazilian lemonade
+Makai Atta (Maize Flour),weight,kg,1000,125,19,Nachos
+Mushroom,weight,kg,1000,600,150,Mashroom bhaji
+Mulberry,weight,kg,1000,250,163,Blueberry compote
+Nachos Masala,weight,kg,1000,20,32,Nachos
+Peach Powder,weight,kg,1000,12,4,Peach ice tea
+Potato,weight,kg,1000,20,2,Bombay sandwich
+Red Chilli (fresh),weight,kg,1000,150,33,Red chutney
+Rock Salt,weight,kg,1000,5,2,Chocolate milk shake
+Roasted Chana,weight,kg,1000,70,10,Green chutny
+Sabja Seed,weight,kg,1000,10,5,Mint tea shikanji
+Sandwich Masala,weight,kg,1000,30,5,Green chutny
+Spinach,weight,kg,1000,170,20,Green chutny
+Tropical Tea,weight,kg,1000,2,36,Tropical green tea
+Vanilla Foam,weight,kg,1000,50,6,Cold brew with vanilla foam
+Yuzu Syrup,volume,litre,1000,30,38,Yuzu lemoned
+Yuzu Syrup,volume,litre,1000,15,19,Yuzu honey cold brew
+Dry Yeast,weight,kg,1000,12,2,Pizza dough
+White Vinegar (Can),volume,litre,1000,70,3,Tomato sauce
+Mascarpone Cheese,weight,kg,1000,300,255,Tiramisu cream
