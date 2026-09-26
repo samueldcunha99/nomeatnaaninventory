@@ -23,6 +23,17 @@
 *.yml  text eol=lf
 *.yaml text eol=lf
 
+# Anything that RUNS ON THE LINUX SERVER. Without these, core.autocrlf=true on a Windows
+# checkout writes them with CRLF - and deploy/README.md ships them to the VPS by scp FROM
+# that checkout. A shell script with CRLF fails as `/bin/sh^M: bad interpreter`, and
+# backup.sh runs under cron, so it would fail silently every night into a log nobody
+# reads: the backup that quietly stops is the one failure a backup exists to prevent.
+# The committed blobs were always LF; only the working copy was wrong, which is why CI
+# never saw it.
+*.sh       text eol=lf
+Caddyfile  text eol=lf
+Dockerfile text eol=lf
+
 # Real binaries: never diff or normalise these.
 *.png  binary
 *.jpg  binary
