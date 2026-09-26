@@ -50,6 +50,13 @@
       "when": 1788965176823,
       "tag": "0006_ledger_is_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790410596249,
+      "tag": "0007_production_runs",
+      "breakpoints": true
     }
   ]
 }

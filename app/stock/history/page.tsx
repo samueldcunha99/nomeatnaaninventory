@@ -20,6 +20,7 @@ const TYPE_LABEL: Record<string, string> = {
   // it a sale would misread the ledger for the manager whose job is logging production.
   consumption: 'Used',
   reversal: 'Reversal',
+  production: 'Made',
 };
 
 /** Asia/Kolkata at the display boundary; stored UTC. */

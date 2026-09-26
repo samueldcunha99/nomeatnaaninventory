@@ -9,7 +9,24 @@
  */
 import { divRoundHalfUp } from './units.ts';
 
-export type MovementType = 'purchase' | 'adjustment' | 'wastage' | 'consumption' | 'reversal';
+export type MovementType =
+  | 'purchase'
+  | 'production'
+  | 'adjustment'
+  | 'wastage'
+  | 'consumption'
+  | 'reversal';
+
+/**
+ * Movements that bring stock in WITH A VALUE, and so are the only ones that move the
+ * weighted average.
+ *
+ * A delivery and a batch the kitchen made are the same event to the store: stock arrives
+ * and it cost something. Dough in the fridge has a quantity and a value just as a sack of
+ * flour does. So production folds through the purchase branch below, unchanged - it does
+ * not get an arithmetic of its own. T18 is the test that the two cannot drift apart.
+ */
+const VALUED_INFLOW: ReadonlySet<MovementType> = new Set(['purchase', 'production']);
 
 export type Movement = {
   movementType: MovementType;
@@ -29,8 +46,8 @@ export const EMPTY_STOCK: StockState = { qtyMilliBase: 0n, weightedAvgCostMillip
 /**
  * new_avg = (old_qty * old_avg + in_qty * in_price) / (old_qty + in_qty)
  *
- * Only purchases move the average. Adjustment, wastage, consumption and reversal
- * change quantity and leave the average exactly as it was.
+ * Only valued inflows - purchases and production - move the average. Adjustment,
+ * wastage, consumption and reversal change quantity and leave it exactly as it was.
  *
  * When old_qty <= 0 the average is simply the incoming price. This is not a rounding
  * nicety: with negative stock the formula subtracts a phantom quantity of value and
@@ -40,7 +57,7 @@ export const EMPTY_STOCK: StockState = { qtyMilliBase: 0n, weightedAvgCostMillip
 export function applyMovement(state: StockState, m: Movement): StockState {
   const qtyMilliBase = state.qtyMilliBase + m.quantityMilliBase;
 
-  if (m.movementType !== 'purchase') {
+  if (!VALUED_INFLOW.has(m.movementType)) {
     if (m.unitCostMillipaisePerBase != null) {
       throw new RangeError(`${m.movementType} movements must not carry a unit cost`);
     }
@@ -48,9 +65,9 @@ export function applyMovement(state: StockState, m: Movement): StockState {
   }
 
   const inPrice = m.unitCostMillipaisePerBase;
-  if (inPrice == null) throw new RangeError('purchase movements require a unit cost');
+  if (inPrice == null) throw new RangeError(`${m.movementType} movements require a unit cost`);
   if (inPrice < 0n) throw new RangeError('unit cost cannot be negative');
-  if (m.quantityMilliBase <= 0n) throw new RangeError('purchase quantity must be positive');
+  if (m.quantityMilliBase <= 0n) throw new RangeError(`${m.movementType} quantity must be positive`);
 
   if (state.qtyMilliBase <= 0n) {
     return { qtyMilliBase, weightedAvgCostMillipaisePerBase: inPrice };

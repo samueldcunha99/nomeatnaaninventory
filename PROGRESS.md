@@ -53,6 +53,7 @@ as Month 1 did. See the log entry for 2026-08-21.
 |---|---|---|
 | 3 | Recipes, sub-recipes, costing engine (Month 2) | ✅ |
 | 4 | Orders, atomic depletion, cost snapshots (Month 3) | ⬜ |
+| 4a | **Production logging** — what the kitchen made and used, dough held as stock | 🟡 step 1 of 4 — schema, 0007, the fold |
 | 5 | Kitchen status board (Month 3) | ⬜ |
 | 6 | Customer order tracking (Month 4) | ⬜ |
 | 7 | Online ordering + Razorpay (Month 4) | ⬜ |
@@ -1864,3 +1865,77 @@ logs what was *ordered* and not what was *used*, which is half of what it is for
 [files/production-tracking-2026-09.md](files/production-tracking-2026-09.md) — a schema
 proposal, reviewed but not built, and several steps rather than one because it changes
 `stock_movements`.
+
+---
+
+## 2026-09-26 — Production logging, step 1: the database and the fold learn to make things
+
+Branch `month-3-production`. Design: [files/production-tracking-2026-09.md](files/production-tracking-2026-09.md),
+with the client's choice of **dough held as stock** confirmed on 18 September.
+
+**194 tests → 213, 0 skipped. Typecheck clean, `next build` 0.**
+
+This step makes production *possible* and nothing more. The database can hold a batch
+and a stocked recipe, and every existing reader of the ledger handles both correctly.
+Nothing writes a production run yet; that is step 2.
+
+### What landed
+
+- **Migration 0007.** `production` joins `movement_type`; `recipes.stock_ingredient_id`
+  links a recipe to the ingredient row that holds its output; `production_runs` records
+  each batch with every yield snapshotted. Two ledger checks widened from
+  purchase-only to purchase-or-production, and renamed so the names stop lying.
+- **`production_runs` is append-only**, by the 0006 trigger pattern and the same
+  maintenance hatch. Added to `scripts/clean-test-data.ts` and to both the row counts
+  and the trigger check in `deploy/restore-check.sh` - three places a new table has to
+  be registered, not one.
+- **`applyMovement` folds production through the purchase branch, unchanged.**
+- **`loadCostLookup` counts a batch as a cost basis.** Without it, dough that was made
+  and never bought has stock and a weighted average and still raises `MissingCostError`
+  in every recipe that draws on it. Verified by reverting it and watching the test fail.
+
+### The fold had to move in the same step as the schema
+
+The plan put the arithmetic in step 2. It could not wait: `applyMovement` threw on any
+non-purchase movement carrying a cost, so the moment the database admitted a costed
+production row, `recalculateStock` would have thrown on it. A schema-only step 1 would
+have been a database that accepts rows its own cache cannot fold.
+
+Paper cases **T13-T18** were written and hand-computed *before* the fold changed, and five
+failed first, as they should. T15 pins that a batch's cost divides by **actual** yield: a
+short batch makes dearer dough, and dividing by the recipe's promise would price the
+missing 400 g as free. T18 is the whole argument in one assertion - a batch and a
+delivery of the same size and price fold identically, so production cannot grow a second
+arithmetic without this test noticing.
+
+### The enum trap
+
+Postgres refuses to use an enum value inside the transaction that added it. The
+generated migration adds `production` and builds a check naming it in one go - and the
+drizzle migrator runs **every pending migration in one transaction**, so splitting the
+files would not help. Read from `node_modules`, not assumed.
+
+The replaced checks compare `movement_type::text`. Proven both ways rather than argued:
+with the enum form restored, the real migration run against an empty database failed with
+`unsafe use of new value`; with `::text`, all eight migrations applied in a single
+transaction. It is in AGENTS.md now, because the same trap waits for anyone adding a role
+or a unit type.
+
+*A correction to what I said at the time:* I first told the user this would have passed
+locally and broken only the first fresh deploy. Probing showed it fails on **every**
+database, fresh or existing, so it would have been caught on the first `db:migrate`. The
+workaround is still required; the severity was overstated.
+
+### Checked against the real data
+
+0007 ran against the café's own tenant - 215 movements, 139 recipes. `ADD CONSTRAINT`
+validates every existing row, and a direct query confirmed zero rows violate either new
+check. No recipe is stocked yet, as expected: the client still has to say which ones are.
+
+### Next, and what it needs
+
+Step 2 is `recordProductionRun()` and the sign-safe quantity rounder AGENTS.md has been
+deferring to "when Month 3 writes consumption movements". Paper cases first again.
+
+Before step 3 is *useful*, the client needs to say **which recipes are stocked**. The
+mechanism works with none flagged; it just has nothing to do.

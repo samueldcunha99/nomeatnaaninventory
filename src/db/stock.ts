@@ -132,6 +132,7 @@ const ACTION_BY_TYPE: Record<string, string> = {
   adjustment: 'stock.adjustment',
   consumption: 'stock.consumption',
   reversal: 'stock.reversal',
+  production: 'stock.production',
 };
 
 /**

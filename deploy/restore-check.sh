@@ -39,7 +39,7 @@ $COMPOSE exec -T db pg_restore -U "$DB_USER" -d "$SCRATCH" --exit-on-error < "$D
 echo
 echo "table                 live    restored"
 FAIL=0
-for t in tenants users ingredients stock_movements ingredient_stock recipes recipe_lines menu_items suppliers audit_log; do
+for t in tenants users ingredients stock_movements ingredient_stock recipes recipe_lines menu_items suppliers audit_log production_runs; do
   LIVE=$($COMPOSE exec -T db psql -U "$DB_USER" -d "$DB_NAME" -tAc "select count(*) from $t" | tr -d '\r')
   BACK=$(psql_scratch "select count(*) from $t" | tr -d '\r')
   printf '%-20s %6s %11s' "$t" "$LIVE" "$BACK"
@@ -52,11 +52,15 @@ for t in tenants users ingredients stock_movements ingredient_stock recipes reci
   [ "$BACK" -eq 0 ] && [ "$LIVE" -gt 0 ] && { echo "  ^ RESTORED EMPTY"; FAIL=1; }
 done
 
-# The ledger is the one table where a partial restore is unrecoverable, so it gets its own
-# check: the append-only trigger must exist in the restored copy too.
-TRIG=$(psql_scratch "select count(*) from pg_trigger where tgname = 'stock_movements_no_update'")
+# The ledger and the production runs paired with it are the tables where a partial
+# restore is unrecoverable, so they get their own check: both append-only triggers must
+# exist in the restored copy too. A restore that brings the rows back without the
+# trigger leaves history editable and passes every row count above.
 echo
-if [ "$TRIG" = "1" ]; then echo "append-only trigger: present in the restored copy"
-else echo "append-only trigger: MISSING from the restored copy"; FAIL=1; fi
+for trig in stock_movements_no_update production_runs_no_update; do
+  TRIG=$(psql_scratch "select count(*) from pg_trigger where tgname = '$trig'")
+  if [ "$TRIG" = "1" ]; then echo "append-only trigger $trig: present in the restored copy"
+  else echo "append-only trigger $trig: MISSING from the restored copy"; FAIL=1; fi
+done
 
 [ "$FAIL" -eq 0 ] && echo "RESTORE OK  ($DUMP)" || { echo "RESTORE FAILED"; exit 1; }

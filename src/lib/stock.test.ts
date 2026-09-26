@@ -125,3 +125,72 @@ test('purchases must carry a cost, other movement types must not', () => {
     }),
   );
 });
+
+/* ---------------------------------------------------------------------------
+ * T13-T18 - production. Hand-computed BEFORE applyMovement knew the word.
+ *
+ * A production movement is a batch the kitchen made - dough, say - arriving in the
+ * store with a value, exactly as a delivery arrives with one. So it must fold EXACTLY
+ * like a purchase: blend into the weighted average, and take the incoming price
+ * outright when the store is empty or oversold. One arithmetic, not two; T18 is the
+ * proof of that. See files/production-tracking-2026-09.md.
+ * ------------------------------------------------------------------------- */
+
+const make = (grams: number, price: number): Movement => ({
+  movementType: 'production',
+  quantityMilliBase: g(grams),
+  unitCostMillipaisePerBase: BigInt(price),
+});
+
+test('T13 - first batch into an empty store takes its own cost outright', () => {
+  // A 4.2 kg dough batch whose inputs cost Rs 581.83. The unit cost comes from the
+  // SAME helper a delivery's does - one rounding site, not a second one for batches.
+  //   58183 x 1,000,000 / 4,200,000 = 13853.095... -> 13853
+  assert.equal(unitCostMillipaisePerBase(58183n, g(4200)), 13853n);
+  assertStock(applyMovement(EMPTY_STOCK, make(4200, 13853)), 4200, 13853, 'T13');
+});
+
+test('T14 - a second batch blends into the average like a delivery would', () => {
+  // (4,200,000 x 13853 + 3,800,000 x 15000) / 8,000,000
+  //   = (58,182,600,000 + 57,000,000,000) / 8,000,000 = 14397.825 -> 14398
+  assertStock(applyMovement(state(4200, 13853), make(3800, 15000)), 8000, 14398, 'T14');
+});
+
+test('T15 - a short batch makes dearer dough, because cost divides by ACTUAL yield', () => {
+  // The same Rs 581.83 of inputs, but the bowl gave 3.8 kg instead of the recipe's 4.2.
+  //   58183 x 1,000,000 / 3,800,000 = 15311.315... -> 15311
+  // Dividing by the EXPECTED yield would say 13853, and would price every roll made
+  // from this dough as though the missing 400 g had been free. The loss is real, so it
+  // is carried in the rate.
+  const actual = unitCostMillipaisePerBase(58183n, g(3800));
+  assert.equal(actual, 15311n);
+  assert.ok(actual > unitCostMillipaisePerBase(58183n, g(4200)), 'a short batch must cost more per gram');
+});
+
+test('T16 - a batch into an oversold store does not weight in the deficit', () => {
+  // Same rule as T7, for the same reason: blending a negative quantity produces an
+  // average above anything the batch actually cost.
+  assertStock(applyMovement(state(-500, 14398), make(4200, 13853)), 3700, 13853, 'T16');
+});
+
+test('T17 - drawing dough down for rolls leaves its average alone', () => {
+  // 2160 g of dough into a tray of rolls. Consumption changes quantity, never value.
+  assertStock(applyMovement(state(8000, 14398), out('consumption', -2160)), 5840, 14398, 'T17');
+});
+
+test('T18 - a batch and a delivery of the same size and price fold identically', () => {
+  // The whole claim of this block in one assertion. If production ever grows its own
+  // branch of arithmetic, this is where the two start to disagree.
+  const opening = state(1000, 50000);
+  assert.deepEqual(
+    applyMovement(opening, make(1000, 45001)),
+    applyMovement(opening, buy(1000, 45001)),
+  );
+  assertStock(applyMovement(opening, make(1000, 45001)), 2000, 47501, 'T18');
+});
+
+test('a batch must carry a cost and a positive quantity, like a delivery', () => {
+  assert.throws(() => applyMovement(EMPTY_STOCK, { movementType: 'production', quantityMilliBase: g(1) }));
+  assert.throws(() => applyMovement(EMPTY_STOCK, make(0, 13853)));
+  assert.throws(() => applyMovement(EMPTY_STOCK, make(-100, 13853)));
+});

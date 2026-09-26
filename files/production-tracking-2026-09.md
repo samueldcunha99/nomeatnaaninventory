@@ -1,8 +1,26 @@
 # Daily production tracking — schema proposal, 18 September 2026
 
-**Status: proposed, not built.** Nothing in this document exists in the database yet.
-AGENTS.md working rule 2 says the schema is proposed before code depends on it, and this
-one touches `stock_movements`, so it is proposed here first.
+**Status: step 1 of 4 built (26 September 2026)** - the schema, migration 0007, and the
+fold. The database can now hold production and a stocked recipe, and every reader of the
+ledger handles both; nothing *writes* a production run yet. Steps 2-4 below are unbuilt.
+
+| Step | What | Status |
+|---|---|---|
+| 1 | Schema, migration 0007, the fold, the cost basis | done - 213 tests |
+| 2 | `recordProductionRun()` and the sign-safe quantity rounder | not started |
+| 3 | `/production` and the day sheet | not started |
+| 4 | `production.record` permission, for the `kitchen` role | not started |
+
+Two things step 1 found that this proposal did not say:
+
+- **The fold had to change in the same step as the schema**, not after it.
+  `applyMovement` rejected any non-purchase movement carrying a cost, so the moment the
+  database admitted a costed production row, `recalculateStock` would have thrown on it.
+  Production now folds through the purchase branch unchanged, and paper case T18 proves
+  the two cannot drift apart.
+- **The replaced checks compare `movement_type::text`**, because Postgres refuses an enum
+  value in the transaction that added it and the drizzle migrator runs every pending
+  migration in one. See AGENTS.md, § Adding an enum value.
 
 ## What the client asked for
 

@@ -8,6 +8,7 @@ import {
   integer,
   boolean,
   timestamp,
+  date,
   jsonb,
   primaryKey,
   foreignKey,
@@ -74,8 +75,18 @@ export const movementType = pgEnum('movement_type', [
   'purchase',
   'adjustment',
   'wastage',
-  'consumption', // written by Module 4, not this month
-  'reversal', // written by Module 4, not this month
+  'consumption', // a batch drawing on its inputs; and, from Module 4, a sale
+  'reversal', // written by Module 4, not yet
+  /**
+   * A batch the kitchen made, arriving in the store WITH A VALUE - dough into the
+   * fridge, exactly as a delivery arrives. It folds through the same weighted average
+   * as a purchase (src/lib/stock.ts, VALUED_INFLOW) and never through arithmetic of
+   * its own.
+   *
+   * Last in the list on purpose: Postgres appends a new enum value, and keeping this
+   * array in the same order keeps migration 0007 a plain ADD VALUE.
+   */
+  'production',
 ]);
 /**
  * The CAUSE. movement_type says what happened, movement_reason says why.
@@ -302,15 +313,32 @@ export const stockMovements = pgTable(
       name: 'stock_movements_tenant_supplier_fk',
     }),
     check('stock_movements_qty_nonzero', sql`${t.quantityMilliBase} <> 0`),
-    // Cost is set on purchases and only on purchases.
+    /*
+     * Cost is set on a VALUED INFLOW - a purchase or a production batch - and on nothing
+     * else. Renamed from `stock_movements_cost_on_purchase_only` in 0007, because buying
+     * stopped being the only way stock arrives with a value.
+     *
+     * `::text`, NOT an enum comparison, and this is load-bearing rather than style.
+     * Postgres refuses to use an enum value inside the transaction that ADDED it -
+     * "unsafe use of new value" - and 0007 adds `production` and builds this check in
+     * one go. Splitting them into two migration files would not help: the drizzle
+     * migrator runs every pending migration inside a single transaction.
+     *
+     * Probed on 26 September 2026 against Postgres 16, both ways: on the existing
+     * database and on a type created fresh in the same transaction, the enum form errors
+     * and this form is accepted. Comparing as text never resolves the new label, so the
+     * restriction never applies. Do not tidy it back to an enum comparison.
+     */
     check(
-      'stock_movements_cost_on_purchase_only',
-      sql`(${t.movementType} = 'purchase') = (${t.unitCostMillipaisePerBase} is not null and ${t.totalCostPaise} is not null)`,
+      'stock_movements_cost_on_valued_inflow',
+      sql`(${t.movementType}::text in ('purchase', 'production')) = (${t.unitCostMillipaisePerBase} is not null and ${t.totalCostPaise} is not null)`,
     ),
     check('stock_movements_cost_nonneg', sql`${t.unitCostMillipaisePerBase} is null or (${t.unitCostMillipaisePerBase} >= 0 and ${t.totalCostPaise} >= 0)`),
+    // Anything arriving with a value arrives in a positive quantity. `::text` for the
+    // same reason as the check above.
     check(
-      'stock_movements_purchase_qty_positive',
-      sql`${t.movementType} <> 'purchase' or ${t.quantityMilliBase} > 0`,
+      'stock_movements_inflow_qty_positive',
+      sql`${t.movementType}::text not in ('purchase', 'production') or ${t.quantityMilliBase} > 0`,
     ),
     // Adjustments and wastage both require a cause. Purchase / consumption / reversal
     // must not carry one - they are not manual corrections.
@@ -439,6 +467,21 @@ export const recipes = pgTable(
      * costing labour at nothing is a silent discount on every item that uses it.
      */
     batchMinutes: integer('batch_minutes'),
+    /**
+     * Set when this recipe's output is HELD IN THE STORE - dough made in the morning and
+     * drawn on all day. It points at the `ingredients` row that is that stock.
+     *
+     * An ingredient row rather than a second kind of stock, deliberately. In the store a
+     * tub of dough is indistinguishable from a sack of flour: a quantity, a unit, a value,
+     * a level below which somebody makes more. As an ingredient it gets low stock,
+     * history, adjustments and wastage for free, and the ledger - the most safety-critical
+     * table here - does not grow a polymorphic key. files/production-tracking-2026-09.md
+     * has the alternatives and why each lost.
+     *
+     * Null means made-to-order: a run still records what it yielded, it just puts
+     * nothing on a shelf.
+     */
+    stockIngredientId: uuid('stock_ingredient_id'),
     notes: text('notes'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -454,6 +497,20 @@ export const recipes = pgTable(
     unique('recipes_tenant_id_uq').on(t.tenantId, t.id),
     // A zero-yield recipe divides by zero in every costing path that will exist.
     check('recipes_yield_positive', sql`${t.yieldQtyMilliBase} > 0`),
+    // Composite, like every tenant-scoped reference here: a recipe cannot hold its output
+    // in another tenant's ingredient. MATCH SIMPLE, so a null stock_ingredient_id is not
+    // checked at all - which is exactly the made-to-order case.
+    foreignKey({
+      columns: [t.tenantId, t.stockIngredientId],
+      foreignColumns: [ingredients.tenantId, ingredients.id],
+      name: 'recipes_tenant_stock_ingredient_fk',
+    }),
+    // One live recipe per stock row. Two recipes producing into one ingredient would pour
+    // two different products into one quantity and one weighted average, and nothing
+    // afterwards could separate them.
+    uniqueIndex('recipes_tenant_stock_ingredient_uq')
+      .on(t.tenantId, t.stockIngredientId)
+      .where(sql`${t.stockIngredientId} is not null and ${t.deletedAt} is null`),
   ],
 );
 
@@ -588,5 +645,75 @@ export const menuItems = pgTable(
     check('menu_items_portion_positive', sql`${t.portionQtyMilliBase} > 0`),
     // Zero is legal — staff meals, samples. Negative is not.
     check('menu_items_price_nonneg', sql`${t.sellingPricePaise} >= 0`),
+  ],
+);
+
+/* ---------------------------------------------------------------------------
+ * Production — what the kitchen made, and on which day.
+ *
+ * One row per batch logged. The stock it moved is in stock_movements, grouped by
+ * reference_type = 'production' and reference_id = this row's id, the same way a
+ * multi-line receipt is one event there. This table holds what the ledger cannot:
+ * which recipe, which day, and how the yield compared with what the recipe promised.
+ *
+ * APPEND-ONLY, like the ledger it belongs to, and enforced by trigger in 0007 rather
+ * than by comment. Every figure here is a snapshot of a moment, and each row is paired
+ * with movements that can never be edited either - updating one side would leave the
+ * two describing different batches. A mistake is corrected by a reversing run. So:
+ * no deleted_at, deliberately, exactly as stock_movements has none.
+ * ------------------------------------------------------------------------- */
+
+export const productionRuns = pgTable(
+  'production_runs',
+  {
+    id: id(),
+    tenantId: uuid('tenant_id').notNull(),
+    recipeId: uuid('recipe_id').notNull(),
+    /**
+     * The working day the batch belongs to, in Kolkata. A `date`, not a timestamp: the
+     * question is "what did we make on Tuesday", and a 6 am bake and an 11 pm bake are
+     * the same day. Read and written as a 'YYYY-MM-DD' string so no JavaScript Date ever
+     * gets the chance to shift it across midnight UTC.
+     */
+    producedOn: date('produced_on', { mode: 'string' }).notNull(),
+    /** Thousandths of a batch. 1000 is one batch, 1500 is one and a half. */
+    batchesMilli: bigint('batches_milli', { mode: 'number' }).notNull(),
+    /**
+     * SNAPSHOTS, not derived. A recipe edited in November must not rewrite what an
+     * October batch is recorded as having promised - the same reasoning as a cost
+     * snapshot on an order line.
+     */
+    expectedYieldMilliBase: milliBase('expected_yield_milli_base').notNull(),
+    actualYieldMilliBase: milliBase('actual_yield_milli_base').notNull(),
+    yieldUnitType: unitType('yield_unit_type').notNull(),
+    /**
+     * What the inputs cost, in whole paise. NULL when any input has no cost basis - and
+     * null is not zero, the same rule as everywhere else here. The batch still records;
+     * it is the value that is unknown, not the event.
+     */
+    batchCostPaise: paise('batch_cost_paise'),
+    note: text('note'),
+    createdByUserId: uuid('created_by_user_id').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    // "What did we make today" is the question every screen on this table asks.
+    index('production_runs_tenant_day_idx').on(t.tenantId, t.producedOn),
+    foreignKey({
+      columns: [t.tenantId, t.recipeId],
+      foreignColumns: [recipes.tenantId, recipes.id],
+      name: 'production_runs_tenant_recipe_fk',
+    }),
+    foreignKey({
+      columns: [t.tenantId, t.createdByUserId],
+      foreignColumns: [users.tenantId, users.id],
+      name: 'production_runs_tenant_user_fk',
+    }),
+    check('production_runs_batches_positive', sql`${t.batchesMilli} > 0`),
+    check('production_runs_expected_positive', sql`${t.expectedYieldMilliBase} > 0`),
+    // ZERO IS LEGAL. A burnt batch that came out as nothing is a real and important
+    // record - it is the one the owner most needs to see. Negative is not.
+    check('production_runs_actual_nonneg', sql`${t.actualYieldMilliBase} >= 0`),
+    check('production_runs_cost_nonneg', sql`${t.batchCostPaise} is null or ${t.batchCostPaise} >= 0`),
   ],
 );

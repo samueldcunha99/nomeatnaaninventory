@@ -182,11 +182,14 @@ export async function loadCostLookup(actor: Actor): Promise<CostLookup> {
       id: ingredients.id,
       name: ingredients.name,
       rate: ingredientStock.weightedAvgCostMillipaisePerBase,
-      hasPurchase: raw<boolean>`exists (
+      hasBasis: raw<boolean>`exists (
         select 1 from stock_movements sm
         where sm.tenant_id = ${ingredients.tenantId}
           and sm.ingredient_id = ${ingredients.id}
-          and sm.movement_type = 'purchase'
+          -- A production batch is a basis exactly as a delivery is: stock that arrived
+          -- with a value. Without it, dough has stock and a weighted average but no
+          -- basis, and every recipe drawing on it raises MissingCostError.
+          and sm.movement_type in ('purchase', 'production')
       )`,
     })
     .from(ingredients)
@@ -209,7 +212,7 @@ export async function loadCostLookup(actor: Actor): Promise<CostLookup> {
     // arrives from a left join that can be null. AGENTS.md § Aggregates come back as
     // strings; String() then BigInt() is correct whether the driver hands back a number
     // or a numeric string.
-    if (!(row.hasPurchase === true || String(row.hasPurchase) === 'true')) continue;
+    if (!(row.hasBasis === true || String(row.hasBasis) === 'true')) continue;
     if (row.rate === null) throw new StaleCostCacheError(row.name);
     costs.set(row.id, BigInt(String(row.rate)));
   }

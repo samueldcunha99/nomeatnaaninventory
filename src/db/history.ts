@@ -17,7 +17,7 @@ export type MovementRow = {
   seq: number;
   id: string;
   createdAt: Date;
-  movementType: 'purchase' | 'adjustment' | 'wastage' | 'consumption' | 'reversal';
+  movementType: 'purchase' | 'production' | 'adjustment' | 'wastage' | 'consumption' | 'reversal';
   quantityMilliBase: number;
   unitCostMillipaisePerBase: number | null;
   totalCostPaise: number | null;

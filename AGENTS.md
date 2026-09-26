@@ -3,7 +3,7 @@
 Conventions for the cafe management system. Read `files/PROJECT-SPEC.md` first — this
 file records what we decided that the spec does not say, and why.
 
-**194 tests passing against a live PostgreSQL, 0 skipped.**
+**213 tests passing against a live PostgreSQL, 0 skipped.**
 
 **Month 1 is complete and verified.** Schema, migrations, seed, unit conversion,
 weighted-average cost, auth, role enforcement, ingredient CRUD, stock receipts /
@@ -1025,6 +1025,28 @@ watched fail is not yet a guard.
 `.gitattributes` forces `text eol=lf diff` on source. Note that `text eol=lf` alone does
 **not** make git diff a NUL-bearing file as text — `text` governs checkin/checkout
 normalisation; the attribute that forces a text *diff* is bare `diff`.
+## Adding an enum value: never use it in the same migration by name
+
+Postgres refuses to use an enum value inside the transaction that added it - `unsafe use
+of new value`. **Splitting the change into two migration files does not help**: the
+drizzle migrator runs every pending migration inside one transaction, so on a fresh box
+0000 through the newest all share it. Checked in `node_modules/drizzle-orm/pg-core/dialect.js`,
+not assumed.
+
+So a migration that adds an enum value and also builds a check constraint naming it must
+compare the column **as text**: `movement_type::text in ('purchase', 'production')`, not
+`movement_type in (...)`. Text comparison never resolves the new label, and the
+restriction never applies.
+
+0007 is the worked example. Both directions were probed against Postgres 16 on
+26 September 2026 - on the live database and on a type created fresh in the same
+transaction - and the enum form errored both times. Then the real migration was run with
+the enum form restored, against an empty database, and failed with exactly that error;
+with `::text` it applied all eight migrations in one transaction. It is not a style
+choice, and a tidy-up back to the enum form breaks every deploy.
+
+The same trap waits for anyone adding a `user_role` or `unit_type`.
+
 ## Invariants enforced in the database, not just in code
 
 Application code is expected to uphold these too — the constraints are there for the day
@@ -1032,8 +1054,17 @@ it doesn't.
 
 - `stock_movements` is **append-only**. No UPDATE, no DELETE, ever. A correction is a new
   row.
-- Cost columns are set on `purchase` movements and only on `purchase` movements.
-- `purchase` quantities are positive; no movement has zero quantity.
+- `production_runs` is **append-only** too, by the same trigger pattern and the same
+  maintenance hatch (0007). Each run is paired with ledger rows that can never change, so
+  editing the run would leave the two describing different batches.
+- Cost columns are set on **valued inflows** - `purchase` and `production` - and only on
+  those. Buying stopped being the only way stock arrives with a value in 0007.
+- `purchase` and `production` quantities are positive; no movement has zero quantity.
+- A recipe's `stock_ingredient_id` is composite on `(tenant_id, id)`, and **at most one
+  live recipe produces into any one stock row** - two products poured into one quantity
+  and one weighted average could never be separated again.
+- A production run's actual yield may be **zero** (a burnt batch is the record the owner
+  most needs); batches, expected yield and cost may not be negative.
 - `adjustment` and `wastage` movements require a reason; reason `other` requires a note.
 - Ingredient names are unique per tenant, case-insensitively, among non-deleted rows.
 - User emails are unique per tenant, case-insensitively.

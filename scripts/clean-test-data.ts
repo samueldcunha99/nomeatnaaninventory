@@ -24,11 +24,16 @@ import { db, sql } from '../src/db/client.ts';
 const TEST_TENANT = raw`name ~ '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'`;
 
 /**
- * Children before parents. recipe_lines points at recipes AND ingredients, menu_items at
- * recipes, stock_movements at ingredients, users and suppliers, audit_log at users - so
- * this order is the foreign keys read backwards.
+ * Children before parents. production_runs points at recipes and users, recipe_lines at
+ * recipes AND ingredients, menu_items at recipes, recipes at ingredients (the stock row
+ * a recipe produces into), stock_movements at ingredients, users and suppliers,
+ * audit_log at users - so this order is the foreign keys read backwards.
+ *
+ * A new table with a foreign key into any of these MUST be added here, above its
+ * parents, or every test tenant that touched it becomes undeletable.
  */
 const TABLES = [
+  'production_runs',
   'recipe_lines',
   'menu_items',
   'recipes',
