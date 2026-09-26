@@ -5,7 +5,7 @@
  * movement (PROJECT-SPEC 2.5). If a screen ever needs to "fix" a movement, it wants
  * recordCorrection() in src/db/movements.ts instead.
  */
-import { and, asc, desc, eq, gte, lte, isNull, sql as raw } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lt, isNull, sql as raw } from 'drizzle-orm';
 import { db } from './client.ts';
 import { stockMovements, ingredients, ingredientStock, users, suppliers } from './schema.ts';
 import { assertPermission, type Actor } from '../lib/auth.ts';
@@ -129,7 +129,7 @@ export async function listMovements(actor: Actor, filter: HistoryFilter = {}) {
       .where(
         and(
           filter.from ? gte(ledger.createdAt, filter.from) : undefined,
-          filter.to ? lte(ledger.createdAt, filter.to) : undefined,
+          filter.to ? lt(ledger.createdAt, filter.to) : undefined,
         ),
       )
       .orderBy(desc(ledger.seq))
@@ -162,7 +162,7 @@ export async function listMovements(actor: Actor, filter: HistoryFilter = {}) {
         and(
           eq(stockMovements.tenantId, actor.tenantId),
           filter.from ? gte(stockMovements.createdAt, filter.from) : undefined,
-          filter.to ? lte(stockMovements.createdAt, filter.to) : undefined,
+          filter.to ? lt(stockMovements.createdAt, filter.to) : undefined,
         ),
       )
       .orderBy(desc(stockMovements.seq))

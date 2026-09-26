@@ -50,6 +50,29 @@ export function retryAfterMs(times: number[], now: number, max: number, windowMs
 
 const attempts = new Map<string, number[]>();
 
+/**
+ * How many keys may sit in `attempts` before expired ones are swept.
+ *
+ * A key is only pruned when that same key is touched again, so without this the map
+ * grows by one entry for every distinct email ever tried and never shrinks. Guessing
+ * addresses is free, so "distinct emails ever tried" is attacker-controlled: the
+ * counters that exist to bound an attack were themselves unbounded.
+ *
+ * Generous on purpose. A cafe has single-digit staff, so anything near this number is
+ * already an attack rather than a busy morning, and sweeping at that point costs one
+ * pass over a map that should never have been that large.
+ */
+const SWEEP_ABOVE_KEYS = 10_000;
+
+/** Drop keys whose failures have all aged out. Cheap, and only ever called when large. */
+function sweep(now: number): void {
+  for (const [key, times] of attempts) {
+    const kept = withinWindow(times, now);
+    if (kept.length === 0) attempts.delete(key);
+    else attempts.set(key, kept);
+  }
+}
+
 /** Keys are namespaced so an email that looks like an IP cannot share a bucket with one. */
 const accountKey = (email: string) => `a:${email.trim().toLowerCase()}`;
 const sourceKey = (ip: string) => `s:${ip}`;
@@ -75,11 +98,19 @@ export function checkLoginAllowed(
 
 /** Record one failure against both counters. */
 export function recordLoginFailure(email: string, ip: string | null, now = Date.now()): void {
+  // Before inserting, not after: the sweep is what stops the insert below growing the
+  // map without limit, so it has to run on the way in.
+  if (attempts.size > SWEEP_ABOVE_KEYS) sweep(now);
   for (const key of [accountKey(email), ...(ip ? [sourceKey(ip)] : [])]) {
     const kept = withinWindow(attempts.get(key) ?? [], now);
     kept.push(now);
     attempts.set(key, kept);
   }
+}
+
+/** Keys currently tracked. Exists so a test can watch the sweep actually happen. */
+export function trackedKeyCountForTests(): number {
+  return attempts.size;
 }
 
 /**

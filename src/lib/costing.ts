@@ -158,6 +158,33 @@ export class RecipeDepthError extends Error {
   }
 }
 
+/**
+ * A line points at a sub-recipe that is not in the graph.
+ *
+ * In practice that means the sub-recipe was soft-deleted while a parent still used it:
+ * `loadRecipeGraph` filters `deleted_at is null` on RECIPES, but a line referencing one
+ * is itself still live, so it survives with nothing to resolve to.
+ *
+ * It must NOT be skipped. Dropping the line would cost the parent as though that
+ * component were free - a total that is lower, plausible and wrong, which is the exact
+ * failure AGENTS.md § Missing cost data is an error, never zero exists to prevent. So
+ * it raises, and it names the parent, because "some uuid is missing" tells an operator
+ * nothing they can act on.
+ */
+export class MissingSubRecipeError extends Error {
+  readonly recipeId: string;
+
+  constructor(recipeId: string, parentPath: readonly string[]) {
+    const where = parentPath.length ? `"${parentPath[parentPath.length - 1]}"` : 'this recipe';
+    super(
+      `${where} uses a recipe that has since been deleted, so it cannot be costed. ` +
+        `Open ${where} and remove or replace that line.`,
+    );
+    this.name = 'MissingSubRecipeError';
+    this.recipeId = recipeId;
+  }
+}
+
 export class UnitMismatchError extends Error {
   constructor(expected: UnitType, actual: UnitType, label: string) {
     super(
@@ -217,7 +244,7 @@ export const CONTRIBUTION_PER_PAISE = MILLI * WASTAGE_SCALE * MILLI;
  */
 function rateOf(recipeId: string, ctx: Ctx, stack: readonly string[], terms?: Term[]): bigint {
   const recipe = ctx.recipes.get(recipeId);
-  if (!recipe) throw new Error(`Recipe ${recipeId} is not in the graph being costed`);
+  if (!recipe) throw new MissingSubRecipeError(recipeId, stack);
 
   const path = [...stack, recipe.name];
   // Defensive, not a substitute for save-time validation: without it a cycle that got
@@ -442,7 +469,7 @@ export function assertAcyclicWithinDepth(
 ): void {
   const walk = (id: string, stack: readonly string[]): void => {
     const recipe = recipes.get(id);
-    if (!recipe) throw new Error(`Recipe ${id} is not in the graph being validated`);
+    if (!recipe) throw new MissingSubRecipeError(id, stack);
 
     const path = [...stack, recipe.name];
     if (stack.includes(recipe.name)) throw new RecipeCycleError(path);

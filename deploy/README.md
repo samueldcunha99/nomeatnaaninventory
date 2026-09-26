@@ -142,7 +142,13 @@ write on the server (never committed) into `~/cafe/`:
     IMAGE_TAG=sha-<the sha CI published>
     SITE_ADDRESS=:80          # demo: plain HTTP on the IP. A hostname here gets TLS free.
     POSTGRES_PASSWORD=<generated>
+    APP_DB_PASSWORD=<a different generated one>
     SEED_OWNER_PASSWORD=<generated>
+
+`APP_DB_PASSWORD` is not optional and is **not** the same as `POSTGRES_PASSWORD`. The
+migrator owns the schema; the app runs as `cafe_app`, which the migrator creates and
+grants data access and nothing else. `docker-compose.prod.yml` refuses to start without
+it, so a demo built from an older copy of this list fails at `up` rather than at boot.
 
 Then, if the packages are private, `docker login ghcr.io` with a PAT scoped
 `read:packages`, and:
@@ -154,7 +160,37 @@ Migrations run as a one-shot before the app starts, same as locally. Seeding is 
 automatic — `docker compose run --rm migrate node src/db/seed.ts` if the demo needs the
 owner account.
 
-### 4. Deleting it
+### 4. Handing it to the client for testing
+
+The demo box exists for exactly one thing: getting the owner in front of the screens
+without waiting for the E2E account. Aurangabad to a Mumbai or Hyderabad region is a
+short hop, so it will feel local on a phone.
+
+1. **Publish an image first.** CI only pushes to GHCR on a push to `main`. Work sitting
+   on a feature branch has no image, and `IMAGE_TAG` has nothing to point at. Merge, let
+   CI finish, then take the `sha-` tag from the run.
+2. **Seed, then make him his own login.** Seed as step 3 above describes. Sign in as that
+   owner once, create *him* a real account at `/settings/users`, and keep the seeded
+   owner as the break-glass account. A shared login makes the audit log useless the
+   moment two people use it.
+3. **Send the URL and the password separately.** Different channels — the link by
+   WhatsApp, the password by voice or SMS. On `SITE_ADDRESS=:80` this is plain HTTP on a
+   bare IP, so treat the password as interceptable and make it one he uses nowhere else.
+4. **Tell him what to break, not just that it exists.** The outstanding gate is § 6 of
+   [../files/client-questions-2026-09.md](../files/client-questions-2026-09.md): a real
+   multi-line delivery entered by hand on the stock receipt screen. That form is the one
+   part of this nothing but us has ever used, and the defects in it are the ones we
+   cannot find by testing, because we already know how it is meant to be used.
+5. **Say plainly that the data is throwaway.** No backups, no tested restore, § 10.5
+   deliberately not met. Anything he types here he types again on the real server. That
+   sentence has to reach him *before* he spends an evening entering his stock, not after.
+
+**Real cafe data does not go on this box.** The recipe book and price list are already in
+the repo and will be in the image, which is a considered exception — they are his own
+figures, going to him. Live stock counts, staff accounts with real passwords and any
+customer record are not.
+
+### 5. Deleting it
 
 It is a demo. `docker compose down -v` and terminate the instance; nothing here is
 backed up, and § 10.5's tested-restore requirement is deliberately not met.

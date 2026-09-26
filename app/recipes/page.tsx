@@ -5,6 +5,7 @@ import { hasPermission } from '../../src/lib/auth.ts';
 import { listRecipes } from '../../src/db/recipes.ts';
 import { formatQty, formatINR, costPerPurchaseUnitPaise, type UnitType } from '../../src/lib/units.ts';
 import { Glyph } from '../ui/status-badge.tsx';
+import { TIMEZONE } from '../../src/lib/time.ts';
 
 /**
  * A recipe's cost is millipaise per base unit, which is not a figure anyone says out
@@ -150,7 +151,7 @@ export default async function RecipesPage({
                           day: 'numeric',
                           month: 'short',
                           year: 'numeric',
-                          timeZone: 'Asia/Kolkata',
+                          timeZone: TIMEZONE,
                         })}
                       </td>
 

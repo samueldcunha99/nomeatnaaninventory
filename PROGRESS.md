@@ -1787,3 +1787,80 @@ the paper fixture prices it at ₹500. P7 already pinned that rate at 3581960 mi
 the expectation was corrected to ₹35.82 rather than the code being bent to meet it.
 
 `next build` exits 0, 16 routes.
+
+---
+
+## 2026-09-26 — Full-codebase audit, and every defect in it closed
+
+Third audit, after [14 September](files/audit-2026-09-14/REPORT.md) and
+[16 September](files/audit-2026-09-16.md). Full report:
+[files/audit-2026-09-26.md](files/audit-2026-09-26.md). Unlike the first two, the fixes
+landed in the same pass.
+
+**177 tests → 194, 0 skipped. Typecheck clean, `next build` 0 at 17 routes.**
+
+### The one that would have bitten first
+
+The session cookie was marked `Secure` from `NODE_ENV === 'production'`. The demo box runs
+`NODE_ENV=production` behind Caddy on plain HTTP, and **a browser refuses a `Secure`
+cookie from an `http://` origin** — localhost being the sole exemption, which is why every
+test of it passed. The owner in Aurangabad would have signed in and bounced back to the
+login page forever, with nothing to read. It now follows `x-forwarded-proto`.
+
+Handing the demo box over was the next thing planned. This would have been the first thing
+he saw.
+
+### Closed
+
+| # | Finding | Shape of the fix |
+|---|---|---|
+| 1 | `Secure` cookie on an HTTP demo box locked everyone out | read the scheme, not `NODE_ENV` |
+| 2 | Per-source login throttle bypassable — Caddy appends to `X-Forwarded-For`, so the leftmost entry was the attacker's | `header_up X-Forwarded-For {remote_host}` |
+| 3 | The throttle's own key map never evicted | sweep above 10k keys, 2 tests |
+| 4 | A soft-deleted sub-recipe would blank the recipe list and home page | named error, and a structural refusal carried as a value |
+| 5 | `saveRecipe` — the only writer omitting `tenant_id` from its `WHERE` | added to both statements |
+| 6 | `consumption` labelled "Sale" | reads "Used" |
+| 7 | Changing `unit_type` silently reinterpreted all stock and every recipe line | refused once anything references it, 3 tests |
+| 8 | `HistoryFilter.to` documented exclusive, implemented `lte` | half-open, matching its own contract |
+| 9 | Day boundary in 2 places, timezone hardcoded in 4 | `TIMEZONE` / `istDayStart` / `istDayAfter` in `time.ts`, 4 tests |
+| 10 | **Nothing under `app/` was tested at all** | pure parts extracted to `src/lib/form.ts`, 9 tests |
+| 11 | Numeric fields unbounded where every text field had `.max()` | bounded at 24 — measured first: 1 MB costs 141 ms, so a nit, not a DoS |
+| 12 | `recordMovements` assumed one tenant per batch | asserted where it is relied on |
+
+Each new guard was checked the way AGENTS.md asks: disabled, watched go red, restored.
+
+### What finding 10 turned up on its way in
+
+The two copies of the indexed-FormData row collector had diverged. The recipe one dropped
+blank rows with `r.sourceId?.trim() !== ''`, which is **true when the key is absent**
+(`undefined !== ''`), so a row carrying only its defaulted wastage value survived as
+half-filled and failed with a message about picking an ingredient the operator had never
+been shown. One collector now, and a test for precisely that.
+
+This is the argument for the extraction rather than a side note: the untested code was the
+input boundary, and it had a bug in it.
+
+### Verified unreachable rather than fixed
+
+`integerToDecimal` truncates a value whose pack size carries a factor other than 2 or 5 —
+ten eggs is a third of a tray of 30 — and the truncation will not parse back. Carried over
+from 14 September. **Checked rather than assumed:** every route into a stored quantity
+converts against the pack size submitted with it, and a query over the cafe's live 133
+ingredients found no value this cannot render exactly. Only a script writing one directly
+opens the gap. The ceiling is documented on the function with both escape routes, and a
+test pins the behaviour.
+
+### Documentation that had drifted
+
+README and AGENTS.md both said 165 tests. AGENTS.md's permission table listed three of the
+six that exist and never said that **`kitchen` appears in none of them** — a kitchen
+account signs in and reaches nothing until Module 5. Worth knowing before handing someone
+that role to test with.
+
+### Still open, and not a defect
+
+**Nothing writes a `consumption` movement.** Stock only ever goes down by hand. The system
+logs what was *ordered* and not what was *used*, which is half of what it is for. That is
+[files/production-tracking-2026-09.md](files/production-tracking-2026-09.md) — a schema
+proposal, reviewed but not built, and several steps rather than one because it changes
+`stock_movements`.

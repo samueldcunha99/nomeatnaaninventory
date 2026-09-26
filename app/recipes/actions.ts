@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
+import { collectIndexedRows, isBlankRow } from '../../src/lib/form.ts';
 import { requirePermission } from '../../src/auth/server.ts';
 import { saveRecipe, saveMenuItem, type RecipeLineInput } from '../../src/db/recipes.ts';
 import { baseUnitsToMilliBase, parseDecimalToInteger, rupeesToPaise } from '../../src/lib/units.ts';
@@ -14,6 +15,9 @@ export type FormState = { error: string | null };
  * sentence written for them - the loop that would be created, the line whose unit does
  * not match, the name that is taken. Anything else is a bug and keeps its stack trace.
  */
+/** 24 chars is past any real entry; it bounds the BigInt parse behind it. */
+const DECIMAL_MAX = 24;
+
 const OPERATOR_ERRORS = new Set([
   'AuthzError',
   'DuplicateRecipeError',
@@ -21,6 +25,9 @@ const OPERATOR_ERRORS = new Set([
   'UnitMismatchError',
   'RecipeCycleError',
   'RecipeDepthError',
+  // A line pointing at a deleted sub-recipe. The operator fixes it by editing the line;
+  // without this it reached them as an unhandled stack trace.
+  'MissingSubRecipeError',
 ]);
 
 function friendly(err: unknown): string {
@@ -46,15 +53,15 @@ const Line = z.object({
    * millilitres.
    */
   entryUnit: UNIT,
-  quantity: z.string().trim().min(1, 'Every line needs a quantity.'),
-  wastage: z.string().trim(),
+  quantity: z.string().trim().min(1, 'Every line needs a quantity.').max(DECIMAL_MAX),
+  wastage: z.string().trim().max(DECIMAL_MAX),
 });
 
 const Recipe = z.object({
   id: z.string().uuid().nullable(),
   name: z.string().trim().min(1, 'A recipe needs a name.').max(120),
   yieldUnitType: UNIT,
-  yieldQty: z.string().trim().min(1, 'Enter what one batch yields.'),
+  yieldQty: z.string().trim().min(1, 'Enter what one batch yields.').max(DECIMAL_MAX),
   /*
    * Blank is a real answer and it is NOT zero: an untimed recipe is costed on its
    * ingredients alone and says so on screen. Costing labour at nothing would be a silent
@@ -75,24 +82,13 @@ const Recipe = z.object({
  * reason: the row count is whatever the operator added, so the names carry the index.
  */
 function collectLines(formData: FormData): Array<Record<string, string>> {
-  // A Map, NOT an array indexed by the submitted number. `raw[2_000_000_000] = {}` costs
-  // nothing to send and turns the next iteration over that array into a hang - the index
-  // is attacker-controlled, so it never becomes a length.
-  const raw = new Map<number, Record<string, string>>();
-  for (const [key, value] of formData.entries()) {
-    const m = /^lines\[(\d+)]\[(\w+)]$/.exec(key);
-    if (!m) continue;
-    const [, index, field] = m;
-    const row = raw.get(Number(index)) ?? {};
-    row[field] = String(value);
-    raw.set(Number(index), row);
-  }
   // A row with neither a source nor a quantity is an unused row, not an error. Anything
-  // half-filled IS an error, and the messages above name which half.
-  return [...raw.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .map(([, row]) => row)
-    .filter((r) => r.sourceId?.trim() !== '' || r.quantity?.trim() !== '');
+  // half-filled IS an error, and the messages above name which half. Those two fields
+  // are named explicitly because a row also carries a wastage box that defaults to a
+  // value, and counting that would keep every spare line on the form.
+  return collectIndexedRows(formData.entries()).filter(
+    (r) => !isBlankRow(r, ['sourceId', 'quantity']),
+  );
 }
 
 export async function saveRecipeAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -145,8 +141,8 @@ const MenuItem = z.object({
   id: z.string().uuid().nullable(),
   recipeId: z.string().uuid('Unknown recipe.'),
   name: z.string().trim().min(1, 'A menu item needs a name.').max(120),
-  portionQty: z.string().trim().min(1, 'Enter how much of the batch one portion takes.'),
-  sellingPrice: z.string().trim().min(1, 'Enter a selling price.'),
+  portionQty: z.string().trim().min(1, 'Enter how much of the batch one portion takes.').max(DECIMAL_MAX),
+  sellingPrice: z.string().trim().min(1, 'Enter a selling price.').max(DECIMAL_MAX),
   isActive: z.boolean(),
 });
 

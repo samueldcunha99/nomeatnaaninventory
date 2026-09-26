@@ -190,3 +190,74 @@ test('one tenant cannot see or edit another tenant\'s ingredients', async (t) =>
   await assert.rejects(() => updateIngredient(otherOwner, mine.id, input()), /not found/);
   await assert.rejects(() => setIngredientActive(otherOwner, mine.id, false), /not found/);
 });
+
+test('an untouched ingredient may still have its unit type corrected', async (t) => {
+  if (!reachable) return t.skip('no database');
+  // The narrow half of the guard: nothing has been recorded against it, so this is
+  // somebody fixing a typo rather than rewriting history.
+  const row = await createIngredient(owner, input({ unitType: 'weight' }));
+  const after = await updateIngredient(owner, row.id, input({ name: row.name, unitType: 'volume' }));
+  assert.equal(after.unitType, 'volume');
+});
+
+test('changing the unit type under real stock is refused, and says what uses it', async (t) => {
+  if (!reachable) return t.skip('no database');
+  // Flipping weight to volume leaves every stored quantity and the whole weighted
+  // average intact as NUMBERS while silently changing what they measure. Nothing
+  // throws and nothing looks wrong, which is the failure class this codebase exists
+  // to prevent - so the write is refused rather than audited.
+  const row = await createIngredient(owner, input({ unitType: 'weight' }));
+  await recordMovements([
+    {
+      tenantId: owner.tenantId,
+      ingredientId: row.id,
+      movementType: 'purchase',
+      quantityMilliBase: 1_000_000,
+      unitCostMillipaisePerBase: 50_000,
+      totalCostPaise: 50_000,
+      createdByUserId: owner.id,
+    },
+  ]);
+
+  await assert.rejects(
+    () => updateIngredient(owner, row.id, input({ name: row.name, unitType: 'volume' })),
+    (e: Error) => {
+      assert.ok(e instanceof RangeError, `expected RangeError, got ${e.name}`);
+      assert.match(e.message, /stock movement/);
+      assert.match(e.message, /weight/);
+      assert.match(e.message, /volume/);
+      return true;
+    },
+  );
+
+  // Refused means unchanged, not partly applied.
+  const still = await getIngredient(owner, row.id);
+  assert.equal(still?.unitType, 'weight');
+});
+
+test('everything else about an ingredient stays editable once it has stock', async (t) => {
+  if (!reachable) return t.skip('no database');
+  // The guard must not become "an ingredient with history is frozen". A supplier
+  // really does move from 1 kg bags to 25 kg sacks, and AGENTS.md says that rescales
+  // how receipts are entered and nothing else.
+  const row = await createIngredient(owner, input({ unitType: 'weight', purchaseUnitInBase: 1000 }));
+  await recordMovements([
+    {
+      tenantId: owner.tenantId,
+      ingredientId: row.id,
+      movementType: 'purchase',
+      quantityMilliBase: 1_000_000,
+      unitCostMillipaisePerBase: 50_000,
+      totalCostPaise: 50_000,
+      createdByUserId: owner.id,
+    },
+  ]);
+
+  const after = await updateIngredient(
+    owner,
+    row.id,
+    input({ name: row.name, unitType: 'weight', purchaseUnit: 'sack', purchaseUnitInBase: 25_000 }),
+  );
+  assert.equal(after.purchaseUnitInBase, 25_000);
+  assert.equal(after.purchaseUnit, 'sack');
+});

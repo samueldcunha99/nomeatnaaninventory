@@ -5,7 +5,7 @@ import { hasPermission } from '../src/lib/auth.ts';
 import { listLowStock, countDeliveriesSince } from '../src/db/history.ts';
 import { listIngredients } from '../src/db/ingredients.ts';
 import { listRecipes } from '../src/db/recipes.ts';
-import { startOfDayIST } from '../src/lib/time.ts';
+import { startOfDayIST, TIMEZONE } from '../src/lib/time.ts';
 import { formatINR, formatQty, costPerPurchaseUnitPaise, milliBaseToPurchaseUnits } from '../src/lib/units.ts';
 import { portionCostPaise } from '../src/lib/costing.ts';
 import { StatusBadge } from './ui/status-badge.tsx';
@@ -45,7 +45,7 @@ export default async function HomePage() {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-    timeZone: 'Asia/Kolkata',
+    timeZone: TIMEZONE,
   });
 
   /*
@@ -215,8 +215,13 @@ export default async function HomePage() {
                           {/* Named, because "1 recipe has no cost" sends someone hunting
                               and "Saffron strands has no purchase history" does not. */}
                           {!recipe.cost.ok
-                            ? recipe.cost.missing.map((m) => m.name).join(', ') +
-                              ` ${recipe.cost.missing.length === 1 ? 'has' : 'have'} no purchase history`
+                            ? // A structural refusal (a line pointing at a deleted
+                              // recipe) names no ingredient, so it carries its own
+                              // sentence. Falling through to the list below would read
+                              // " have no purchase history" with nothing in front of it.
+                              (recipe.cost.problem ??
+                              recipe.cost.missing.map((m) => m.name).join(', ') +
+                                ` ${recipe.cost.missing.length === 1 ? 'has' : 'have'} no purchase history`)
                             : null}
                         </span>
                       </li>

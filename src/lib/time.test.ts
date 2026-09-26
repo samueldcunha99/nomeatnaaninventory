@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { startOfDayIST, IST_OFFSET_MS } from './time.ts';
+import { startOfDayIST, IST_OFFSET_MS, istDayStart, istDayAfter } from './time.ts';
 
 /** What Kolkata calls the wall clock at a given UTC instant. */
 function istWallClock(d: Date): string {
@@ -36,4 +36,26 @@ test('the boundary is midnight in Kolkata, whatever the date', () => {
 
 test('the offset is the fixed one India actually keeps', () => {
   assert.equal(IST_OFFSET_MS, 19_800_000);
+});
+
+test('a typed day becomes the Kolkata midnight before it, in UTC', () => {
+  // 2026-09-26 00:00 IST is 2026-09-25 18:30 UTC. Five and a half hours is exactly the
+  // error that puts an evening delivery on the wrong day.
+  assert.equal(istDayStart('2026-09-26')?.toISOString(), '2026-09-25T18:30:00.000Z');
+});
+
+test('the upper bound is the next day, not the last millisecond of this one', () => {
+  // Half-open on purpose. A Date can only reach .999 while a timestamptz carries
+  // microseconds, so an inclusive bound drops a movement written at .9996 - a row
+  // silently outside a range the operator believes covers it.
+  assert.equal(istDayAfter('2026-09-26')?.toISOString(), '2026-09-26T18:30:00.000Z');
+  const span = istDayAfter('2026-09-26')!.getTime() - istDayStart('2026-09-26')!.getTime();
+  assert.equal(span, 24 * 60 * 60 * 1000);
+});
+
+test('an unparseable or absent date drops the filter instead of guessing', () => {
+  for (const bad of ['', '   ', 'yesterday', '26-09-2026', '2026-13-45', undefined, null]) {
+    assert.equal(istDayStart(bad as string | undefined), undefined, String(bad));
+    assert.equal(istDayAfter(bad as string | undefined), undefined, String(bad));
+  }
 });

@@ -10,6 +10,7 @@ import {
   WINDOW_MS,
   MAX_PER_ACCOUNT,
   MAX_PER_SOURCE,
+  trackedKeyCountForTests,
 } from './throttle.ts';
 
 beforeEach(resetThrottleForTests);
@@ -88,4 +89,29 @@ test('a blocked attempt does not extend its own block', () => {
   const later = checkLoginAllowed('owner@cafe.local', null, now + 60_000);
   assert.ok(first.allowed === false && later.allowed === false);
   assert.equal(later.retryAfterMs, first.retryAfterMs - 60_000);
+});
+
+test('expired keys are swept rather than accumulating forever', () => {
+  // Guessing addresses is free, so "distinct emails ever tried" is attacker-controlled.
+  // A key was only pruned when that same key came back, so the counters meant to bound
+  // an attack grew without bound themselves.
+  resetThrottleForTests();
+  const t0 = 1_000_000;
+  for (let i = 0; i < 10_050; i++) recordLoginFailure(`user${i}@cafe.test`, null, t0);
+  const beforeSweep = trackedKeyCountForTests();
+  assert.ok(beforeSweep > 10_000, `expected the map to fill, got ${beforeSweep}`);
+
+  // One more, a full window later: everything above has aged out and goes.
+  recordLoginFailure('someone@cafe.test', null, t0 + WINDOW_MS + 1);
+  assert.equal(trackedKeyCountForTests(), 1);
+});
+
+test('the sweep never forgets a block that is still live', () => {
+  resetThrottleForTests();
+  const t0 = 2_000_000;
+  for (let i = 0; i < 10_050; i++) recordLoginFailure(`filler${i}@cafe.test`, null, t0);
+  // A real account, blocked, right at the point the sweep is about to run.
+  for (let i = 0; i < MAX_PER_ACCOUNT; i++) recordLoginFailure('owner@cafe.test', null, t0 + 1);
+  recordLoginFailure('trigger@cafe.test', null, t0 + 2);
+  assert.equal(checkLoginAllowed('owner@cafe.test', null, t0 + 3).allowed, false);
 });

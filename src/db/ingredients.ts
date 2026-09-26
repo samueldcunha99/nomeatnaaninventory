@@ -3,9 +3,9 @@
  * user and checks the permission itself. A server action is reachable without ever
  * loading the page that would have hidden the button.
  */
-import { and, eq, ilike, isNull, asc, sql as raw } from 'drizzle-orm';
+import { and, count, eq, ilike, isNull, asc, sql as raw } from 'drizzle-orm';
 import { db } from './client.ts';
-import { ingredients, ingredientStock, auditLog } from './schema.ts';
+import { ingredients, ingredientStock, auditLog, stockMovements, recipeLines } from './schema.ts';
 import { translating } from './errors.ts';
 import { assertPermission, type Actor } from '../lib/auth.ts';
 import type { UnitType } from '../lib/units.ts';
@@ -152,6 +152,66 @@ export async function updateIngredient(actor: Actor, id: string, input: Ingredie
         .from(ingredients)
         .where(and(eq(ingredients.tenantId, actor.tenantId), eq(ingredients.id, id)));
       if (!before || before.deletedAt) throw new Error('ingredient not found');
+
+      /*
+       * Changing what an ingredient is MEASURED IN rewrites the meaning of everything
+       * already recorded against it, silently.
+       *
+       * A recipe line carries no unit of its own - that is deliberate, the unit belongs
+       * to the source - so flipping weight to volume turns "800 g of flour" into "800 ml
+       * of flour" in every recipe using it, with no line re-validated and no total
+       * moving. The ledger is worse: the stock on hand and the weighted average were
+       * accumulated in grams and paise-per-gram, and afterwards they are read as
+       * millilitres and paise-per-millilitre. Nothing throws, every figure still looks
+       * reasonable, and each one now describes a different physical thing.
+       *
+       * saveRecipe already refuses the identical change to a recipe's yield unit while a
+       * parent draws on it. This is that guard one level down, and AGENTS.md § A recipe's
+       * yield unit is fixed named it as the matching hole.
+       *
+       * The refusal is narrow on purpose: an ingredient nothing has touched yet is free
+       * to change, which is the case where a typo is actually being corrected.
+       */
+      if (before.unitType !== input.unitType) {
+        const [[mv], [rl]] = await Promise.all([
+          tx
+            .select({ n: count() })
+            .from(stockMovements)
+            .where(
+              and(
+                eq(stockMovements.tenantId, actor.tenantId),
+                eq(stockMovements.ingredientId, id),
+              ),
+            ),
+          tx
+            .select({ n: count() })
+            .from(recipeLines)
+            .where(
+              and(
+                eq(recipeLines.tenantId, actor.tenantId),
+                eq(recipeLines.ingredientId, id),
+                isNull(recipeLines.deletedAt),
+              ),
+            ),
+        ]);
+        // AGENTS.md § Aggregates come back as strings: count() is numeric, and
+        // postgres.js hands numeric back as a string. '0' is truthy, so compare numbers.
+        const movements = Number(mv.n);
+        const lines = Number(rl.n);
+        const usedBy = [
+          movements > 0 ? `${movements} stock movement${movements === 1 ? '' : 's'}` : null,
+          lines > 0 ? `${lines} recipe line${lines === 1 ? '' : 's'}` : null,
+        ].filter(Boolean);
+
+        if (usedBy.length > 0) {
+          throw new RangeError(
+            `"${before.name}" is measured by ${before.unitType} and is already used by ` +
+              `${usedBy.join(' and ')}. Changing that to ${input.unitType} would silently ` +
+              `reinterpret every quantity already recorded. Create a new ingredient with ` +
+              `the right unit and deactivate this one instead.`,
+          );
+        }
+      }
 
       const [after] = await tx
         .update(ingredients)

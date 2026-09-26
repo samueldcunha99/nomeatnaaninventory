@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { requirePermission } from '../../../src/auth/server.ts';
 import { listMovements } from '../../../src/db/history.ts';
 import { listIngredients } from '../../../src/db/ingredients.ts';
+import { TIMEZONE, istDayStart, istDayAfter } from '../../../src/lib/time.ts';
 import {
   formatQty,
   formatINR,
@@ -14,28 +15,19 @@ const TYPE_LABEL: Record<string, string> = {
   purchase: 'Receipt',
   adjustment: 'Adjustment',
   wastage: 'Wastage',
-  consumption: 'Sale',
+  // NOT 'Sale'. A consumption movement is stock leaving the store, and in a kitchen
+  // that is overwhelmingly a batch being made rather than an item being sold. Calling
+  // it a sale would misread the ledger for the manager whose job is logging production.
+  consumption: 'Used',
   reversal: 'Reversal',
 };
 
 /** Asia/Kolkata at the display boundary; stored UTC. */
 const IST = new Intl.DateTimeFormat('en-IN', {
-  timeZone: 'Asia/Kolkata',
+  timeZone: TIMEZONE,
   dateStyle: 'medium',
   timeStyle: 'short',
 });
-
-/** A date typed into a form is a Kolkata calendar day, not a UTC instant. */
-function istDayStart(value: string | undefined): Date | undefined {
-  if (!value) return undefined;
-  const parsed = new Date(`${value}T00:00:00+05:30`);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
-}
-function istDayEnd(value: string | undefined): Date | undefined {
-  if (!value) return undefined;
-  const parsed = new Date(`${value}T23:59:59.999+05:30`);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
-}
 
 export default async function HistoryPage({
   searchParams,
@@ -50,7 +42,8 @@ export default async function HistoryPage({
     listMovements(actor, {
       ingredientId: params.ingredientId || undefined,
       from: istDayStart(params.from),
-      to: istDayEnd(params.to),
+      // Exclusive, and the day AFTER the one typed, so the whole of it is included.
+      to: istDayAfter(params.to),
       page: Number(params.page) || 1,
     }),
   ]);

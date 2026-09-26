@@ -105,6 +105,20 @@ export function costPerPurchaseUnitPaise(
  *
  * One implementation, three names below it. Each caller says which scale it means rather
  * than passing 1000 and hoping the next reader knows what it stood for.
+ *
+ * ponytail: the exactness holds only while the scale's prime factors are 2 and 5, which
+ * covers every scale reached through a form. A pack whose size carries another factor -
+ * a tray of 30, so scale 30000 - can hold a value with no finite decimal (10 eggs is a
+ * third of a tray), and this TRUNCATES it at nine places rather than throwing. Feeding
+ * that string back through parseDecimalToInteger then fails as "more precise than this
+ * field can store exactly", about a field the operator may never have touched.
+ *
+ * It is unreachable today and was checked rather than assumed: every route into a stored
+ * quantity converts the operator's decimal against the pack size submitted WITH it, so
+ * the result always divides. A query over the cafe's live 133 ingredients found no value
+ * this cannot render exactly. The gap opens if an importer or a migration ever writes a
+ * threshold directly - so if you are writing one, make it store a multiple of the pack,
+ * or move that field to base units, where the scale is 1000 and every value round-trips.
  */
 export function integerToDecimal(value: number | bigint, scale: bigint): string {
   if (scale <= 0n) throw new RangeError('integerToDecimal: scale must be positive');

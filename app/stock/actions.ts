@@ -6,6 +6,7 @@ import { requirePermission } from '../../src/auth/server.ts';
 import { recordReceipt, recordCorrection } from '../../src/db/movements.ts';
 import { getIngredient } from '../../src/db/ingredients.ts';
 import { purchaseUnitsToMilliBase, rupeesToPaise } from '../../src/lib/units.ts';
+import { collectIndexedRows, isBlankRow, staleUnitMessage } from '../../src/lib/form.ts';
 
 export type FormState = { error: string | null; ok: string | null };
 
@@ -16,32 +17,16 @@ function friendly(err: unknown): string {
   throw err;
 }
 
+/** 24 chars is past any real entry; it bounds the BigInt parse behind it. */
+const DECIMAL_MAX = 24;
+
 const Line = z.object({
   ingredientId: z.string().uuid(),
-  quantity: z.string().trim().min(1),
-  totalCost: z.string().trim().min(1),
+  quantity: z.string().trim().min(1).max(DECIMAL_MAX),
+  totalCost: z.string().trim().min(1).max(DECIMAL_MAX),
   /** The pack size the form displayed. Checked, never calculated with. See staleUnit. */
   unitInBase: z.coerce.number().int().positive().optional(),
 });
-
-/**
- * "2" against a 1 kg bag is two kilos; against a 25 kg sack it is fifty. The form shows
- * which one it means, but the submission used to carry only an id and a number, so a
- * manager editing the purchase pack while a receipt sat open on another screen turned
- * that receipt into a different delivery - silently, and with a unit-cost preview that
- * had been calculated against the old pack.
- *
- * So the form states the pack it priced against and the server compares. The claim is
- * never used as a conversion factor: a tampered value can only produce this refusal.
- */
-function staleUnit(claimed: number | undefined, actual: number, name: string): string | null {
-  if (claimed === undefined || claimed === actual) return null;
-  return (
-    `"${name}" was bought in a different pack size when this page opened, and someone has ` +
-    `changed it since. Nothing was saved. Reload the page and enter the delivery again so ` +
-    `the quantity means what you intend.`
-  );
-}
 
 const Receipt = z.object({
   supplierId: z.string().uuid().nullable(),
@@ -55,23 +40,8 @@ export async function recordReceiptAction(_prev: FormState, formData: FormData):
   const supplierId = String(formData.get('supplierId') ?? '') || null;
   const note = String(formData.get('note') ?? '').trim() || null;
 
-  // A Map, NOT an array indexed by the submitted number. `lines[2000000000][quantity]`
-  // costs nothing to send and turns the next iteration over that array into a hang - the
-  // index is attacker-controlled, so it never becomes a length. Entry order is the sort.
-  const raw = new Map<number, Record<string, string>>();
-  for (const [key, value] of formData.entries()) {
-    const m = /^lines\[(\d+)]\[(\w+)]$/.exec(key);
-    if (!m) continue;
-    const [, index, field] = m;
-    const row = raw.get(Number(index)) ?? {};
-    row[field] = String(value);
-    raw.set(Number(index), row);
-  }
   // A row the operator left entirely blank is not an error, it is an unused row.
-  const lines = [...raw.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .map(([, row]) => row)
-    .filter((r) => Object.values(r).some((v) => v.trim() !== ''));
+  const lines = collectIndexedRows(formData.entries()).filter((r) => !isBlankRow(r));
 
   const parsed = Receipt.safeParse({ supplierId, note, lines });
   if (!parsed.success) return { error: parsed.error.issues[0].message, ok: null };
@@ -84,7 +54,7 @@ export async function recordReceiptAction(_prev: FormState, formData: FormData):
     for (const line of parsed.data.lines) {
       const ingredient = await getIngredient(actor, line.ingredientId);
       if (!ingredient) return { error: 'One of the ingredients no longer exists.', ok: null };
-      const stale = staleUnit(line.unitInBase, ingredient.purchaseUnitInBase, ingredient.name);
+      const stale = staleUnitMessage(line.unitInBase, ingredient.purchaseUnitInBase, ingredient.name);
       if (stale) return { error: stale, ok: null };
       converted.push({
         ingredientId: line.ingredientId,
@@ -110,7 +80,7 @@ const Correction = z.object({
   kind: z.enum(['adjustment', 'wastage']),
   ingredientId: z.string().uuid('Choose an ingredient.'),
   direction: z.enum(['add', 'remove']),
-  quantity: z.string().trim().min(1, 'Enter a quantity.'),
+  quantity: z.string().trim().min(1, 'Enter a quantity.').max(DECIMAL_MAX),
   reason: z.enum(['count_correction', 'theft', 'spoilage', 'expiry', 'burnt', 'dropped', 'trim', 'other']),
   note: z.string().trim().max(500).nullable(),
   unitInBase: z.coerce.number().int().positive().optional(),
@@ -133,7 +103,7 @@ export async function recordCorrectionAction(_prev: FormState, formData: FormDat
   try {
     const ingredient = await getIngredient(actor, parsed.data.ingredientId);
     if (!ingredient) return { error: 'That ingredient no longer exists.', ok: null };
-    const stale = staleUnit(parsed.data.unitInBase, ingredient.purchaseUnitInBase, ingredient.name);
+    const stale = staleUnitMessage(parsed.data.unitInBase, ingredient.purchaseUnitInBase, ingredient.name);
     if (stale) return { error: stale, ok: null };
 
     const magnitude = purchaseUnitsToMilliBase(parsed.data.quantity, ingredient.purchaseUnitInBase);

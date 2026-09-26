@@ -152,6 +152,22 @@ function auditAction(lines: MovementInput[]): string {
  */
 export async function recordMovements(lines: MovementInput[], tx?: Tx) {
   if (lines.length === 0) throw new RangeError('no movements to record');
+  /*
+   * One tenant per call. Nothing constructs a mixed batch today - every caller builds
+   * its lines from a single actor - but this function is the only door into the ledger,
+   * and two things downstream quietly assume the invariant rather than checking it: the
+   * audit row is written with `lines[0].tenantId` for the whole group, and the advisory
+   * locks are taken per (tenant, ingredient) pair. A mixed batch would file half the
+   * movements under the wrong tenant's audit trail.
+   *
+   * Cross-tenant mixing is the one failure AGENTS.md says cannot be cleaned up after the
+   * fact, so the invariant is asserted where it is relied on rather than assumed from
+   * the callers that happen to exist now.
+   */
+  const tenants = new Set(lines.map((l) => l.tenantId));
+  if (tenants.size !== 1) {
+    throw new RangeError(`movements must all belong to one tenant, got ${tenants.size}`);
+  }
   const run = async (t: Tx) => {
     // Deduped by ingredient: a receipt may name the same ingredient twice.
     const affected = new Map(lines.map((l) => [l.ingredientId, l.tenantId]));

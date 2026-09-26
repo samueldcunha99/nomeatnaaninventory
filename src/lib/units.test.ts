@@ -4,6 +4,7 @@ import {
   baseUnitLabel,
   divRoundHalfUp,
   parseDecimalToInteger,
+  integerToDecimal,
   purchaseUnitsToMilliBase,
   baseUnitsToMilliBase,
   rupeesToPaise,
@@ -138,4 +139,23 @@ test('low stock triggers at the threshold, not below it', () => {
   assert.ok(!isLowStock(1001, 1000));
   assert.ok(isLowStock(-500, 0), 'oversold is low');
   assert.ok(isLowStock(0, 0), 'nothing on hand with no threshold set is low');
+});
+
+test('a pack size with an odd factor is the one shape that cannot round-trip', () => {
+  // Pinning a known ceiling, not asserting it is desirable. A tray of 30 gives scale
+  // 30000, and ten eggs is a third of a tray - no finite decimal exists, so the display
+  // truncates and the truncation will not parse back. Verified unreachable through the
+  // forms (see the note on integerToDecimal); this test is here so that if an importer
+  // ever makes it reachable, the behaviour is already written down.
+  const scale = 30_000n; // a tray of 30, in milli-base
+  const tenEggs = 10_000n;
+  const shown = integerToDecimal(tenEggs, scale);
+  assert.equal(shown, '0.333333333');
+  assert.throws(() => parseDecimalToInteger(shown, scale), /more precise/);
+
+  // Anything whose scale is only twos and fives is exact, which is every pack the
+  // forms can actually produce.
+  for (const [value, s] of [[15_000n, 30_000n], [2_500_000n, 1_000_000n], [400n, 1000n]] as const) {
+    assert.equal(parseDecimalToInteger(integerToDecimal(value, s), s), value);
+  }
 });

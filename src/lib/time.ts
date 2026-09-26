@@ -25,3 +25,42 @@ export function startOfDayIST(now: Date = new Date()): Date {
   ist.setUTCHours(0, 0, 0, 0);
   return new Date(ist.getTime() - IST_OFFSET_MS);
 }
+
+/**
+ * The display timezone, in one place.
+ *
+ * It was written out as a string literal in three separate pages, each constructing its
+ * own Intl formatter, plus the offset above - four copies of one fact. `tenants.timezone`
+ * exists in the schema and is read by NOTHING, which made five. This is the one the code
+ * actually uses; the column stays unread until the day a second outlet in another zone
+ * makes it mean something, and src/db/schema.ts says so beside it.
+ */
+export const TIMEZONE = 'Asia/Kolkata';
+
+const YMD = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * A `YYYY-MM-DD` typed into a filter is a Kolkata calendar day, not a UTC instant.
+ * Returns the UTC instant that day began, or undefined for anything unparseable - a
+ * filter the operator cannot see is better dropped than silently applied wrong.
+ */
+export function istDayStart(value: string | undefined | null): Date | undefined {
+  if (!value || !YMD.test(value)) return undefined;
+  const parsed = new Date(`${value}T00:00:00.000+05:30`);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
+/**
+ * The UTC instant the NEXT Kolkata day begins - an exclusive upper bound.
+ *
+ * Deliberately not "23:59:59.999". A JavaScript Date carries milliseconds and a Postgres
+ * `timestamptz` carries microseconds, so an inclusive bound built from a Date can only
+ * ever reach .999 and a movement written at .9996 sits above it. On an append-only
+ * ledger, a row that silently falls outside a date range the operator believes covers
+ * it is precisely the quiet-wrong-number failure this codebase is built to avoid.
+ * Half-open has no such gap at any precision.
+ */
+export function istDayAfter(value: string | undefined | null): Date | undefined {
+  const start = istDayStart(value);
+  return start ? new Date(start.getTime() + 24 * 60 * 60 * 1000) : undefined;
+}

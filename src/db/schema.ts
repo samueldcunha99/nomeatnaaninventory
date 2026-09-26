@@ -111,6 +111,17 @@ const millipercent = (name: string) => bigint(name, { mode: 'number' });
 export const tenants = pgTable('tenants', {
   id: id(),
   name: text('name').notNull(),
+  /**
+   * NOT READ BY ANYTHING YET, and that is deliberate rather than an oversight.
+   *
+   * The app displays in Asia/Kolkata and prints rupees, from `TIMEZONE` in
+   * src/lib/time.ts and `formatINR()` in src/lib/units.ts. Threading a per-tenant zone
+   * and currency through every display site is real work with no buyer: there is one
+   * outlet, in one zone, taking one currency. These two columns are the place that
+   * work will attach when a second tenant makes it mean something - so they stay, and
+   * this comment stops the next reader "wiring them up" and finding four display paths
+   * that disagree.
+   */
   timezone: text('timezone').notNull().default('Asia/Kolkata'),
   currency: text('currency').notNull().default('INR'),
   /**

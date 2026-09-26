@@ -27,6 +27,8 @@ import {
 } from './schema.ts';
 import {
   MissingCostError,
+  MissingSubRecipeError,
+  RecipeCycleError,
   explainRecipe,
   recipeRateMillipaisePerBase,
   assertAcyclicWithinDepth,
@@ -464,11 +466,25 @@ export async function saveRecipe(actor: Actor, input: RecipeInput): Promise<stri
       };
 
       if (input.id) {
-        await tx.update(recipes).set(values).where(eq(recipes.id, recipeId));
+        // Both filter on tenant as well as id. The `graph.has(input.id)` check above
+        // already proves this recipe is ours, so these are belt to that brace - but
+        // every other writer in src/db carries the tenant in its WHERE, and these two
+        // were the only exceptions. A guard that lives in one place is one refactor
+        // away from being the guard that used to live in one place.
+        await tx
+          .update(recipes)
+          .set(values)
+          .where(and(eq(recipes.tenantId, actor.tenantId), eq(recipes.id, recipeId)));
         await tx
           .update(recipeLines)
           .set({ deletedAt: new Date() })
-          .where(and(eq(recipeLines.recipeId, recipeId), isNull(recipeLines.deletedAt)));
+          .where(
+            and(
+              eq(recipeLines.tenantId, actor.tenantId),
+              eq(recipeLines.recipeId, recipeId),
+              isNull(recipeLines.deletedAt),
+            ),
+          );
       } else {
         await tx.insert(recipes).values({ id: recipeId, ...values });
       }
@@ -630,7 +646,18 @@ function auditable(row: typeof menuItems.$inferSelect) {
  */
 export type RecipeCost =
   | { ok: true; rateMillipaisePerBase: bigint }
-  | { ok: false; missing: readonly MissingCost[] };
+  /**
+   * `missing` names uncosted ingredients. `problem` carries a STRUCTURAL refusal -
+   * a line pointing at a deleted sub-recipe, or a cycle that reached the database
+   * some other way - where there is no ingredient to name.
+   *
+   * Both are values rather than throws for the same reason: `listRecipes` used to
+   * catch MissingCostError alone and rethrow everything else, so one structurally
+   * broken recipe took out the whole list and the home page with it. Exactly the
+   * failure the 16 September audit called out for cycles, reachable again the day
+   * deleting a recipe becomes possible.
+   */
+  | { ok: false; missing: readonly MissingCost[]; problem?: string };
 
 export type RecipeListRow = {
   id: string;
@@ -685,8 +712,15 @@ export async function listRecipes(
         rateMillipaisePerBase: recipeRateMillipaisePerBase(recipe.id, graph, lookup, cache, rates),
       };
     } catch (e) {
-      if (!(e instanceof MissingCostError)) throw e;
-      cost = { ok: false, missing: e.missing };
+      if (e instanceof MissingCostError) {
+        cost = { ok: false, missing: e.missing };
+      } else if (e instanceof MissingSubRecipeError || e instanceof RecipeCycleError) {
+        // Structural, and specific to THIS recipe. Kept as a value so the other
+        // nineteen rows still render; a throw here blanks the whole screen.
+        cost = { ok: false, missing: [], problem: e.message };
+      } else {
+        throw e;
+      }
     }
 
     rows.push({

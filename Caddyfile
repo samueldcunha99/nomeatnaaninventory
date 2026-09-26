@@ -11,7 +11,23 @@
 	encode gzip zstd
 
 	# The app serves its own static assets; Caddy does not need a copy of the build.
-	reverse_proxy app:3000
+	reverse_proxy app:3000 {
+		# BOTH of these are overwrites, and both matter.
+		#
+		# X-Forwarded-For: Caddy's default is to APPEND the real client address to
+		# whatever arrived, so a request carrying a forged header reaches the app as
+		# "<forged>, <real>" and the leftmost entry - the one everybody reads as "the
+		# client" - is attacker-controlled. That let anyone rotate the value and walk
+		# straight past the per-source login throttle in src/lib/throttle.ts. Replacing
+		# the header with {remote_host} means the app sees the address Caddy actually
+		# accepted the connection from and nothing else.
+		#
+		# X-Forwarded-Proto: src/auth/server.ts decides whether the session cookie is
+		# marked Secure from this. Caddy already overwrites it; setting it explicitly
+		# says so out loud, because a cookie is now riding on it.
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
 
 	header {
 		# Belt and braces in front of Next's own headers.

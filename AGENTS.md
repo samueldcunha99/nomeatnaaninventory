@@ -3,7 +3,7 @@
 Conventions for the cafe management system. Read `files/PROJECT-SPEC.md` first — this
 file records what we decided that the spec does not say, and why.
 
-**165 tests passing against a live PostgreSQL, 0 skipped.**
+**194 tests passing against a live PostgreSQL, 0 skipped.**
 
 **Month 1 is complete and verified.** Schema, migrations, seed, unit conversion,
 weighted-average cost, auth, role enforcement, ingredient CRUD, stock receipts /
@@ -574,9 +574,16 @@ not before. Current set:
 | `users.manage` | owner, manager |
 | `ingredients.view` | owner, manager, counter |
 | `ingredients.manage` | owner, manager |
+| `stock.record` | owner, manager, counter |
+| `recipes.view` | owner, manager |
+| `recipes.manage` | owner, manager |
 
 Kitchen staff cannot view the ingredient master: it carries cost figures, and the
 owner's margins are not counter-and-kitchen information.
+
+**`kitchen` currently appears in no permission at all**, so a kitchen account can sign
+in and reach nothing. That is correct for what exists - the board it is for is Module 5 -
+but do not hand anyone a kitchen login before then expecting them to test with it.
 
 ---
 
