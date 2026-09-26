@@ -16,10 +16,14 @@
  */
 import { divRoundHalfUp, type UnitType } from './units.ts';
 
-/** Wastage is thousandths of a percent, so the multiplier is (K + w) / K. */
-const WASTAGE_SCALE = 100000n;
+/**
+ * Wastage is thousandths of a percent, so the multiplier is (K + w) / K. Exported so
+ * production (src/lib/production.ts) materialises the SAME multiplier costing keeps
+ * inside its numerator - one definition of what a millipercent means, not two.
+ */
+export const WASTAGE_SCALE = 100000n;
 /** milli_base per base unit, and millipaise per paise. Both are 1000. */
-const MILLI = 1000n;
+export const MILLI = 1000n;
 
 /**
  * How many sub-recipe hops are allowed below a recipe.
@@ -57,6 +61,13 @@ export type Recipe = {
    * rather than quietly costing it at nothing.
    */
   batchMinutes?: number | null;
+  /**
+   * The ingredient row holding this recipe's output in the store, or null when it is
+   * made to order. NOTHING IN THIS FILE READS IT: costing prices a sub-recipe from its
+   * recipe tree, never from its stock. It rides on the graph so production
+   * (src/lib/production.ts) loads recipes through the same one loader.
+   */
+  stockIngredientId?: string | null;
 };
 
 /**

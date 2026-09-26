@@ -282,12 +282,19 @@ export const stockMovements = pgTable(
     ingredientId: uuid('ingredient_id').notNull(),
     movementType: movementType('movement_type').notNull(),
     quantityMilliBase: milliBase('quantity_milli_base').notNull(),
-    // Purchases only. Cost per one base unit. Null on every other movement type.
+    // Valued inflows only - purchase and production. Cost per one base unit. Null on
+    // every other movement type; the check below enforces both halves.
     unitCostMillipaisePerBase: millipaisePerBase('unit_cost_millipaise_per_base'),
-    // Actual rupees paid, purchases only. Whole paise - this is money, not a rate.
+    // Whole paise - money, not a rate. On a purchase, what was actually paid. On a
+    // production movement, what the batch's inputs cost at their weighted averages when
+    // it was made - the value that went onto the shelf.
     totalCostPaise: paise('total_cost_paise'),
     supplierId: uuid('supplier_id'),
-    referenceType: text('reference_type'), // 'receipt' | 'order' | 'adjustment'
+    // What a group of movements was: 'receipt' (recordReceipt), 'adjustment' and
+    // 'wastage' (recordCorrection), 'production' (a run - reference_id is its
+    // production_runs.id), 'seed_opening' (the seed's opening stock); 'order' arrives
+    // with Module 4. Older rows and test fixtures may carry none.
+    referenceType: text('reference_type'),
     referenceId: uuid('reference_id'), // groups the lines of one multi-line receipt
     reason: movementReason('reason'),
     note: text('note'),
@@ -659,8 +666,14 @@ export const menuItems = pgTable(
  * APPEND-ONLY, like the ledger it belongs to, and enforced by trigger in 0007 rather
  * than by comment. Every figure here is a snapshot of a moment, and each row is paired
  * with movements that can never be edited either - updating one side would leave the
- * two describing different batches. A mistake is corrected by a reversing run. So:
- * no deleted_at, deliberately, exactly as stock_movements has none.
+ * two describing different batches. So: no deleted_at, deliberately, exactly as
+ * stock_movements has none.
+ *
+ * UNDOING A MIS-LOGGED RUN IS NOT BUILT YET, and the obvious shape is not available: a
+ * "negative run" would break production_runs_batches_positive. Until it is, a mistake is
+ * corrected per ingredient with stock adjustments, and the wrong run stays on the day
+ * sheet. It needs its own small schema decision - see the open items in
+ * files/production-tracking-2026-09.md.
  * ------------------------------------------------------------------------- */
 
 export const productionRuns = pgTable(

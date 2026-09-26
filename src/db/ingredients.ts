@@ -10,6 +10,8 @@ import { translating } from './errors.ts';
 import { assertPermission, type Actor } from '../lib/auth.ts';
 import type { UnitType } from '../lib/units.ts';
 
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 export type IngredientInput = {
   name: string;
   /** Who made it. Null for anything bought loose, which is most of the bulk masala. */
@@ -114,24 +116,31 @@ export async function getIngredient(actor: Actor, id: string): Promise<Ingredien
   return rows.length ? toRow(rows[0]) : null;
 }
 
-export async function createIngredient(actor: Actor, input: IngredientInput) {
+/**
+ * `tx` lets a caller create the ingredient inside its OWN transaction - stockRecipe makes
+ * a recipe's shelf row and links it in one step, and a link to a row that failed to
+ * commit, or a row with no link, would both be wrong. Omitted, it opens its own, exactly
+ * as before. Same shape as recordMovements, so there is still one write path for
+ * ingredients (AGENTS.md § Bulk imports go through the write path).
+ */
+export async function createIngredient(actor: Actor, input: IngredientInput, tx?: Tx) {
   assertPermission(actor.role, 'ingredients.manage');
-  const run = () =>
-    db.transaction(async (tx) => {
-      const [row] = await tx
-        .insert(ingredients)
-        .values({ tenantId: actor.tenantId, ...input })
-        .returning();
-      await tx.insert(auditLog).values({
-        tenantId: actor.tenantId,
-        userId: actor.id,
-        action: 'ingredient.create',
-        entityType: 'ingredient',
-        entityId: row.id,
-        afterJson: auditable(row),
-      });
-      return row;
+  const body = async (t: Tx) => {
+    const [row] = await t
+      .insert(ingredients)
+      .values({ tenantId: actor.tenantId, ...input })
+      .returning();
+    await t.insert(auditLog).values({
+      tenantId: actor.tenantId,
+      userId: actor.id,
+      action: 'ingredient.create',
+      entityType: 'ingredient',
+      entityId: row.id,
+      afterJson: auditable(row),
     });
+    return row;
+  };
+  const run = () => (tx ? body(tx) : db.transaction(body));
 
   return translating(run, [
     { constraint: NAME_CONSTRAINT, toError: () => new DuplicateIngredientError(input.name) },

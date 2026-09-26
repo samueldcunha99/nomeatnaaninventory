@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { startOfDayIST, IST_OFFSET_MS, istDayStart, istDayAfter } from './time.ts';
+import { startOfDayIST, IST_OFFSET_MS, istDayStart, istDayAfter, istToday } from './time.ts';
 
 /** What Kolkata calls the wall clock at a given UTC instant. */
 function istWallClock(d: Date): string {
@@ -58,4 +58,23 @@ test('an unparseable or absent date drops the filter instead of guessing', () =>
     assert.equal(istDayStart(bad as string | undefined), undefined, String(bad));
     assert.equal(istDayAfter(bad as string | undefined), undefined, String(bad));
   }
+});
+
+test('today is the Kolkata calendar date, which turns over at 18:30 UTC', () => {
+  // A batch baked at 00:10 on the 27th in Kolkata is still 18:40 on the 26th in UTC.
+  // Reading the date in UTC would log it against the wrong working day.
+  assert.equal(istToday(new Date('2026-09-26T18:29:59.999Z')), '2026-09-26');
+  assert.equal(istToday(new Date('2026-09-26T18:30:00.000Z')), '2026-09-27');
+});
+
+test('a date that does not exist is refused, not rolled into the next month', () => {
+  // `new Date('2026-02-30...')` quietly becomes 2 March. As a history filter that is a
+  // silently wrong range; as a production run's day it passed validation and then failed
+  // at the database, which refuses the same value outright.
+  for (const impossible of ['2026-02-30', '2026-02-29', '2026-04-31', '2026-06-31']) {
+    assert.equal(istDayStart(impossible), undefined, impossible);
+    assert.equal(istDayAfter(impossible), undefined, impossible);
+  }
+  // A real 29 February still works - 2028 is a leap year.
+  assert.equal(istDayStart('2028-02-29')?.toISOString(), '2028-02-28T18:30:00.000Z');
 });

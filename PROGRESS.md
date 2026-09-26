@@ -53,7 +53,7 @@ as Month 1 did. See the log entry for 2026-08-21.
 |---|---|---|
 | 3 | Recipes, sub-recipes, costing engine (Month 2) | ✅ |
 | 4 | Orders, atomic depletion, cost snapshots (Month 3) | ⬜ |
-| 4a | **Production logging** — what the kitchen made and used, dough held as stock | 🟡 step 1 of 4 — schema, 0007, the fold |
+| 4a | **Production logging** — what the kitchen made and used, dough held as stock | 🟡 steps 1–2 of 4 — schema and the data layer; no screen yet |
 | 5 | Kitchen status board (Month 3) | ⬜ |
 | 6 | Customer order tracking (Month 4) | ⬜ |
 | 7 | Online ordering + Razorpay (Month 4) | ⬜ |
@@ -1939,3 +1939,81 @@ deferring to "when Month 3 writes consumption movements". Paper cases first agai
 
 Before step 3 is *useful*, the client needs to say **which recipes are stocked**. The
 mechanism works with none flagged; it just has nothing to do.
+
+---
+
+## 2026-09-26 — Production logging, step 2: the data layer can make things
+
+Branch `month-3-production`. **213 tests → 241, 0 skipped**, stable across three full runs.
+Typecheck clean, `next build` clean, `drizzle-kit generate` reports no schema drift - this
+step needed no migration.
+
+A recipe can now be given a shelf (`stockRecipe`) and a batch logged end to end
+(`recordProductionRun`): its inputs drawn out of the store, its cost worked out, its yield
+put on the shelf. There is no screen; that is step 3.
+
+### Paper cases first, again
+
+**M1-M10** were written and hand-computed before `src/lib/production.ts` existed, and
+failed first. Then they were reproduced through the real write path - `recordReceipt`,
+`saveRecipe`, `stockRecipe`, `recordProductionRun` - and came out to the same paise: a
+dough batch costs **Rs 389.18** and shelves 4.1 kg at **9492 millipaise/g**; rolls drawing
+2.16 kg of it cost **Rs 264.48** and touch no flour.
+
+Each guard was then broken on purpose and watched fail, by exactly the case written for it:
+
+| Sabotage | Caught by |
+|---|---|
+| Round an issued quantity twice instead of once | M9 |
+| Check "unpriced" before "burnt" | M4b |
+| Read prices BEFORE taking the locks | the forced interleaving: `38918n !== 41493n` |
+| Shelve the batch before its draws | M1: "shelved last, in ledger order" |
+
+### The sign-safe quantity rounder has landed
+
+AGENTS.md has deferred it since Month 1 to "when Month 3 writes consumption movements".
+`issuedMilliBase` rounds the POSITIVE amount issued, once, and the ledger gets its exact
+negative. Rounding the signed value has no single answer - `Math.round(-23062.5)` is
+`-23062` in JavaScript and `-23063` in Postgres - so a consumption and its reversal could
+fail to cancel depending on which function somebody called.
+
+### Prices are read under the locks
+
+The run plans its structure without reading a price, locks every row it touches, and only
+then reads prices through its own transaction. Read first, and a delivery committing in
+between leaves the batch costed at the old price while the ledger records the draw after
+the new one. The forced-interleaving test holds a dearer butter delivery open on its lock,
+starts a run, and releases the delivery: the batch is costed at the new average, and the
+ledger agrees the draw came after the delivery.
+
+### Found on the way
+
+- **`istDayStart` accepted dates that do not exist.** `new Date('2026-02-30...')` rolls
+  over to 2 March, so 30 February passed validation - a silently wrong range on the history
+  filter, and a raw database error for a run. It now requires the date to round-trip. This
+  was mine, from the 26 September audit sweep; its test claimed it "drops the filter
+  instead of guessing", and for impossible dates it guessed.
+- **A test of mine passed by luck, one run in six.** M3 compared a run's draws in the
+  order they were typed, but lines saved together tie on `created_at` and fall back to
+  random ids - the loader's own comment says so. It failed as soon as it ran beside the
+  other tests. Compared as a set now; the one ordering that does matter (draws before the
+  shelving) is pinned separately.
+- **Two schema comments had been wrong since before this step**: ledger cost columns
+  "purchases only" (stale since 0007), and `reference_type`'s list of values, which named
+  one nothing writes and omitted three that are written. Both checked against live rows.
+- **A promise in step 1's comments was undeliverable.** The `production_runs` comment said
+  a mistake "is corrected by a reversing run" - which the table's own check forbids. The
+  comment now says reversal is not built, and why.
+
+### Decided here, and recorded in the proposal
+
+A shelf row is in kilograms, litres or units, not "one batch" - it depends only on the
+unit type, never the yield, so nothing needs re-syncing. A batch is costed at materials
+only. `production.record` exists now for owner and manager; step 4 adds `kitchen`.
+
+### Open, and it will matter
+
+**There is no way to undo a mis-logged run.** A "negative run" breaks the table's own
+check, so it needs a small schema decision (likely `reverses_run_id`). Until then a
+mistake is corrected per ingredient with adjustments. Worth deciding before the client
+starts logging, because the first wrong entry will happen in the first week.

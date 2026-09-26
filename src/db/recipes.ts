@@ -63,8 +63,24 @@ export async function loadRecipeGraph(
   conn: Tx | typeof db = db,
 ): Promise<Map<string, Recipe>> {
   assertPermission(actor.role, 'recipes.view');
-  const tenantId = actor.tenantId;
+  return loadRecipeGraphForTenant(actor.tenantId, conn);
+}
 
+/**
+ * The same graph, with NO PERMISSION CHECK - the caller must already have asserted one.
+ *
+ * It exists because logging a batch needs the recipe graph and must not need
+ * `recipes.view`: kitchen staff will record what they made (production step 4) without
+ * being shown what anything costs. It is still the ONE loader of recipe_lines - the
+ * `deleted_at is null` filter below is written once, here, and loadRecipeGraph above is a
+ * permission check wrapped around this and nothing else.
+ *
+ * Only ever called from src/db, after an assertPermission. Never from a page or action.
+ */
+export async function loadRecipeGraphForTenant(
+  tenantId: string,
+  conn: Tx | typeof db = db,
+): Promise<Map<string, Recipe>> {
   const [recipeRows, lineRows] = await Promise.all([
     conn
       .select({
@@ -73,6 +89,7 @@ export async function loadRecipeGraph(
         yieldUnitType: recipes.yieldUnitType,
         yieldQtyMilliBase: recipes.yieldQtyMilliBase,
         batchMinutes: recipes.batchMinutes,
+        stockIngredientId: recipes.stockIngredientId,
       })
       .from(recipes)
       .where(and(eq(recipes.tenantId, tenantId), isNull(recipes.deletedAt)))
@@ -111,6 +128,7 @@ export async function loadRecipeGraph(
         yieldUnitType: row.yieldUnitType,
         yieldQtyMilliBase: BigInt(row.yieldQtyMilliBase),
         batchMinutes: row.batchMinutes,
+        stockIngredientId: row.stockIngredientId,
         lines: [],
       },
     ]),
@@ -176,8 +194,26 @@ export class StaleCostCacheError extends Error {
  */
 export async function loadCostLookup(actor: Actor): Promise<CostLookup> {
   assertPermission(actor.role, 'recipes.view');
+  return loadCostLookupForTenant(actor.tenantId);
+}
 
-  const rows = await db
+/**
+ * The same lookup, with NO PERMISSION CHECK, read through `conn`.
+ *
+ * Two reasons it is separate. A batch has to be costed by whoever logs it, and that will
+ * be kitchen staff who may not see costs - the figure is stored, not shown. And it has
+ * to be read INSIDE the run's transaction, after the run has locked its ingredients, so
+ * that a delivery cannot commit between the price being read and the stock being drawn.
+ * The public version above used the pool directly, which is a different connection and
+ * cannot see the lock at all.
+ *
+ * Only ever called from src/db, after an assertPermission. Never from a page or action.
+ */
+export async function loadCostLookupForTenant(
+  tenantId: string,
+  conn: Tx | typeof db = db,
+): Promise<CostLookup> {
+  const rows = await conn
     .select({
       id: ingredients.id,
       name: ingredients.name,
@@ -200,7 +236,7 @@ export async function loadCostLookup(actor: Actor): Promise<CostLookup> {
         eq(ingredientStock.ingredientId, ingredients.id),
       ),
     )
-    .where(eq(ingredients.tenantId, actor.tenantId));
+    .where(eq(ingredients.tenantId, tenantId));
 
   const costs = new Map<string, bigint>();
   const names = new Map<string, string>();
@@ -393,6 +429,17 @@ export async function saveRecipe(actor: Actor, input: RecipeInput): Promise<stri
       // stored line - it carries no unit of its own, by design. So the change is refused
       // while a parent still draws on this recipe, naming the parents to remove it from.
       const before = input.id ? graph.get(input.id) : undefined;
+      // A STOCKED recipe's shelf row was created in its yield unit, and everything on the
+      // shelf was counted in it. Changing the unit would read 4.2 kg of dough as 4.2
+      // litres without a word - the same reinterpretation updateIngredient refuses one
+      // level down. So it is refused outright, before the parent check below.
+      if (before?.stockIngredientId && before.yieldUnitType !== input.yieldUnitType) {
+        throw new RangeError(
+          `"${before.name}" is held in stock, counted by ${before.yieldUnitType}. Changing what ` +
+            `it yields to ${input.yieldUnitType} would reinterpret everything already on the ` +
+            `shelf. Make a new recipe for the new unit instead.`,
+        );
+      }
       if (before && before.yieldUnitType !== input.yieldUnitType) {
         const parents = [...graph.values()].filter(
           (r) => r.id !== recipeId && r.lines.some((l) => l.subRecipeId === recipeId),
@@ -449,6 +496,8 @@ export async function saveRecipe(actor: Actor, input: RecipeInput): Promise<stri
         yieldUnitType: input.yieldUnitType,
         yieldQtyMilliBase: input.yieldQtyMilliBase,
         batchMinutes: input.batchMinutes ?? null,
+        // Saving a recipe never changes where its output is held; stockRecipe does that.
+        stockIngredientId: before?.stockIngredientId ?? null,
         lines: input.lines.map((l) => ({
           ingredientId: l.ingredientId ?? null,
           subRecipeId: l.subRecipeId ?? null,

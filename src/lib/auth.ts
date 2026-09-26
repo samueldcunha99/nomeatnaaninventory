@@ -32,6 +32,11 @@ export const PERMISSIONS = {
   // kitchen do not see them. Month 3's kitchen board shows what to make, not what it cost.
   'recipes.view': ['owner', 'manager'],
   'recipes.manage': ['owner', 'manager'],
+  // Logging a batch the kitchen made. Recording one does NOT need recipes.view: the run
+  // costs itself internally and stores the figure, and whether a screen SHOWS that
+  // figure is the screen's permission question, not this one. Kitchen joins this list
+  // when it has a screen to log from (production step 4) - not before.
+  'production.record': ['owner', 'manager'],
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Permission = keyof typeof PERMISSIONS;

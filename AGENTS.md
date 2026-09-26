@@ -3,7 +3,7 @@
 Conventions for the cafe management system. Read `files/PROJECT-SPEC.md` first — this
 file records what we decided that the spec does not say, and why.
 
-**213 tests passing against a live PostgreSQL, 0 skipped.**
+**241 tests passing against a live PostgreSQL, 0 skipped.**
 
 **Month 1 is complete and verified.** Schema, migrations, seed, unit conversion,
 weighted-average cost, auth, role enforcement, ingredient CRUD, stock receipts /
@@ -386,6 +386,13 @@ quantity rounder. The wastage factor stays inside the numerator as `(100000 + w)
 will need that rounder when it writes consumption movements, because those are real signed
 quantities in the ledger; costing does not.
 
+**Landed 26 September 2026**, as `issuedMilliBase` in `src/lib/production.ts`. It rounds
+the POSITIVE amount issued, once, with `divRoundHalfUp`, and the ledger gets its exact
+negative. Rounding the signed value instead has no single answer - JavaScript's
+`Math.round(-23062.5)` is `-23062`, Postgres `round()` gives `-23063` - so a consumption
+and its reversal could fail to cancel depending on which one was called. Paper case M2
+pins the tie; M9 pins "once, not once per factor". See § Production runs.
+
 ## One loader for recipe lines
 
 `recipe_lines` is soft-deleted, and a costing query that forgets `deleted_at is null`
@@ -395,8 +402,10 @@ than the missing-cost case because there is no error to surface.
 
 So the filter does not live in the callers:
 
-- **Exactly one function loads recipe lines**, and the `deleted_at is null` filter is
-  inside it. Every costing path goes through that function.
+- **Exactly one function loads recipe lines** - `loadRecipeGraphForTenant` - and the
+  `deleted_at is null` filter is inside it. Every costing path and every production run
+  goes through it. `loadRecipeGraph` is a permission check wrapped around it and nothing
+  else, so the filter is still written once.
 - **No costing code queries `recipe_lines` directly.** Not a join in a report, not a
   one-off count, not "just this once because it's a different shape". If a new shape is
   needed, it is a parameter on the one loader.
@@ -577,6 +586,7 @@ not before. Current set:
 | `stock.record` | owner, manager, counter |
 | `recipes.view` | owner, manager |
 | `recipes.manage` | owner, manager |
+| `production.record` | owner, manager |
 
 Kitchen staff cannot view the ingredient master: it carries cost figures, and the
 owner's margins are not counter-and-kitchen information.
@@ -1025,6 +1035,50 @@ watched fail is not yet a guard.
 `.gitattributes` forces `text eol=lf diff` on source. Note that `text eol=lf` alone does
 **not** make git diff a NUL-bearing file as text — `text` governs checkin/checkout
 normalisation; the attribute that forces a text *diff* is bare `diff`.
+## Production runs
+
+`src/lib/production.ts` decides every number; `src/db/production.ts` loads, locks and
+writes. Design and the alternatives rejected: `files/production-tracking-2026-09.md`.
+Paper cases M1-M10 are the specification, as T1-T18 and P1-P27 are for theirs.
+
+**A sub-recipe line draws on the sub-recipe's SHELF, never on its ingredients.** Rolls
+take dough out of the fridge; the flour was drawn when the dough was made. Expanding it
+again would count the flour twice. So a sub-recipe that is not stocked cannot be drawn
+on, and a recipe that other recipes draw on cannot be logged unless it is stocked - both
+are refusals that name the recipe (M7, M8), never a silent skip.
+
+**The run is ordered, and the order is load-bearing:** plan the structure without
+reading a price, LOCK every row it touches, and only then read prices through the run's
+own transaction. Read first and a delivery can commit in between, leaving the batch
+costed at a price the ledger order says it never paid. The forced-interleaving test in
+`production.db.test.ts` fails if the lock and the read are ever swapped - verified by
+swapping them.
+
+**Every draw folds before the shelving.** It is the one ordering inside a run that can
+change a number (a recipe drawing on its own shelf, like a starter fed from itself).
+The draws among themselves are in no meaningful order - recipes carry no stored line
+order - so compare them as a set in tests. A test that compared them in typed order
+passed one run in six.
+
+**A batch is costed at MATERIALS**, each input at its weighted average, summed exactly and
+rounded once. Labour and kitchen time are the costing engine's to price, not the shelf's
+to hold. The shelf's unit cost divides by the ACTUAL yield (T15): a short batch is
+genuinely dearer per gram.
+
+**Unpriced inputs:** a made-to-order batch records with a null cost (M5) - the stock still
+moves. A STOCKED batch is refused (M6): stock must carry a value and there is no honest
+one. A burnt batch - zero actual yield - shelves nothing, needs no value, and records
+either way (M4, M4b).
+
+**`...ForTenant` loaders have no permission check** (`loadRecipeGraphForTenant`,
+`loadCostLookupForTenant`). They exist so a run can be costed by someone who may not see
+costs. Call them only from `src/db`, after an `assertPermission` of your own - never from
+a page or an action.
+
+**Not built yet, on purpose:** undoing a mis-logged run (a "negative run" breaks
+`production_runs_batches_positive`, so it needs its own schema decision), and unstocking
+a recipe (its parents' production would strand). Both are open items in the proposal.
+
 ## Adding an enum value: never use it in the same migration by name
 
 Postgres refuses to use an enum value inside the transaction that added it - `unsafe use

@@ -38,6 +38,20 @@ async function lockIngredient(tx: Tx, tenantId: string, ingredientId: string) {
 }
 
 /**
+ * Lock several ingredients, deduplicated and SORTED - the order is what stops two
+ * operations naming the same ingredients in opposite orders from deadlocking.
+ *
+ * Exported for one reason: a production run must hold these BEFORE it reads prices, not
+ * only before it inserts. Read first and a delivery can commit in between, leaving the
+ * batch costed at a price the ledger order says it never paid. recordMovements takes the
+ * same locks again afterwards; an advisory lock held by this transaction is simply
+ * re-entered, so there is still one locking scheme, not two.
+ */
+export async function lockIngredients(tx: Tx, tenantId: string, ingredientIds: Iterable<string>) {
+  for (const id of [...new Set(ingredientIds)].sort()) await lockIngredient(tx, tenantId, id);
+}
+
+/**
  * Bring one ingredient's cached stock up to date with the ledger, and write it back.
  * Must run inside the same transaction as whatever movement triggered it.
  *
@@ -140,6 +154,11 @@ const ACTION_BY_TYPE: Record<string, string> = {
  * so no caller can forget it or label it wrongly.
  */
 function auditAction(lines: MovementInput[]): string {
+  // A production run writes consumptions AND, when stocked, a production movement - a
+  // mix the type rule below would file as a vague 'stock.movement'. The run is one
+  // operation, so it is one entry, named for what it was.
+  const refs = new Set(lines.map((l) => l.referenceType));
+  if (refs.size === 1 && refs.has('production')) return 'stock.production';
   const types = new Set(lines.map((l) => l.movementType));
   if (types.size !== 1) return 'stock.movement';
   const [only] = types;
@@ -177,11 +196,9 @@ export async function recordMovements(lines: MovementInput[], tx?: Tx) {
     // caches being written from stale reads, but it would let two transactions be
     // assigned `seq` in one order and commit in the other - and the watermark in
     // recalculateStock would then step past a movement that had not been folded in.
-    // Sorted, so two receipts naming the same ingredients in different orders queue up
-    // instead of deadlocking.
-    for (const [ingredientId, tenantId] of [...affected].sort(([a], [b]) => (a < b ? -1 : 1))) {
-      await lockIngredient(t, tenantId, ingredientId);
-    }
+    // Sorted inside lockIngredients, so two receipts naming the same ingredients in
+    // different orders queue up instead of deadlocking.
+    await lockIngredients(t, lines[0].tenantId, affected.keys());
 
     await t.insert(stockMovements).values(lines);
     // Deliberately NOT folding `lines` in array order here. The cache is defined as

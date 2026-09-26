@@ -27,7 +27,7 @@ repository. Nothing important lives in a chat log.
 | Month 2 steps 2–4 — costing engine | ✅ **done**, paper cases P1–P22 |
 | Month 2 step 5 — costing screens and editors | ✅ **done**, recipe list, cost breakdown, what-if, and the recipe / line / menu-item editors |
 | Trunk | `main`. Everything is merged; `month-2-costing` is merged and safe to delete. |
-| Tests | **213, all passing** against live Postgres, 0 skipped |
+| Tests | **241, all passing** against live Postgres, 0 skipped |
 | `next build` | exits 0, 15 routes |
 
 ## Verified against a live database vs merely built
@@ -170,7 +170,7 @@ Run the tests with Docker up:
 npm test
 ```
 
-**213 tests should pass with 0 skipped.** If you see skips, Postgres is not reachable —
+**241 tests should pass with 0 skipped.** If you see skips, Postgres is not reachable —
 the database tests skip loudly rather than passing quietly, and a green run full of skips
 is not a pass.
 

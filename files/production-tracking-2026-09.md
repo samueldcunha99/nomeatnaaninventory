@@ -1,15 +1,41 @@
 # Daily production tracking — schema proposal, 18 September 2026
 
-**Status: step 1 of 4 built (26 September 2026)** - the schema, migration 0007, and the
-fold. The database can now hold production and a stocked recipe, and every reader of the
-ledger handles both; nothing *writes* a production run yet. Steps 2-4 below are unbuilt.
+**Status: steps 1 and 2 of 4 built (26 September 2026).** The data layer can make things:
+a recipe can be given a shelf, and a batch can be logged end to end - drawn, costed,
+shelved - with every figure pinned by a paper case. There is no screen yet (step 3).
 
 | Step | What | Status |
 |---|---|---|
 | 1 | Schema, migration 0007, the fold, the cost basis | done - 213 tests |
-| 2 | `recordProductionRun()` and the sign-safe quantity rounder | not started |
+| 2 | `recordProductionRun()`, `stockRecipe()`, the sign-safe quantity rounder | done - 241 tests |
 | 3 | `/production` and the day sheet | not started |
-| 4 | `production.record` permission, for the `kitchen` role | not started |
+| 4 | `production.record` for the `kitchen` role, with a screen to use it from | not started |
+
+### Decided in step 2, which this proposal did not say
+
+- **A shelf row is in kilograms, litres or units - not "one batch".** The proposal below
+  made the pack size the recipe's yield, which ties the ingredient to the recipe forever
+  and needs re-syncing on every edit. A kilogram depends only on the unit type, which is
+  frozen while the recipe is stocked. It also keeps every quantity exact on screen.
+- **A batch is costed at materials only.** Labour and kitchen time stay the costing
+  engine's; the shelf holds what the inputs cost.
+- **Rates are read under the ingredient locks, not before them**, so a delivery landing
+  mid-run cannot leave a batch costed out of ledger order. Proven by a forced
+  interleaving.
+- **An unstocked recipe that others draw on cannot be logged on its own** (M8). Without
+  it, the flour leaves the store and the dough goes nowhere.
+- `production.record` exists now, for owner and manager. The proposal put the permission
+  in step 4; a data function needs one the day it lands. Step 4 adds `kitchen`.
+
+### Open, and needing a decision before they are built
+
+- **Undoing a mis-logged run.** Not buildable as a "negative run" -
+  `production_runs_batches_positive` forbids it. The likely shape is a nullable
+  `reverses_run_id` with a unique index, writing `reversal` movements that negate the
+  original's. Until then a mistake is corrected per ingredient with adjustments, and the
+  wrong run stays on the day sheet. **This will matter the first week of testing.**
+- **Unstocking a recipe.** Unlinking one whose parents draw on it strands their
+  production, and re-stocking must find the old shelf rather than collide with its name.
 
 Two things step 1 found that this proposal did not say:
 

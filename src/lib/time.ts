@@ -27,6 +27,17 @@ export function startOfDayIST(now: Date = new Date()): Date {
 }
 
 /**
+ * Today's date in Kolkata, as `YYYY-MM-DD` - the form a `date` column and a date input
+ * both use, and one that sorts chronologically as plain text.
+ *
+ * Shift into IST and read the calendar date; never `toLocaleDateString`, whose format
+ * belongs to the machine it runs on.
+ */
+export function istToday(now: Date = new Date()): string {
+  return new Date(now.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+/**
  * The display timezone, in one place.
  *
  * It was written out as a string literal in three separate pages, each constructing its
@@ -47,7 +58,11 @@ const YMD = /^\d{4}-\d{2}-\d{2}$/;
 export function istDayStart(value: string | undefined | null): Date | undefined {
   if (!value || !YMD.test(value)) return undefined;
   const parsed = new Date(`${value}T00:00:00.000+05:30`);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  if (Number.isNaN(parsed.getTime())) return undefined;
+  // The Date constructor ROLLS OVER a day that does not exist: 2026-02-30 becomes
+  // 2 March without complaint. So the day has to survive the round trip back to a date,
+  // or it was never a date - and Postgres, which refuses it outright, agrees.
+  return istToday(parsed) === value ? parsed : undefined;
 }
 
 /**
