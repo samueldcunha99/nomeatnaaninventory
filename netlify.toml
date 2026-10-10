@@ -1,0 +1,13 @@
+[build]
+  # Page collection imports the DB client, but must never use production credentials.
+  command = "DATABASE_URL=postgres://build:build@build-time-placeholder:5432/build npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "24"
+  NPM_FLAGS = "--include=dev"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+[functions]
+  # Argon2 uses a native Node addon; it belongs in the serverless bundle, not the edge.
+  external_node_modules = ["@node-rs/argon2"]

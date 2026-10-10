@@ -26,7 +26,7 @@ export async function register() {
    * half-configured boot this check exists to prevent. Previously verified with
    * DATABASE_URL unset and watching it hang.
    *
-   * Exiting non-zero makes the failure loud: the service dies, Render reports it, and
+   * Exiting non-zero makes the failure loud: the process dies, the host reports it, and
    * the message below is the last thing in the log.
    */
   console.error(`\n${formatEnvReport(report)}\n`);

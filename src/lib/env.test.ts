@@ -33,7 +33,7 @@ test('a non-postgres DATABASE_URL is rejected', () => {
   assert.ok(report.problems.some((p) => p.includes('postgres://')));
 });
 
-test('Render loopback URLs fail at startup; native local production is supported', () => {
+test('managed hosting loopback URLs fail at startup; native local production is supported', () => {
   const localhost = { ...base, DATABASE_URL: 'postgres://cafe:cafe@localhost:5432/cafe' };
   // A build on a developer machine legitimately points at localhost, so the check is
   // opt-in and off by default.
@@ -42,6 +42,7 @@ test('Render loopback URLs fail at startup; native local production is supported
   const report = checkEnv({ ...localhost, RENDER: 'true' }, { deployment: true });
   assert.equal(report.ok, false);
   assert.ok(report.problems.some((p) => p.includes('Supabase connection')));
+  assert.equal(checkEnv({ ...localhost, HOSTING_PROVIDER: 'netlify' }, { deployment: true }).ok, false);
 
   // ...but it is perfectly normal in development.
   const dev = { DATABASE_URL: 'postgres://cafe:cafe@localhost:5432/cafe', NODE_ENV: 'development' };

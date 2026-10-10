@@ -1,7 +1,7 @@
-# Render + Supabase handover
+# Netlify Free + Supabase handover
 
-**Selected by the user on 10 October 2026.** This supersedes the E2E/Docker deployment
-decision. Render runs the existing Next.js server on its native Node.js runtime;
+**Selected by the user on 10 October 2026.** This supersedes the Render and E2E/Docker
+deployment decisions. Netlify runs the Next.js app through its managed OpenNext adapter;
 Supabase hosts PostgreSQL. Drizzle migrations, cookie authentication, tenant filtering,
 integer costing and the stock ledger stay in place. No Supabase browser client is needed.
 
@@ -13,17 +13,22 @@ API is disabled. The `cafe_app` connection can read application tables, has no e
 role flags and was observed failing schema creation with PostgreSQL error 42501.
 The initial `NoMeatNaan` tenant and owner `support@nomeatnaan.com` were created with
 a generated password held locally in the ignored `.env.owner.local`. No demo inventory
-or recipes were inserted. Existing-data cutover, Render hosting and a restore rehearsal
-remain outstanding.
+or recipes were inserted. The older local database is unreachable; historical inventory
+and recipes were not transferred. GitHub CI run 38050087973 passed its isolated native
+PostgreSQL test, build and backup/restore rehearsal at commit b6730a8. This is not a
+restore demonstration of production Supabase data.
 
 Both accounts must belong to the client, who controls
 billing and grants the developer access (PROJECT-SPEC § 13). Deployment is not a gate for
-other development. `render.yaml` is a service template, not evidence of a live service.
+other development. Netlify project `nomeatnaaninventory` is connected to the inventory
+repository. Its first build failed on missing DATABASE_URL; runtime verification remains
+pending. The team reports a scheduled downgrade to Free in 13 days; no billing setting
+was changed as part of this switch.
 
 ## 1. Create the database
 
 Use a dedicated Supabase project in the client's organisation. Choose Singapore if
-available to keep it close to the Render server. Use a separate project for
+available. Use a separate project for
 development and restore rehearsals.
 
 **Disable the Data API before adding application tables.** This app checks permissions
@@ -34,7 +39,8 @@ No anon, publishable or service-role key belongs in the app. Supabase documents
 In Connect, copy the **direct connection on 5432**, or the **session pooler on 5432** when
 the caller needs IPv4. Use the exact dashboard host. The runtime, migration and native
 backup scripts reject transaction poolers on 6543. Direct and session connections support
-this persistent server's prepared statements and transactions. See
+the app's prepared statements and transactions. Keep the per-function pool small on
+Netlify (DATABASE_MAX_CONNECTIONS=1), because multiple instances each have a pool. See
 [Supabase connection methods](https://supabase.com/docs/guides/database/connecting-to-postgres).
 
 Download the database CA certificate from Database Settings. Store its PEM as
@@ -63,7 +69,7 @@ recipes, stock snapshots and Drizzle migration history together. Keep the old da
 until this copy has passed login, receipt, costing and history checks. Do not merge two
 populated databases or reseed real data.
 
-For a brand-new database, set these in a **secure local shell**, not in Render:
+For a brand-new database, set these in a **secure local shell**, not in Netlify:
 
 | Variable | Value |
 |---|---|
@@ -83,73 +89,76 @@ tenant and one owner atomically, with no demo ingredients, recipes or stock. It 
 if any tenant exists. Existing owners create staff accounts through `/settings/users`.
 `db:seed` is sample data for development, not production setup.
 
-## 3. Create the Render service
+## 3. Connect Netlify to GitHub
 
-Connect this repository to the client's Render workspace and use the Blueprint from
-`render.yaml`. Review the paid compute plan before creating it; the template specifies
-one instance with 1 CPU / 2 GB RAM. Keep one instance while login throttling is held in
-process memory. The client can change the plan without changing application code.
-Render supplies the client address through its ingress; the per-account login counter
-also applies. See [Render's ingress headers](https://render.com/articles/how-render-handles-ddos-attacks).
+Import `samueldcunha99/nomeatnaaninventory` as a separate Netlify project; do not replace
+the existing cafe marketing site. Select main and the detected Next.js framework.
+Netlify installs dependencies and automatically supplies its maintained Next.js adapter.
+Do not use a static export or pin an old adapter.
 
 | Setting | Value |
 |---|---|
-| Runtime | Node.js 24 (`package.json` pins the major) |
-| Build | `npm ci --include=dev && DATABASE_URL=postgres://build:build@build-time-placeholder:5432/build npm run build` |
-| Start | `npm run start -- --hostname 0.0.0.0` |
-| Health check | `/api/health` |
-| Automatic deploys | Off; GitHub requests a tested commit after migrations |
+| Build/runtime | Node.js 24; set AWS_LAMBDA_JS_RUNTIME=nodejs24.x in the UI |
+| Build | `netlify.toml` sets the build-only placeholder and `npm run build` |
+| Publish directory | `.next` |
+| Start command | Managed by the adapter; no `next start` service |
+| Readiness check | HTTPS `/api/health` |
+| Git deployment | Netlify builds main when it changes; this is not gated on GitHub CI |
 
-Render supplies `PORT`; Next.js uses it. Render handles HTTPS for the service/domain.
 The build-only placeholder does not become the runtime connection. The health route
 returns 200 only when the runtime role can query a migrated table; a failure returns 503
 without connection details or business data. See
-[Render's Next.js guide](https://render.com/docs/deploy-nextjs-app) and
-[Blueprint reference](https://render.com/docs/blueprint-spec).
+[Netlify's Next.js guide](https://docs.netlify.com/build/frameworks/framework-setup-guides/nextjs/overview/).
 
-Set only these application variables in Render:
+Set these variables in the Netlify project UI, available to Functions (all scopes on
+Free). Variables declared only in netlify.toml do not reach the serverless runtime:
 
 | Variable | Value |
 |---|---|
 | `NODE_ENV` | `production` |
 | `NEXT_TELEMETRY_DISABLED` | `1` |
+| `HOSTING_PROVIDER` | `netlify` (forces Secure cookies; avoids trusting forwarding headers) |
+| `AWS_LAMBDA_JS_RUNTIME` | `nodejs24.x` |
+| `NETLIFY_NEXT_SKEW_PROTECTION` | `true` |
 | `DATABASE_URL` | `cafe_app` direct URL, or `cafe_app.<project-ref>` session-pooler URL |
 | `DATABASE_SSL_CA` | Database CA PEM |
-| `DATABASE_MAX_CONNECTIONS` | `5` to start; allow capacity for overlapping deploys too |
+| `DATABASE_MAX_CONNECTIONS` | `1` per function instance; allow capacity for concurrency too |
 
 Use the generated `APP_DB_PASSWORD` in that runtime URL, percent-encoded. Keep
-`DATABASE_MIGRATION_URL`, `APP_DB_PASSWORD`, bootstrap and seed passwords out of Render.
+`DATABASE_MIGRATION_URL`, `APP_DB_PASSWORD`, bootstrap and seed passwords out of Netlify.
 After restoring existing data, run the migrator to create/regrant the runtime role
-**before** the first Render service deployment. Blueprint creation can initiate a first
-deployment even with later automatic deploys disabled.
+**before** code that depends on new tables deploys. Do not prefix secrets NEXT_PUBLIC_.
+The ignored `.env.netlify.local` contains only this runtime payload, not administrative
+or owner passwords. Never upload `.env.supabase.local`.
 
-## 4. Enable the release workflow
+`netlify/edge-functions/login-limit.js` applies Netlify's shared source-IP/domain limit
+to POSTs on all paths, including alternate Server Action invocation paths: 30 requests
+per 180 seconds. It leaves request bodies intact. Netlify documents up to ten seconds
+of enforcement delay; verify the rule appears in post-processing logs. The account
+failure counters in the app remain per warm instance and reset on cold starts. Shared
+per-account lockout requires a separate approved storage/schema change.
+See [Netlify rate limiting](https://docs.netlify.com/manage/security/secure-access-to-sites/rate-limiting/).
+
+Netlify Free has usage limits and can pause projects when exhausted. Serverless functions
+can cold start. Supabase Free still pauses after a week of inactivity; this setup does
+not guarantee an always-warm database or uninterrupted operation for free.
+
+## 4. CI and future releases
 
 CI installs native PostgreSQL 16 on Ubuntu, migrates an isolated test database, fails on
 skipped DB tests, and builds Next.js. It uses no Docker service or registry.
 It also rehearses the real migration, first-owner, backup and restore scripts in two
 disposable databases, using a non-superuser migrator and checking that runtime DDL fails.
-This rehearsal has been configured but has not run here; local PostgreSQL is unavailable.
+Run [38050087973](https://github.com/samueldcunha99/nomeatnaaninventory/actions/runs/38050087973)
+passed all these jobs. Local PostgreSQL remains unavailable. Netlify's Git integration
+deploys independently from CI, so review CI results before considering a release verified.
+For future schema changes, run compatible migrations with the separate administrative
+connection from a secure local shell before pushing the dependent application code.
+The old Render deployment job/hook were removed. No migration credentials belong in
+Netlify, and no migration or demo seed runs as part of its build.
 
-Create a GitHub environment named `production`. Store its secrets:
-
-- `DATABASE_MIGRATION_URL` — administrative direct/session connection
-- `DATABASE_SSL_CA` — database CA PEM
-- `APP_DB_PASSWORD` — same runtime password as Render's URL
-- `RENDER_DEPLOY_HOOK_URL` — from Render service Settings, kept secret
-
-Set the **repository variable** `DEPLOY_PRODUCTION=true` only after the database and
-service are ready. Leaving it unset disables releases while CI remains active. Configure
-the environment's reviewers/branch restriction as the client prefers. Pushes to `main`
-and manual CI runs on `main` then migrate before requesting the exact tested commit SHA
-through the [Render deploy hook](https://render.com/docs/deploy-hooks).
-
-The workflow reports that Render **accepted** the request. Check Render Events and the
-HTTPS `/api/health` response to establish that it finished. A hook response alone is not
-a completed deployment. Keep future migrations compatible with the previous running
-version: CI applies them while that version is still serving traffic.
-
-For a failed app release, select the previous successful deployment in Render. A code
+Check the Netlify deploy log and HTTPS `/api/health` to establish a completed deployment.
+For a failed app release, select the previous successful deployment in Netlify. A code
 rollback does not reverse migrations. Take a backup first and use a separate migration
 for database corrections; never delete the production database to roll back code.
 

@@ -16,11 +16,10 @@
  * clears the account's count, so a member of staff who mistypes twice and then gets it
  * right is never held up.
  *
- * ponytail: the counters live in this process's memory, which is right for one app
- * container and wrong for two. They reset on deploy, which is operator-initiated and not
- * something an attacker can provoke. When a second container appears, move `attempts` to
- * a small table keyed the same way - the pure functions below are already the whole
- * decision and would not change.
+ * These counters live in process memory. On Netlify they are a secondary check within
+ * each warm function instance, and can reset on cold starts. The shared source-IP
+ * limit is deployed separately in netlify/edge-functions/login-limit.js. A shared
+ * per-account counter still needs a separately approved storage/schema decision.
  */
 
 /** Long enough to make guessing pointless, short enough that a locked-out manager waits once. */

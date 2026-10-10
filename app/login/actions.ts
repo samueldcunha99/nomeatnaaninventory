@@ -20,10 +20,12 @@ const Credentials = z.object({
  * https://render.com/articles/how-render-handles-ddos-attacks
  * This assumes requests enter through that managed proxy. A different host must
  * establish its own trusted proxy boundary before relying on this header.
- * The per-account counter also runs, independently of the address. Without a proxy
- * header, return null instead of inventing an address.
+ * Netlify applies a platform IP limit before its ephemeral app instances; the app
+ * does not trust caller-supplied forwarding headers there. Its per-account counter
+ * is an additional per-instance check, not a shared account lockout.
  */
 async function clientIp(): Promise<string | null> {
+  if (process.env.HOSTING_PROVIDER === 'netlify') return null;
   const h = await headers();
   const forwarded = h.get('x-forwarded-for');
   return forwarded?.split(',')[0]?.trim() || null;

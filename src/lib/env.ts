@@ -62,9 +62,9 @@ export function checkEnv(env: EnvLike = process.env, opts: { deployment?: boolea
             decodeURIComponent(url.username).split('.')[0] !== 'cafe_app') {
           problems.push('DATABASE_URL must use the cafe_app role in production. Keep the postgres credentials in DATABASE_MIGRATION_URL.');
         }
-        if (opts.deployment && env.RENDER === 'true' &&
+        if (opts.deployment && (env.RENDER === 'true' || env.HOSTING_PROVIDER === 'netlify') &&
             ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) {
-          problems.push(`${key} points at localhost on Render. Use the Supabase connection from its Connect panel.`);
+          problems.push(`${key} points at localhost on managed hosting. Use the Supabase connection from its Connect panel.`);
         }
       }
     } catch {

@@ -5,9 +5,10 @@ Sambhajinagar, Maharashtra. Ingredient-level cost visibility, self-maintaining i
 order management, and a customer-facing tracking page. Five-month build.
 
 **Month 1 and Month 2 complete; production logging has a backend but no screen yet.**
-The user selected **Render + Supabase without Docker on 10 October 2026**. Configuration
-is prepared; the dedicated Supabase database is migrated, while the Render deployment
-and restore rehearsal are still outstanding. Historical
+The user selected **Netlify Free + Supabase without Docker on 10 October 2026**,
+superseding the earlier Render choice. The dedicated Supabase database is migrated;
+Netlify setup is underway. GitHub CI passed its live database tests, production build
+and disposable backup/restore rehearsal at commit `b6730a8`. Historical
 241-test DB verification and current results are distinguished below.
 
 ---
@@ -23,14 +24,14 @@ repository. Nothing important lives in a chat log.
 |---|---|
 | Month 1 — foundations & inventory | ✅ **complete**, steps 1–7, verified against live Postgres |
 | UI styling pass | ✅ complete, all 9 internal screens, Tailwind v4 |
-| Deployment configuration | Render native Node.js + Supabase PostgreSQL; CI uses native PostgreSQL |
-| Live deployment | Supabase migrated and first owner created; Render service and restore rehearsal pending |
+| Deployment configuration | Netlify Next.js adapter + Supabase PostgreSQL; CI uses native PostgreSQL |
+| Live deployment | Supabase migrated and first owner created; Netlify runtime verification pending |
 | Month 2 step 1 — recipe / menu schema | ✅ **done**, migration 0002 |
 | Month 2 steps 2–4 — costing engine | ✅ **done**, paper cases P1–P22 |
 | Month 2 step 5 — costing screens and editors | ✅ **done**, recipe list, cost breakdown, what-if, and the recipe / line / menu-item editors |
 | Trunk | `main`. Everything is merged; `month-2-costing` is merged and safe to delete. |
 | Tests | Historical: 241 passing against live PG. Current local run: 249 tests, 148 pass, 101 DB skips |
-| Current deployment verification | See the dated 10 October entry in PROGRESS.md |
+| Current deployment verification | GitHub CI run 38050087973 passed; see the dated 10 October entries in PROGRESS.md |
 
 ## Verified against a live database vs merely built
 
@@ -55,8 +56,10 @@ cost breakdown *were* driven in a real browser against seeded data, including th
 and all three failure states, but **no form has been filled in by hand end to end.** That
 is still where undiscovered defects are.
 
-**Built but never run against a real server** — the deploy pipeline.
-`render.yaml` and the GitHub release workflow are prepared; nothing is provisioned.
+**Hosting verification in progress** — Supabase is provisioned and Netlify is connected
+to `samueldcunha99/nomeatnaaninventory`. Its first build failed because DATABASE_URL
+was not configured. `netlify.toml` prepares a build-only placeholder; private runtime
+variables belong in Netlify. GitHub CI has exercised the native DB restore rehearsal.
 
 ## What is gated, and on what
 
@@ -185,17 +188,18 @@ is not a pass.
 
 ## Deploying without Docker
 
-Use [deploy/README.md](deploy/README.md) for the Render Blueprint, Supabase connection,
-data cutover, first owner, GitHub secrets, releases, backups and handover. The existing
+Use [deploy/README.md](deploy/README.md) for Netlify configuration, Supabase connection,
+data cutover, first owner, releases, backups and handover. The existing
 server-side authentication and Drizzle queries stay in place; Supabase hosts PostgreSQL.
 The Data API must be disabled for this server-only integration.
 
 Startup checks name missing variables, enforce the production Supabase runtime role and
 reject transaction-pooler connections. The web service needs no seed or admin password.
-Migrations use separate credentials in CI and finish before Render is asked to deploy.
+Migrations use separate administrative credentials before dependent code is pushed.
+Netlify's Git integration deploys main independently of the GitHub CI result.
 
 For a native local production-build check, run `npm run build`, then `npm run start`.
-Native local production may use localhost; Render must use the remote database.
+Native local production may use localhost; Netlify must use the remote database.
 ## Traps
 
 - **Restart the dev server after a PostCSS or `.env` config change.** A running Next
@@ -205,8 +209,8 @@ Native local production may use localhost; Render must use the remote database.
   to collect its data and would otherwise fail with no database configured. The
   placeholder is scoped to the build command, and
   `instrumentation.ts` checks the real value when the server starts.
-- **Keep admin credentials out of Render.** Store them in the GitHub production
-  environment or a secure local migration shell; the app uses `cafe_app`.
+- **Keep admin credentials out of Netlify.** Store them in a secure local migration
+  shell; the app uses `cafe_app`.
 - **Read generated migration SQL before committing it.** drizzle-kit emits
   `CREATE UNIQUE INDEX` *after* the `ADD CONSTRAINT … FOREIGN KEY` block, so an FK
   pointing at a unique **index** produces SQL that fails on first run. Composite tenant
@@ -278,6 +282,7 @@ app/ui/                 shared presentational components
 app/                    login, home, ingredient and stock screens
 app/recipes/            recipe list and the cost breakdown (no editors yet)
 scripts/bench-replay.ts ledger replay benchmark
-render.yaml             native Node.js Render service template
+netlify.toml            Next.js build and native addon packaging
+netlify/edge-functions/ shared source-IP limit for POST requests
 deploy/                 deployment, first owner, native backup/restore and handover
 ```

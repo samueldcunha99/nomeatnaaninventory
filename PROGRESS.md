@@ -2094,3 +2094,22 @@ created the `NoMeatNaan` tenant and owner atomically; no demo inventory was seed
 The generated password is in the ignored `.env.owner.local`, with BOOTSTRAP variables
 removed after use. The older local database remains unreachable, so this creates a
 fresh app database and does not transfer its historical inventory/recipes.
+
+
+## 2026-10-10 — Netlify selected after GitHub CI passed
+
+The user selected Netlify Free instead of Render to avoid Render idle suspension, then
+created nomeatnaaninventory and connected the inventory GitHub repository. The initial
+Netlify build at b6730a8 failed during page collection because DATABASE_URL was absent.
+Prepared netlify.toml with a build-only placeholder, Node 24 and native Argon2 packaging;
+private runtime configuration stays outside Git. The runtime pool is one connection
+per instance. Secure cookies and startup loopback refusal now support Netlify.
+A platform source-IP/domain POST limit supplements ephemeral in-memory account counters;
+shared per-account lockout still needs an approved storage decision. The Render
+configuration and deployment hook/job were removed. No business schema changed.
+
+GitHub CI run 38050087973 at b6730a8 completed successfully: native PostgreSQL tests with
+a skipped-test guard, the production build and disposable migration/privilege/first-owner/
+backup/restore rehearsal. This is separate from a live Supabase restore. The Netlify
+changes passed typecheck, 29 targeted tests and the production build locally.
+Netlify runtime configuration, final deployment and live HTTPS checks are still pending.

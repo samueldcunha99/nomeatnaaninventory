@@ -39,7 +39,7 @@ export async function requirePermission(permission: Permission): Promise<Session
  * so the cookie was set, silently dropped, and every sign-in bounced straight back to
  * /login with no error to read.
  *
- * Render serves the production site over HTTPS. Its sessions must always be Secure.
+ * Netlify serves the production site over HTTPS. Its sessions must always be Secure.
  * Native local runs can read the scheme of their trusted proxy, or fall back to NODE_ENV
  * without a proxy. A new hosting provider must establish that header's trust boundary.
  *
@@ -49,7 +49,7 @@ export async function requirePermission(permission: Permission): Promise<Session
  * right in both places, and TLS is still what you should be serving - see deploy/README.
  */
 async function cookieIsSecure(): Promise<boolean> {
-  if (process.env.RENDER === 'true') return true;
+  if (process.env.HOSTING_PROVIDER === 'netlify' || process.env.RENDER === 'true') return true;
   const proto = (await headers()).get('x-forwarded-proto');
   if (proto) return proto.split(',')[0].trim() === 'https';
   return process.env.NODE_ENV === 'production';

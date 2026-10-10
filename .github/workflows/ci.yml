@@ -79,27 +79,6 @@ jobs:
           NODE_ENV: production
         run: npm run build
 
-  deploy:
-    runs-on: ubuntu-24.04
-    needs: [test, build]
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.DEPLOY_PRODUCTION == 'true'
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci --include=dev
-      - name: Migrate Supabase and provision the runtime role
-        env:
-          NODE_ENV: production
-          DATABASE_MIGRATION_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
-          DATABASE_SSL_CA: ${{ secrets.DATABASE_SSL_CA }}
-          APP_DB_PASSWORD: ${{ secrets.APP_DB_PASSWORD }}
-        run: npm run db:migrate
-      - name: Request Render deployment of the tested commit
-        env:
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-          DEPLOY_COMMIT: ${{ github.sha }}
-        run: node deploy/render-deploy.ts
+  # Netlify builds main from GitHub. Apply future compatible migrations separately
+  # with administrative credentials before pushing code that depends on them.
+  # Never give the Netlify web app migration credentials or bootstrap passwords.
