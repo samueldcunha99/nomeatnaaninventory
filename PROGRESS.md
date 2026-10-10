@@ -2170,3 +2170,24 @@ deleted recipes and another tenant. Local typecheck, the production build and al
 targeted costing/source-integrity tests passed. The database regression must run in
 GitHub CI's isolated PostgreSQL, not the client database. Deployment, exact-commit CI
 verification and before/after online measurements are pending at this entry.
+
+## 2026-10-10 — Navigation update deployed and measured
+
+Pushed application commit `97d34f274c394b6ef00ee8bd797584a664cb1ca0` to inventory/main.
+GitHub CI run `38057547950` completed test and build jobs successfully, including the
+new joined-graph regression, the skipped-database-test guard and the isolated deployment
+rehearsal. Netlify serves the new workspace bundle containing navigation feedback.
+
+Repeated the same authenticated HTTPS measurement, three rounds per page, then signed
+out. Median response-body completion changed from 4.30 to 3.02 seconds for the dashboard
+and from 2.93 to 1.25 seconds for recipes. New dashboard rounds were 3.02/2.42/4.23
+seconds, so response variation remains material. Ingredients stayed about 1.3-1.4 seconds,
+staff about 1.2-1.3 seconds, and movement history had one 3.73-second outlier. These are
+small-sample server response timings for the current empty catalogue, not browser paint
+metrics or a promise for populated catalogues.
+
+The online browser showed an immediate "Opening Overview" status while retaining the
+current page, then opened Overview and cleared the status. Movement history behaved the
+same way, with the visible spinner captured in the local verification screenshot.
+No inventory, recipe, account, schema or hosting-plan changes were made by these probes.
+Remaining network and function-start delay is not hidden by cached session or cost data.
