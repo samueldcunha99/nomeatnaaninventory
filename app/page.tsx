@@ -28,17 +28,14 @@ export default async function HomePage() {
   const canRecord = hasPermission(user.role, 'stock.record');
   const canCost = hasPermission(user.role, 'recipes.view');
 
-  const [low, ingredients, deliveries] = canView
-    ? await Promise.all([
-        listLowStock(user),
-        listIngredients(user),
-        countDeliveriesSince(user, startOfDayIST()),
-      ])
-    : [[], [], 0];
-
   // Costed here rather than counted in SQL: "cannot be costed" means an ingredient in the
   // tree has no purchase history, which only the costing walk knows.
-  const recipes = canCost ? await listRecipes(user) : [];
+  const [low, ingredients, deliveries, recipes] = await Promise.all([
+    canView ? listLowStock(user) : [],
+    canView ? listIngredients(user) : [],
+    canView ? countDeliveriesSince(user, startOfDayIST()) : 0,
+    canCost ? listRecipes(user) : [],
+  ]);
   const uncosted = recipes.filter((r) => !r.cost.ok);
 
   const today = new Date().toLocaleDateString('en-IN', {

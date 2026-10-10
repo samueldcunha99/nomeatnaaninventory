@@ -1,12 +1,21 @@
 'use client';
 
-import Link from 'next/link';
+import Link, { useLinkStatus } from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import type { Route } from 'next';
 import { Emblem, Wordmark } from './brand-mark.tsx';
 
 export type NavigationItem = { href: Route; label: string; group: string; icon: string };
+
+function NavigationFeedback({ label }: { label: string }) {
+  const { pending } = useLinkStatus();
+  if (!pending) return null;
+  return <>
+    <span className="workspace-navpending" aria-hidden="true" />
+    <span className="sr-only" role="status">Opening {label}…</span>
+  </>;
+}
 
 export function WorkspaceNav({ items }: { items: NavigationItem[] }) {
   const pathname = usePathname();
@@ -33,6 +42,7 @@ export function WorkspaceNav({ items }: { items: NavigationItem[] }) {
                 return <Link key={item.href} href={item.href} className="workspace-navlink" aria-current={active ? 'page' : undefined} onClick={() => setOpen(false)}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={item.icon} /></svg>
                   {item.label}
+                  <NavigationFeedback label={item.label} />
                 </Link>;
               })}
             </div>;

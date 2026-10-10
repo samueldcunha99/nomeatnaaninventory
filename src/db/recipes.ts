@@ -44,6 +44,7 @@ import { translating } from './errors.ts';
 import type { UnitType } from '../lib/units.ts';
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type LoadedRecipe = Recipe & { updatedAt: Date };
 
 /**
  * Every live recipe in the tenant, in the shape the costing functions take.
@@ -53,15 +54,14 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
  * walk in SQL. A catalogue is hundreds of rows.
  *
  * `conn` defaults to the pool. saveRecipe passes its own transaction, so the graph it
- * validates and the graph it writes into are one snapshot rather than two - and so the
- * two queries below cannot straddle somebody else's commit and pair an old yield with
- * new lines. Same shape as replayLedger's optional starting state: one parameter, no
- * second implementation.
+ * validates and the graph it writes into share the transaction. Each recipe and its
+ * lines are also read in one statement snapshot. Same shape as replayLedger's optional
+ * starting state: one parameter, no second implementation.
  */
 export async function loadRecipeGraph(
   actor: Actor,
   conn: Tx | typeof db = db,
-): Promise<Map<string, Recipe>> {
+): Promise<Map<string, LoadedRecipe>> {
   assertPermission(actor.role, 'recipes.view');
   return loadRecipeGraphForTenant(actor.tenantId, conn);
 }
@@ -80,65 +80,64 @@ export async function loadRecipeGraph(
 export async function loadRecipeGraphForTenant(
   tenantId: string,
   conn: Tx | typeof db = db,
-): Promise<Map<string, Recipe>> {
-  const [recipeRows, lineRows] = await Promise.all([
-    conn
-      .select({
+): Promise<Map<string, LoadedRecipe>> {
+  // One roundtrip and one statement snapshot, including recipes with no live lines.
+  const rows = await conn
+    .select({
+      recipe: {
         id: recipes.id,
         name: recipes.name,
         yieldUnitType: recipes.yieldUnitType,
         yieldQtyMilliBase: recipes.yieldQtyMilliBase,
         batchMinutes: recipes.batchMinutes,
         stockIngredientId: recipes.stockIngredientId,
-      })
-      .from(recipes)
-      .where(and(eq(recipes.tenantId, tenantId), isNull(recipes.deletedAt)))
-      .orderBy(asc(recipes.name)),
-    conn
-      .select({
-        recipeId: recipeLines.recipeId,
+        updatedAt: recipes.updatedAt,
+      },
+      line: {
+        id: recipeLines.id,
         ingredientId: recipeLines.ingredientId,
         subRecipeId: recipeLines.subRecipeId,
         quantityMilliBase: recipeLines.quantityMilliBase,
         wastageMillipercent: recipeLines.wastageMillipercent,
-      })
-      .from(recipeLines)
-      .where(
-        and(
-          eq(recipeLines.tenantId, tenantId),
-          // The filter. Everything above exists to make sure this is the only place it
-          // has to be written.
-          isNull(recipeLines.deletedAt),
-        ),
-      )
-      // Every line of one save is inserted in a single statement and shares a created_at
-      // to the microsecond, so created_at alone leaves the order up to the planner. The
-      // id breaks the tie, which makes the editor show the same rows in the same places
-      // on every load. It is stable, not meaningful: recipes carry no stored line order,
-      // and the cost breakdown sorts by contribution on purpose.
-      .orderBy(asc(recipeLines.createdAt), asc(recipeLines.id)),
-  ]);
+      },
+    })
+    .from(recipes)
+    .leftJoin(
+      recipeLines,
+      and(
+        eq(recipeLines.tenantId, recipes.tenantId),
+        eq(recipeLines.recipeId, recipes.id),
+        // Keep this in the join: filtering in WHERE would drop empty recipes.
+        isNull(recipeLines.deletedAt),
+      ),
+    )
+    .where(
+      and(
+        eq(recipes.tenantId, tenantId),
+        isNull(recipes.deletedAt),
+      ),
+    )
+    // Lines inserted together share a created_at; id breaks the tie, preserving the
+    // existing editor order. Cost breakdowns still sort by contribution.
+    .orderBy(asc(recipes.name), asc(recipeLines.createdAt), asc(recipeLines.id));
 
-  const graph = new Map<string, Recipe>(
-    recipeRows.map((row) => [
-      row.id,
-      {
+  const graph = new Map<string, LoadedRecipe>();
+  for (const { recipe: row, line } of rows) {
+    let recipe = graph.get(row.id);
+    if (!recipe) {
+      recipe = {
         id: row.id,
         name: row.name,
         yieldUnitType: row.yieldUnitType,
         yieldQtyMilliBase: BigInt(row.yieldQtyMilliBase),
         batchMinutes: row.batchMinutes,
         stockIngredientId: row.stockIngredientId,
+        updatedAt: row.updatedAt,
         lines: [],
-      },
-    ]),
-  );
-
-  for (const line of lineRows) {
-    // A line whose recipe is soft-deleted has nowhere to go. Skipping it is right: the
-    // recipe is gone, so its lines are not part of any live cost.
-    const recipe = graph.get(line.recipeId);
-    if (!recipe) continue;
+      };
+      graph.set(row.id, recipe);
+    }
+    if (!line) continue;
     (recipe.lines as Recipe['lines'][number][]).push({
       ingredientId: line.ingredientId,
       subRecipeId: line.subRecipeId,
@@ -489,7 +488,7 @@ export async function saveRecipe(actor: Actor, input: RecipeInput): Promise<stri
       // Cycles and depth, against the graph as it WOULD be. Checked from every recipe, not
       // just this one: editing a leaf can push a parent past the depth limit, and walking
       // downward from the edited recipe alone would never see that.
-      const prospective = new Map(graph);
+      const prospective = new Map<string, Recipe>(graph);
       prospective.set(recipeId, {
         id: recipeId,
         name: input.name,
@@ -727,16 +726,13 @@ export async function listRecipes(
   actor: Actor,
   opts: { search?: string } = {},
 ): Promise<RecipeListRow[]> {
-  const [graph, lookup, rates, stamps] = await Promise.all([
-    loadRecipeGraph(actor),
+  const graph = await loadRecipeGraph(actor);
+  // With no recipe to cost, no ingredient prices or overhead rates are needed.
+  if (graph.size === 0) return [];
+  const [lookup, rates] = await Promise.all([
     loadCostLookup(actor),
     loadOverheadRates(actor),
-    db
-      .select({ id: recipes.id, updatedAt: recipes.updatedAt })
-      .from(recipes)
-      .where(and(eq(recipes.tenantId, actor.tenantId), isNull(recipes.deletedAt))),
   ]);
-  const updatedAt = new Map(stamps.map((s) => [s.id, s.updatedAt]));
 
   const usedBy = new Map<string, number>();
   for (const recipe of graph.values()) {
@@ -780,7 +776,7 @@ export async function listRecipes(
       name: recipe.name,
       yieldUnitType: recipe.yieldUnitType,
       yieldQtyMilliBase: recipe.yieldQtyMilliBase,
-      updatedAt: updatedAt.get(recipe.id) ?? new Date(0),
+      updatedAt: recipe.updatedAt,
       lineCount: recipe.lines.length,
       usedByCount: usedBy.get(recipe.id) ?? 0,
       cost,

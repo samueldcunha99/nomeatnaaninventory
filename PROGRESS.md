@@ -2146,3 +2146,27 @@ ownership/recovery details, staff workflow acceptance, audit fixes and the daily
 production/yield screen remain outstanding. Netlify function cold starts and provider
 Free-tier usage/inactivity limits still apply. A documentation-only follow-up commit uses
 `[skip netlify]` to retain the already verified application deployment.
+
+## 2026-10-10 — Online navigation performance update prepared
+
+The owner reported slow page changes on Netlify. Three authenticated HTTPS rounds
+against the deployed app measured dashboard responses at 4.75/4.30/4.22 seconds and
+recipes at 3.02/2.92/2.93 seconds; response bodies added approximately one millisecond.
+This is server response delay, not evidence of a large asset download. No browser
+Core Web Vitals measurement was available. Netlify's default Ohio function region is
+far from the Singapore database; changing function region requires a paid plan, so
+the requested Free setup remains unchanged.
+
+The single recipe graph loader now joins live recipes to their live lines in one
+statement, retaining empty recipes and tenant isolation. Recipe update timestamps
+travel in that read rather than another query. An empty catalogue needs no cost lookup
+or overhead read; a populated catalogue uses three reads instead of five. Dashboard
+reads start together after authentication. Sidebar links show pending feedback through
+Next.js useLinkStatus, with an accessible status and reduced-motion support. Session
+validation, cost freshness, missing-cost errors and the pure costing fold are unchanged.
+
+Added a database regression for a recipe whose only line is deleted, its update stamp,
+deleted recipes and another tenant. Local typecheck, the production build and all 34
+targeted costing/source-integrity tests passed. The database regression must run in
+GitHub CI's isolated PostgreSQL, not the client database. Deployment, exact-commit CI
+verification and before/after online measurements are pending at this entry.

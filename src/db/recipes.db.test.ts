@@ -734,6 +734,34 @@ test('two simultaneous saves cannot combine into a cycle', async (t) => {
   for (const id of graph.keys()) assertAcyclicWithinDepth(id, graph);
 });
 
+test('the joined graph retains recipes with only deleted lines and excludes other tenants', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const [empty] = await db.insert(recipes).values({
+    tenantId, name: `Empty graph ${crypto.randomUUID()}`,
+    yieldUnitType: 'weight', yieldQtyMilliBase: 1000,
+  }).returning();
+  await db.insert(recipeLines).values({
+    tenantId, recipeId: empty.id, ingredientId: ing.butter,
+    quantityMilliBase: 1000, deletedAt: new Date(),
+  });
+  const [deleted] = await db.insert(recipes).values({
+    tenantId, name: `Deleted graph ${crypto.randomUUID()}`,
+    yieldUnitType: 'weight', yieldQtyMilliBase: 1000, deletedAt: new Date(),
+  }).returning();
+  const [otherTenant] = await db.insert(tenants).values({ name: `Other graph ${crypto.randomUUID()}` }).returning();
+  const [otherRecipe] = await db.insert(recipes).values({
+    tenantId: otherTenant.id, name: 'Other tenant recipe',
+    yieldUnitType: 'weight', yieldQtyMilliBase: 1000,
+  }).returning();
+
+  const graph = await loadRecipeGraph(owner);
+  assert.ok(graph.has(empty.id), 'removing the final line must not remove its recipe');
+  assert.deepEqual(graph.get(empty.id)!.lines, []);
+  assert.equal(graph.get(empty.id)!.updatedAt.getTime(), empty.updatedAt.getTime());
+  assert.equal(graph.has(deleted.id), false, 'a deleted recipe must stay excluded');
+  assert.equal(graph.has(otherRecipe.id), false, 'another tenant must stay excluded');
+});
+
 /* --------------------------------------------------------------------------
  * The demo, for real. MUST BE LAST - it moves butter's weighted average.
  * ------------------------------------------------------------------------ */
