@@ -1,7 +1,7 @@
 /**
  * Runs once when the server process starts, before it handles any request.
  *
- * This is the real startup check. A half-configured container must refuse to come up
+ * This is the real startup check. A half-configured service must refuse to come up
  * rather than serve a login page that dies on the first query — see src/lib/env.ts, which
  * names every missing variable at once instead of one per restart.
  *
@@ -22,11 +22,11 @@ export async function register() {
    * process.exit, not throw.
    *
    * Throwing here surfaces as an unhandledRejection which Next 16 logs but does NOT die
-   * on: the container stays alive, never serves a request, and never restarts — the exact
-   * half-configured boot this check exists to prevent. Verified by running the image with
+   * on: the server stays alive, never serves a request, and never restarts — the exact
+   * half-configured boot this check exists to prevent. Previously verified with
    * DATABASE_URL unset and watching it hang.
    *
-   * Exiting non-zero makes the failure loud: the container dies, compose reports it, and
+   * Exiting non-zero makes the failure loud: the service dies, Render reports it, and
    * the message below is the last thing in the log.
    */
   console.error(`\n${formatEnvReport(report)}\n`);

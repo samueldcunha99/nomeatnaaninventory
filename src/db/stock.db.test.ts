@@ -2,7 +2,7 @@
  * T11 (database level) and T12. These need a live Postgres - they test transactions
  * and cache writes, which is exactly the part the pure tests in src/lib cannot reach.
  *
- *   npm run db:up && npm run db:migrate && npm test
+ *   Configure a reachable PostgreSQL test DATABASE_URL, then migrate and run npm test.
  *
  * Without a reachable DATABASE_URL they SKIP rather than pass, loudly.
  */

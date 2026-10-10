@@ -16,29 +16,16 @@ const Credentials = z.object({
 });
 
 /**
- * The client address, as Caddy reports it.
- *
- * TWO things have to hold for this to mean anything, and only one of them used to.
- *
- * 1. Nothing but the proxy can reach the app. The app container publishes no port and
- *    compose puts it on an internal network, so the CONNECTION is trustworthy.
- * 2. The proxy must REPLACE X-Forwarded-For rather than append to it. Caddy's default
- *    is to append, so a request arriving with a forged header reached the app as
- *    "<forged>, <real>" - and reading the leftmost entry, as this does, read the
- *    attacker's value. Rotating it defeated the per-source counter entirely.
- *
- * The Caddyfile now pins `header_up X-Forwarded-For {remote_host}`, which makes the
- * header a single address Caddy observed. Point this app at a proxy that does not do
- * that and the per-source counter is worthless again; the per-account one still holds,
- * and that is the one protecting a password.
- *
- * Returns null rather than guessing when there is no proxy, which is the local case.
+ * Render's public ingress reports the client in the first X-Forwarded-For entry.
+ * https://render.com/articles/how-render-handles-ddos-attacks
+ * This assumes requests enter through that managed proxy. A different host must
+ * establish its own trusted proxy boundary before relying on this header.
+ * The per-account counter also runs, independently of the address. Without a proxy
+ * header, return null instead of inventing an address.
  */
 async function clientIp(): Promise<string | null> {
   const h = await headers();
   const forwarded = h.get('x-forwarded-for');
-  // One address, because the Caddyfile replaces rather than appends. The split is kept
-  // as a belt for any other proxy that might sit in front later.
   return forwarded?.split(',')[0]?.trim() || null;
 }
 

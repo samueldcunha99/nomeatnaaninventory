@@ -3,6 +3,15 @@
 Conventions for the cafe management system. Read `files/PROJECT-SPEC.md` first — this
 file records what we decided that the spec does not say, and why.
 
+**Deployment override, approved by the user 10 October 2026:** Render native Node.js +
+Supabase PostgreSQL, without Docker. This supersedes the original VPS/container setup
+in the spec and historical log. See `deploy/README.md`. Client-owned accounts still
+apply, and deployment is not a gate for other development. Keep migration credentials
+out of the web service, disable Supabase Data API for this direct SQL integration, and
+preserve the existing auth/tenant/ledger/costing paths. No schema change is implied.
+The privileged `db:bootstrap-owner` script is only for an empty database's first tenant
+and owner; it refuses existing tenants. All normal user administration still uses auth.
+
 **241 tests passing against a live PostgreSQL, 0 skipped.**
 
 **Month 1 is complete and verified.** Schema, migrations, seed, unit conversion,
@@ -1000,8 +1009,8 @@ it still reads in greyscale and on a washed-out screen.
 
 ## Source integrity — invisible characters that break things
 
-`src/lib/source-integrity.test.ts` fails the build if any file under `src/`, `app/` or
-`scripts/` contains a **NUL byte**, a **UTF-8 BOM**, a **zero-width or non-breaking
+`src/lib/source-integrity.test.ts` fails the build if any file under `src/`, `app/`,
+`scripts/` or `deploy/` contains a **NUL byte**, a **UTF-8 BOM**, a **zero-width or non-breaking
 character**, or **CRLF** where LF is required.
 
 Every one of those is in the guard because it actually happened here, and in each case the

@@ -54,7 +54,7 @@ const ownerPassword = (() => {
 
 await db.transaction(async (tx) => {
   const [existing] = await tx.select({ id: tenants.id }).from(tenants).where(eq(tenants.name, TENANT_NAME));
-  if (existing) throw new Error(`Tenant "${TENANT_NAME}" already seeded. Run: docker compose down -v`);
+  if (existing) throw new Error(`Tenant "${TENANT_NAME}" already exists. Seed only an empty development database; never reset a database containing cafe data.`);
 
   const [tenant] = await tx.insert(tenants).values({ name: TENANT_NAME }).returning();
 

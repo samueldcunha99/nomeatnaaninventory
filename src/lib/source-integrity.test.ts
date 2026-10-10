@@ -43,7 +43,7 @@ const ZERO_WIDTH: Array<[string, string]> = [
 ];
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
-const SCANNED = ['src', 'app', 'scripts'];
+const SCANNED = ['src', 'app', 'scripts', 'deploy'];
 const SKIP = new Set(['node_modules', '.next', '.git', 'dist']);
 const TEXT = /\.(ts|tsx|js|jsx|mjs|cjs|json|md|css|sql|yml|yaml)$/;
 

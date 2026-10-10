@@ -35,8 +35,8 @@ Legend: ✅ done and verified · 🟡 in progress · ⬜ not started · 🚫 blo
 
 | Step | What | Status |
 |---|---|---|
-| 0 | Dockerfile, app service in compose, CI image build | ✅ **done** |
-| 0b | Deploy to a real VPS | ⏸️ **deferred, does not block** — written and stubbed, awaiting the E2E account |
+| 0 | Render native Node.js + Supabase config (supersedes Docker) | 🟡 Prepared locally; live service not verified |
+| 0b | Live managed deployment | ⏸️ Pending client-owned Render/Supabase setup, does not block development |
 | 1 | Recipes, recipe_lines and menu_items schema (with tenant_id) | ✅ |
 | 2 | Cost lookup seam + missing-cost errors | ✅ |
 | 3 | Sub-recipes: yield, cycle and depth rejection, unit compatibility | ✅ reachable through `saveRecipe` |
@@ -2017,3 +2017,80 @@ only. `production.record` exists now for owner and manager; step 4 adds `kitchen
 check, so it needs a small schema decision (likely `reverses_run_id`). Until then a
 mistake is corrected per ingredient with adjustments. Worth deciding before the client
 starts logging, because the first wrong entry will happen in the first week.
+
+---
+
+## 2026-10-10 — User selected Render + Supabase, without Docker
+
+This supersedes the earlier E2E VPS/container deployment decision and its GHCR release
+pipeline. The user selected Render's native Node.js service and confirmed that the
+Supabase project has **not yet been created**. Client-owned accounts/billing still apply;
+deployment remains separate from the development gates. No service was provisioned and
+no live database was migrated.
+
+Prepared `render.yaml`, Node 24 engine selection, native `next start`, a public DB
+readiness route, separate migration credentials and a production `cafe_app` role. Runtime
+Supabase connections verify certificates, require the CA and reject transaction pooling.
+Render sessions are always Secure. The old Docker/Caddy configurations and scripts were
+removed; the inventory, recipe arithmetic, tenant schema and append-only ledger were not
+changed. No migration/schema proposal was needed.
+
+CI now uses native PostgreSQL 16. Releases remain disabled unless the repository variable
+`DEPLOY_PRODUCTION=true` is set; production secrets run migrations before requesting the
+exact tested SHA through Render's deploy hook. Hook acceptance is explicitly distinct
+from service readiness. CI also contains a disposable DB rehearsal for the non-superuser
+migrator, runtime DDL refusal, first owner and native backup/restore scripts. That CI
+rehearsal has not yet run.
+
+Native backup scripts write a dump plus checksum and counts from the same exported
+snapshot. Restores require an empty separate target, compare exact counts and check
+append-only triggers. The first-owner script creates no sample inventory and refuses an
+existing tenant. Deployment scripts are included in TypeScript and source-integrity
+checks. `deploy/README.md` covers account ownership, Data API disabling, credentials,
+cutover, releases, backup scheduling/off-site copies and handover.
+
+Verification in this workspace:
+
+- Typecheck passed, including deployment scripts.
+- Production build passed (18 routes); the existing middleware deprecation warning remains.
+- Full suite: **249 discovered, 148 passed, 101 DB tests skipped, 0 failed**. This does
+  not replace the September live-DB verification with a claim of a new DB pass.
+- Temporarily disabling the pooler and same-database restore guards caused three
+  regression failures; restoring them returned all 15 targeted tests to green.
+- Native production server smoke: login HTTP 200; unreachable DB health HTTP 503 with
+  no auth redirect or connection details. Missing DATABASE_URL caused startup exit 1.
+- The sandbox blocked Turbopack path resolution and separate localhost HTTP probes;
+  the build and combined server/probe check succeeded outside it.
+
+Still required: create the client's Supabase project/Render service, populate secrets,
+run migrations and the CI rehearsal, demonstrate a live restore, arrange nightly
+off-site backups and verify the staff workflows. The 8 October audit findings remain
+open, and the daily production/yield UI remains unbuilt. This step prepares hosting; it
+does not close those feature/correctness gaps.
+
+## 2026-10-10 — Separate Supabase project created and migrated
+
+The user requested another project, leaving existing Supabase projects alone, then
+created `Nomeatnaan Inventory` in the `samueldcunha99` organisation. Reference:
+`oqvedplcgidrvbggimnr`, Singapore, PostgreSQL 17.11. The Data API was observed disabled
+before adding application tables. The session pooler host was read from Connect;
+the certificate was downloaded from the dashboard's exact link, and TLS verification
+remained enabled. Credentials are held in the Git-ignored `.env.supabase.local`.
+
+The empty-project check passed. Public schema CREATE was revoked from PUBLIC, all
+eight existing migrations applied, and `cafe_app` was provisioned. Live verification
+found twelve application tables and all four stock/production append-only triggers.
+The runtime connection can read tables and has no superuser, create-role, create-db,
+replication or bypass-RLS flags. An attempted CREATE TABLE failed with 42501 inside
+a transaction. No tenant or business data was inserted; no previous project changed.
+
+The user also requested a push to their new `samueldcunha99/nomeatnaaninventory`
+repository and a hosting connection. First-owner email, old-data cutover, Render service,
+CI and a backup/restore demonstration remain deployment work. Account ownership for
+the client's eventual handover still needs to be recorded.
+
+The user subsequently provided `support@nomeatnaan.com`. The first-owner script
+created the `NoMeatNaan` tenant and owner atomically; no demo inventory was seeded.
+The generated password is in the ignored `.env.owner.local`, with BOOTSTRAP variables
+removed after use. The older local database remains unreachable, so this creates a
+fresh app database and does not transfer its historical inventory/recipes.

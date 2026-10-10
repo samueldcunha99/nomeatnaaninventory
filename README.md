@@ -4,9 +4,11 @@ Internal management system for a single-outlet cafe and bakery in Chhatrapati
 Sambhajinagar, Maharashtra. Ingredient-level cost visibility, self-maintaining inventory,
 order management, and a customer-facing tracking page. Five-month build.
 
-**Month 1 and Month 2 complete and verified — costing engine, screens and editors: 165
-tests passing against a live PostgreSQL, 0 skipped.** Only the deploy to a real server is
-outstanding, and it is deferred rather than blocking.
+**Month 1 and Month 2 complete; production logging has a backend but no screen yet.**
+The user selected **Render + Supabase without Docker on 10 October 2026**. Configuration
+is prepared; the dedicated Supabase database is migrated, while the Render deployment
+and restore rehearsal are still outstanding. Historical
+241-test DB verification and current results are distinguished below.
 
 ---
 
@@ -21,14 +23,14 @@ repository. Nothing important lives in a chat log.
 |---|---|
 | Month 1 — foundations & inventory | ✅ **complete**, steps 1–7, verified against live Postgres |
 | UI styling pass | ✅ complete, all 9 internal screens, Tailwind v4 |
-| Month 2 step 0 — containerisation & CI | ✅ **done**, deploy-to-server stubbed |
-| Month 2 step 0b — deploy to a VPS | ⏸️ **deferred, does not block anything** |
+| Deployment configuration | Render native Node.js + Supabase PostgreSQL; CI uses native PostgreSQL |
+| Live deployment | Supabase migrated and first owner created; Render service and restore rehearsal pending |
 | Month 2 step 1 — recipe / menu schema | ✅ **done**, migration 0002 |
 | Month 2 steps 2–4 — costing engine | ✅ **done**, paper cases P1–P22 |
 | Month 2 step 5 — costing screens and editors | ✅ **done**, recipe list, cost breakdown, what-if, and the recipe / line / menu-item editors |
 | Trunk | `main`. Everything is merged; `month-2-costing` is merged and safe to delete. |
-| Tests | **241, all passing** against live Postgres, 0 skipped |
-| `next build` | exits 0, 15 routes |
+| Tests | Historical: 241 passing against live PG. Current local run: 249 tests, 148 pass, 101 DB skips |
+| Current deployment verification | See the dated 10 October entry in PROGRESS.md |
 
 ## Verified against a live database vs merely built
 
@@ -54,7 +56,7 @@ and all three failure states, but **no form has been filled in by hand end to en
 is still where undiscovered defects are.
 
 **Built but never run against a real server** — the deploy pipeline.
-`deploy/docker-compose.prod.yml` exists and validates; nothing is provisioned.
+`render.yaml` and the GitHub release workflow are prepared; nothing is provisioned.
 
 ## What is gated, and on what
 
@@ -65,11 +67,10 @@ re-introduce the gate.**
 
 **Still outstanding:** the owner exercising the multi-line receipt form by hand.
 
-**Do not provision anything.** The production account must be created by the client, in
+The production accounts must be created by the client, in
 the client's name, on the client's payment method. This is contractual, not a preference,
-and it is unchanged. A throwaway demo box on a free tier is a different thing and is
-described in [deploy/README.md](deploy/README.md); real cafe data never goes on it,
-because it has no backups and no tested restore.
+and it is unchanged. The managed deployment and handover steps are in
+[deploy/README.md](deploy/README.md). Use a separate database project for demos and tests.
 
 ## Working rules
 
@@ -149,12 +150,20 @@ open for relitigation.
 
 ## Getting running on a new machine
 
-Requires **Node 24+** (runs TypeScript natively, no build step) and **Docker**.
+Requires **Node 24** (runs TypeScript natively) and a PostgreSQL connection. Use native
+PostgreSQL 16 locally or a separate Supabase development project. No Docker is required.
+For native local PostgreSQL, create a development role/database matching `.env.example`:
+
+```text
+psql -U postgres -c "CREATE ROLE cafe LOGIN PASSWORD 'cafe';"
+createdb -U postgres -O cafe cafe
+```
+
+These are development credentials only. Then copy `.env.example` to `.env`, set the
+connection (and Supabase CA if applicable), and run:
 
 ```bash
-cp .env.example .env
-npm install
-npm run db:up
+npm ci
 npm run db:migrate
 npm run db:seed
 npm run dev
@@ -164,74 +173,40 @@ Then sign in with the seeded owner account. `SEED_OWNER_PASSWORD` is required un
 `NODE_ENV=development`; the seed refuses to run without it rather than creating an
 all-permissions owner with a password published in this repository.
 
-Run the tests with Docker up:
+Run the tests against an isolated development database, never production:
 
 ```bash
 npm test
 ```
 
-**241 tests should pass with 0 skipped.** If you see skips, Postgres is not reachable —
+**249 tests should pass with 0 skipped when PostgreSQL is reachable.** If you see skips, Postgres is not reachable —
 the database tests skip loudly rather than passing quietly, and a green run full of skips
 is not a pass.
 
-## Running the whole stack in containers
+## Deploying without Docker
 
-The dev loop above runs the app on the host against Postgres in Docker. To run
-everything the way production will — app, Caddy, and a one-shot migration container:
+Use [deploy/README.md](deploy/README.md) for the Render Blueprint, Supabase connection,
+data cutover, first owner, GitHub secrets, releases, backups and handover. The existing
+server-side authentication and Drizzle queries stay in place; Supabase hosts PostgreSQL.
+The Data API must be disabled for this server-only integration.
 
-```bash
-npm run stack:up
-```
+Startup checks name missing variables, enforce the production Supabase runtime role and
+reject transaction-pooler connections. The web service needs no seed or admin password.
+Migrations use separate credentials in CI and finish before Render is asked to deploy.
 
-From a clean checkout with no volumes this takes about **16 seconds** and ends with all
-services healthy. Migrations run **before** the app starts (compose enforces it with
-`service_completed_successfully`), so a container can never serve traffic against a
-schema older than its own code.
-
-Then browse to **http://localhost:8080** — Caddy, not the app directly.
-
-Two build targets in one `Dockerfile`: `runtime` (the app — standalone output, non-root,
-no dev dependencies) and `migrate` (one-shot, applies migrations and exits). They are
-separate on purpose: **the app container cannot alter the schema.**
-
-### Configuration fails loudly
-
-`src/lib/env.ts` names every missing variable at once, and the container **exits non-zero**
-rather than serving a half-configured app. Verified by running the image with
-`DATABASE_URL` unset:
-
-```
-Configuration is incomplete; refusing to start.
-
-Missing environment variables:
-  - DATABASE_URL
-```
-
-It also rejects a `localhost` database URL in production, because inside a container
-that is the container itself — the classic compose wiring mistake.
-
-### Deploying
-
-**Written, never run.** See [deploy/README.md](deploy/README.md).
-`deploy/docker-compose.prod.yml` pulls published images rather than building, publishes no
-Postgres port, and refuses to start unless every secret is set and `IMAGE_TAG` is a pinned
-`sha-` tag. CI publishes `linux/amd64` and `linux/arm64`. The deploy job in
-`.github/workflows/ci.yml` is still commented out, waiting on the client to create the E2E
-Networks account in their own name. **This no longer blocks anything else.**
+For a native local production-build check, run `npm run build`, then `npm run start`.
+Native local production may use localhost; Render must use the remote database.
 ## Traps
 
 - **Restart the dev server after a PostCSS or `.env` config change.** A running Next
   server does not pick up a newly added `postcss.config.mjs`; it will serve unstyled
   Times New Roman until restarted. This wastes twenty minutes if you do not know it.
-- **`npm run db:reset` destroys the database volume.** All local data goes. It is the
-  right tool for a clean slate and the wrong one if you have entered anything you want.
-- **`npm run stack:reset` destroys the database volume**, same as `db:reset`.
 - **The build stage passes a placeholder `DATABASE_URL`.** `next build` imports every page
   to collect its data and would otherwise fail with no database configured. The
-  placeholder never reaches the runtime image — that is a separate stage — and
+  placeholder is scoped to the build command, and
   `instrumentation.ts` checks the real value when the server starts.
-- **Never run `next build` on the VPS.** 4 GB will OOM. Build the image in CI and ship it
-  (PROJECT-SPEC § 3).
+- **Keep admin credentials out of Render.** Store them in the GitHub production
+  environment or a secure local migration shell; the app uses `cafe_app`.
 - **Read generated migration SQL before committing it.** drizzle-kit emits
   `CREATE UNIQUE INDEX` *after* the `ADD CONSTRAINT … FOREIGN KEY` block, so an FK
   pointing at a unique **index** produces SQL that fails on first run. Composite tenant
@@ -263,16 +238,13 @@ Networks account in their own name. **This no longer blocks anything else.**
 | `npm test` | Test suite (`node --test`, no framework) |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run build` | `next build` |
-| `npm run db:up` | Start Postgres 16 via Docker Compose |
 | `npm run db:generate` | Regenerate migration SQL from `src/db/schema.ts` |
 | `npm run db:migrate` | Apply pending migrations |
 | `npm run db:seed` | Seed tenant, owner, suppliers, ingredients + opening stock |
-| `npm run db:reset` | **Destroys the volume**, recreates, migrates, seeds |
+| `npm run db:bootstrap-owner` | Create first tenant/owner in an empty DB, no sample data |
+| `npm run db:backup` | Native PostgreSQL snapshot dump with checksum/count manifest |
+| `npm run db:restore-check -- <dump>` | Restore into a separate empty target and verify |
 | `npm run bench:replay` | Ledger replay cost against the live database |
-| `npm run stack:up` | **Whole stack**: Postgres + migrations + app + Caddy, one command |
-| `npm run stack:down` | Stop the stack |
-| `npm run stack:reset` | **Destroys volumes**, rebuilds, restarts |
-| `npm run stack:logs` | Follow all container logs |
 
 ## Layout
 
@@ -306,6 +278,6 @@ app/ui/                 shared presentational components
 app/                    login, home, ingredient and stock screens
 app/recipes/            recipe list and the cost breakdown (no editors yet)
 scripts/bench-replay.ts ledger replay benchmark
-docker-compose.yml      Postgres + migrations + app + Caddy
-deploy/                 production compose and the deployment notes
+render.yaml             native Node.js Render service template
+deploy/                 deployment, first owner, native backup/restore and handover
 ```

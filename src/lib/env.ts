@@ -6,7 +6,7 @@
  * This throws at module load with a message naming every missing variable at once, so a
  * bad deploy fails immediately and legibly rather than at the first customer.
  *
- * Kept dependency-free and free of any import from src/db, so it can run in a container
+ * Kept dependency-free and free of any import from src/db, so it can run in a startup
  * healthcheck or a one-shot script without opening a connection.
  */
 
@@ -20,53 +20,62 @@ export type EnvReport = {
   problems: string[];
 };
 
-/** Everything the app itself needs to serve a request. */
-const REQUIRED = ['DATABASE_URL'] as const;
+export type DatabasePurpose = 'runtime' | 'migration';
 
-/**
- * Required only outside development, where a convenience default would be a published
- * password on an account that holds every permission in the system.
- */
-const REQUIRED_IN_PRODUCTION = ['SEED_OWNER_PASSWORD'] as const;
+export function databaseUrl(env: EnvLike, purpose: DatabasePurpose = 'runtime'): string | undefined {
+  if (purpose === 'runtime') return env.DATABASE_URL?.trim() || undefined;
+  return env.DATABASE_MIGRATION_URL?.trim() ||
+    (env.NODE_ENV === 'development' ? env.DATABASE_URL?.trim() : undefined);
+}
 
-/**
- * `deployment: true` adds checks that only make sense for a process about to serve or
- * migrate, not for a build. `next build` imports every page on a developer machine whose
- * `.env` legitimately points at localhost, so the container heuristic below would be a
- * false positive there. Runtime entry points opt in; module-load checks do not.
- */
-export function checkEnv(env: EnvLike = process.env, opts: { deployment?: boolean } = {}): EnvReport {
+export function isSupabaseHost(host: string): boolean {
+  return host.endsWith('.supabase.co') || host.endsWith('.pooler.supabase.com');
+}
+
+/** Deployment checks run at startup; builds may legitimately use placeholders. */
+export function checkEnv(env: EnvLike = process.env, opts: { deployment?: boolean; purpose?: DatabasePurpose } = {}): EnvReport {
+  const purpose = opts.purpose ?? 'runtime';
+  const key = purpose === 'runtime' ? 'DATABASE_URL' : 'DATABASE_MIGRATION_URL';
   const missing: string[] = [];
   const problems: string[] = [];
-  const isDev = env.NODE_ENV === 'development';
-
-  for (const key of REQUIRED) {
-    if (!env[key]?.trim()) missing.push(key);
+  const connection = databaseUrl(env, purpose);
+  if (!connection) missing.push(key);
+  if (purpose === 'migration' && env.NODE_ENV !== 'development' && !env.APP_DB_PASSWORD?.trim()) {
+    missing.push('APP_DB_PASSWORD');
   }
 
-  // Only checked when the seed will actually run; see scripts/ and src/db/seed.ts.
-  if (!isDev) {
-    for (const key of REQUIRED_IN_PRODUCTION) {
-      if (!env[key]?.trim()) {
-        missing.push(`${key} (required because NODE_ENV is not "development")`);
+  if (connection) {
+    try {
+      const url = new URL(connection);
+      if (!['postgres:', 'postgresql:'].includes(url.protocol) || !url.hostname || url.pathname.length < 2) {
+        problems.push(`${key} must be a postgres:// or postgresql:// URL with a database name.`);
+      } else {
+        const supabase = isSupabaseHost(url.hostname);
+        if (supabase && !env.DATABASE_SSL_CA?.trim()) missing.push('DATABASE_SSL_CA');
+        if (supabase && url.port && url.port !== '5432') {
+          problems.push(`${key} must use Supabase direct or session mode on port 5432. Transaction mode is unsupported.`);
+        }
+        if (supabase && url.searchParams.get('sslmode') === 'disable') {
+          problems.push(`${key} cannot disable TLS for Supabase.`);
+        }
+        if (purpose === 'runtime' && supabase && env.NODE_ENV === 'production' &&
+            decodeURIComponent(url.username).split('.')[0] !== 'cafe_app') {
+          problems.push('DATABASE_URL must use the cafe_app role in production. Keep the postgres credentials in DATABASE_MIGRATION_URL.');
+        }
+        if (opts.deployment && env.RENDER === 'true' &&
+            ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) {
+          problems.push(`${key} points at localhost on Render. Use the Supabase connection from its Connect panel.`);
+        }
       }
+    } catch {
+      problems.push(`${key} must be a valid postgres:// URL; percent-encode reserved characters in the password.`);
     }
   }
 
-  const url = env.DATABASE_URL?.trim();
-  if (url && !/^postgres(ql)?:\/\//.test(url)) {
-    problems.push(`DATABASE_URL must be a postgres:// URL, got "${url.slice(0, 24)}…"`);
+  const max = env.DATABASE_MAX_CONNECTIONS?.trim();
+  if (max && (!/^\d+$/.test(max) || Number(max) < 1 || Number(max) > 20)) {
+    problems.push('DATABASE_MAX_CONNECTIONS must be an integer between 1 and 20.');
   }
-
-  // A production container pointing at localhost is almost always a compose wiring
-  // mistake: the database is a sibling service, not the same network namespace.
-  if (opts.deployment && url && env.NODE_ENV === 'production' && /@(localhost|127\.0\.0\.1)[:/]/.test(url)) {
-    problems.push(
-      'DATABASE_URL points at localhost in production. Inside a container that is the ' +
-        'container itself, not the database — use the compose service name (e.g. @db:5432).',
-    );
-  }
-
   return { ok: missing.length === 0 && problems.length === 0, missing, problems };
 }
 
@@ -88,7 +97,7 @@ export function formatEnvReport(report: EnvReport): string {
 }
 
 /** Throws unless the environment is complete. Call once, at startup. */
-export function assertEnv(env: EnvLike = process.env, opts: { deployment?: boolean } = {}): void {
+export function assertEnv(env: EnvLike = process.env, opts: { deployment?: boolean; purpose?: DatabasePurpose } = {}): void {
   const report = checkEnv(env, opts);
   if (!report.ok) throw new Error(formatEnvReport(report));
 }

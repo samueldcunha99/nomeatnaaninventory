@@ -35,14 +35,13 @@ export async function requirePermission(permission: Permission): Promise<Session
  * It used to be `NODE_ENV === 'production'`, which is the wrong question and broke the
  * one deployment it most needed to work on. A browser REFUSES a `Secure` cookie sent
  * from an `http://` origin - localhost is the only exemption, which is why no one saw
- * it locally. The demo box runs `NODE_ENV=production` behind Caddy on `SITE_ADDRESS=:80`,
+ * it locally. The previous demo box ran `NODE_ENV=production` over plain HTTP,
  * so the cookie was set, silently dropped, and every sign-in bounced straight back to
  * /login with no error to read.
  *
- * `x-forwarded-proto` is set by Caddy to the real scheme and OVERWRITTEN on every
- * request (unlike x-forwarded-for, which is appended to - see the Caddyfile), so a
- * client cannot forge it into saying https. With no proxy in front there is no header,
- * and NODE_ENV is the honest fallback.
+ * Render serves the production site over HTTPS. Its sessions must always be Secure.
+ * Native local runs can read the scheme of their trusted proxy, or fall back to NODE_ENV
+ * without a proxy. A new hosting provider must establish that header's trust boundary.
  *
  * The failure directions are not symmetric, which is why this is worth the paragraph:
  * dropping `Secure` on an HTTPS site exposes the cookie to a downgrade, while setting it
@@ -50,6 +49,7 @@ export async function requirePermission(permission: Permission): Promise<Session
  * right in both places, and TLS is still what you should be serving - see deploy/README.
  */
 async function cookieIsSecure(): Promise<boolean> {
+  if (process.env.RENDER === 'true') return true;
   const proto = (await headers()).get('x-forwarded-proto');
   if (proto) return proto.split(',')[0].trim() === 'https';
   return process.env.NODE_ENV === 'production';

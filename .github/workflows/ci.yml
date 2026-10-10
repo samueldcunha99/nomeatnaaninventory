@@ -1,36 +1,22 @@
 name: CI
 
-# Verify on every push and PR. Publish an image only from main.
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Never interrupt an in-progress production migration.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Tests run against a real Postgres, not a mock. Many of them need one, and they
-  # skip loudly rather than passing quietly when it is absent — so a CI run without
-  # a database would be green and meaningless.
-  # ---------------------------------------------------------------------------
   test:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: cafe
-          POSTGRES_PASSWORD: cafe
-          POSTGRES_DB: cafe
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U cafe -d cafe"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
+    runs-on: ubuntu-24.04
     env:
       DATABASE_URL: postgres://cafe:cafe@localhost:5432/cafe
       NODE_ENV: development
@@ -40,14 +26,20 @@ jobs:
         with:
           node-version: 24
           cache: npm
-
+      - name: Start native PostgreSQL 16
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-16
+          sudo systemctl stop postgresql
+          sudo pg_conftool 16 main set port 5432
+          sudo systemctl start postgresql@16-main
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -c "CREATE ROLE cafe LOGIN PASSWORD 'cafe';"
+          sudo -u postgres createdb -O cafe cafe
+          pg_isready -h localhost -p 5432
       - run: npm ci
       - run: npm run typecheck
       - run: npm run db:migrate
-
       - name: Test, and fail if any database test skipped
-        # A green suite full of skips is not a pass. This is what stops CI silently
-        # degrading into unit-tests-only if the service container ever breaks.
         run: |
           set -o pipefail
           npm test 2>&1 | tee /tmp/test.log
@@ -55,9 +47,23 @@ jobs:
             echo "::error::Database tests skipped - Postgres was not reachable."
             exit 1
           fi
+      - name: Prepare isolated deployment rehearsal databases
+        run: |
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -c "CREATE ROLE cafe_migrator LOGIN CREATEROLE PASSWORD 'ci-migration-only';"
+          sudo -u postgres createdb -O cafe_migrator cafe_deploy
+          sudo -u postgres createdb -O cafe_migrator cafe_restore
+      - name: Rehearse migrations, runtime privileges, first owner, backup and restore
+        env:
+          NODE_ENV: production
+          DATABASE_MIGRATION_URL: postgres://cafe_migrator:ci-migration-only@localhost:5432/cafe_deploy
+          DATABASE_URL: postgres://cafe_app:ci-runtime-only@localhost:5432/cafe_deploy
+          APP_DB_PASSWORD: ci-runtime-only
+          BACKUP_DATABASE_URL: postgres://cafe_migrator:ci-migration-only@localhost:5432/cafe_deploy
+          RESTORE_DATABASE_URL: postgres://cafe_migrator:ci-migration-only@localhost:5432/cafe_restore
+        run: node deploy/smoke-test.ts
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: test
     steps:
       - uses: actions/checkout@v4
@@ -69,116 +75,31 @@ jobs:
       - name: Build Next.js
         env:
           DATABASE_URL: postgres://build:build@build-time-placeholder:5432/build
-          SEED_OWNER_PASSWORD: build-time-placeholder
           NEXT_TELEMETRY_DISABLED: 1
           NODE_ENV: production
         run: npm run build
 
-  # ---------------------------------------------------------------------------
-  # Publish. Only from main, only after tests and build pass.
-  # The image is built HERE and shipped. Never on the VPS: 4 GB OOMs on next build.
-  # ---------------------------------------------------------------------------
-  publish:
-    runs-on: ubuntu-latest
+  deploy:
+    runs-on: ubuntu-24.04
     needs: [test, build]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    permissions:
-      contents: read
-      packages: write
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.DEPLOY_PRODUCTION == 'true'
+    environment: production
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - uses: actions/setup-node@v4
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Image metadata (app)
-        id: meta-app
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          # sha- tags are what the VPS pins to. `latest` is convenience only; deploy by
-          # sha or digest so a rollback is a one-line change.
-          tags: |
-            type=raw,value=latest
-            type=sha,prefix=sha-
-
-      - name: Build and push app image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          target: runtime
-          push: true
-          # amd64 for x86 hosts, arm64 for Ampere/Graviton free tiers. Same tag, one manifest.
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta-app.outputs.tags }}
-          labels: ${{ steps.meta-app.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Image metadata (migrate)
-        id: meta-migrate
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}-migrate
-          tags: |
-            type=raw,value=latest
-            type=sha,prefix=sha-
-
-      - name: Build and push migration image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          target: migrate
-          push: true
-          # amd64 for x86 hosts, arm64 for Ampere/Graviton free tiers. Same tag, one manifest.
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta-migrate.outputs.tags }}
-          labels: ${{ steps.meta-migrate.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # ---------------------------------------------------------------------------
-  # STUB - deploy to the VPS. Intentionally not wired up.
-  # ---------------------------------------------------------------------------
-  # The E2E Networks account does not exist yet. It must be created by the CLIENT, in
-  # the client's name, on the client's payment method - contractual, not a preference
-  # (PROJECT-SPEC 13, and PROGRESS.md "DECIDED - deployment target"). Nothing here
-  # provisions anything, and no future agent should make it do so.
-  #
-  # Target, already decided:
-  #   provider  E2E Networks, Mumbai region
-  #   os        Ubuntu 24.04 LTS
-  #   size      2 vCPU, 4 GB RAM
-  #   auth      SSH key only, root password login disabled
-  #   holder    the client
-  #
-  # To enable: add these repository secrets, then uncomment the job below.
-  #   DEPLOY_HOST      hostname or IP of the VPS
-  #   DEPLOY_USER      non-root deploy user
-  #   DEPLOY_SSH_KEY   private key for that user
-  #   DEPLOY_PATH      directory holding docker-compose.prod.yml and .env
-  #
-  # The deploy is a pull, never a build. See deploy/README.md.
-  #
-  # deploy:
-  #   runs-on: ubuntu-latest
-  #   needs: publish
-  #   if: github.ref == 'refs/heads/main'
-  #   environment: production
-  #   steps:
-  #     - name: Deploy over SSH
-  #       uses: appleboy/ssh-action@v1
-  #       with:
-  #         host: ${{ secrets.DEPLOY_HOST }}
-  #         username: ${{ secrets.DEPLOY_USER }}
-  #         key: ${{ secrets.DEPLOY_SSH_KEY }}
-  #         script: |
-  #           cd ${{ secrets.DEPLOY_PATH }}
-  #           docker compose pull
-  #           docker compose up -d --remove-orphans
-  #           docker image prune -f
+          node-version: 24
+          cache: npm
+      - run: npm ci --include=dev
+      - name: Migrate Supabase and provision the runtime role
+        env:
+          NODE_ENV: production
+          DATABASE_MIGRATION_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
+          DATABASE_SSL_CA: ${{ secrets.DATABASE_SSL_CA }}
+          APP_DB_PASSWORD: ${{ secrets.APP_DB_PASSWORD }}
+        run: npm run db:migrate
+      - name: Request Render deployment of the tested commit
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          DEPLOY_COMMIT: ${{ github.sha }}
+        run: node deploy/render-deploy.ts

@@ -23,7 +23,7 @@ export async function dbReachable(label: string): Promise<boolean> {
     await sql`select 1`;
     return true;
   } catch {
-    console.warn(`SKIPPING ${label}: no reachable DATABASE_URL. Run \`npm run db:up\` first.`);
+    console.warn(`SKIPPING ${label}: no reachable DATABASE_URL. Configure a native PostgreSQL or separate Supabase test database, then run \`npm run db:migrate\`.`);
     await closeDb();
     return false;
   }

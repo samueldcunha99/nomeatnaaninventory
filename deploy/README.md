@@ -1,196 +1,204 @@
-# Deploy — target, and what is deliberately not done yet
+# Render + Supabase handover
 
-**Nothing here provisions anything, and no deploy has happened.** The step is written and
-stubbed, waiting on one thing outside the codebase.
+**Selected by the user on 10 October 2026.** This supersedes the E2E/Docker deployment
+decision. Render runs the existing Next.js server on its native Node.js runtime;
+Supabase hosts PostgreSQL. Drizzle migrations, cookie authentication, tenant filtering,
+integer costing and the stock ledger stay in place. No Supabase browser client is needed.
 
-## Gate
+**Database provisioned; web service not yet deployed.** On 10 October 2026, the user
+created the separate `Nomeatnaan Inventory` project in `samueldcunha99`, Singapore,
+reference `oqvedplcgidrvbggimnr`. All eight migrations applied to PostgreSQL 17.11;
+the twelve application tables and four append-only triggers were verified. The Data
+API is disabled. The `cafe_app` connection can read application tables, has no elevated
+role flags and was observed failing schema creation with PostgreSQL error 42501.
+The initial `NoMeatNaan` tenant and owner `support@nomeatnaan.com` were created with
+a generated password held locally in the ignored `.env.owner.local`. No demo inventory
+or recipes were inserted. Existing-data cutover, Render hosting and a restore rehearsal
+remain outstanding.
 
-**The E2E Networks account does not exist yet.** It must be created by the **client**, in
-the client's name, on the client's payment method.
+Both accounts must belong to the client, who controls
+billing and grants the developer access (PROJECT-SPEC § 13). Deployment is not a gate for
+other development. `render.yaml` is a service template, not evidence of a live service.
 
-This is contractual, not a preference — PROJECT-SPEC § 13 puts every third-party account
-in the client's name on the client's card. **No agent should propose provisioning under
-the developer's own account**, however convenient it looks. A server the client cannot pay
-for or log into directly is a server they cannot keep when the warranty ends.
+## 1. Create the database
 
-## Target
+Use a dedicated Supabase project in the client's organisation. Choose Singapore if
+available to keep it close to the Render server. Use a separate project for
+development and restore rehearsals.
 
-| | |
+**Disable the Data API before adding application tables.** This app checks permissions
+and tenants on the server; its tables have no policies for public Supabase API access.
+No anon, publishable or service-role key belongs in the app. Supabase documents
+[disabling the Data API for direct connections](https://supabase.com/docs/guides/database/secure-data).
+
+In Connect, copy the **direct connection on 5432**, or the **session pooler on 5432** when
+the caller needs IPv4. Use the exact dashboard host. The runtime, migration and native
+backup scripts reject transaction poolers on 6543. Direct and session connections support
+this persistent server's prepared statements and transactions. See
+[Supabase connection methods](https://supabase.com/docs/guides/database/connecting-to-postgres).
+
+Download the database CA certificate from Database Settings. Store its PEM as
+`DATABASE_SSL_CA`; quoted multiline text or literal `\n` separators work. Certificate
+verification stays enabled. Never work around a certificate failure with
+`rejectUnauthorized: false`.
+
+In the SQL editor for this dedicated project, run once:
+
+```sql
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+```
+
+This removes inherited schema creation permission. The migrator refuses to provision
+`cafe_app` if it can still create objects in public. Do not grant `postgres` **to**
+`cafe_app`; the migrator instead grants `cafe_app` **to** its administrative caller so
+that Supabase's non-superuser `postgres` can manage it. The app owns no tables and has no
+elevated role memberships. See [Supabase roles](https://supabase.com/docs/guides/database/postgres/roles).
+
+## 2. Bring across data, or create the first owner
+
+For existing cafe data, pause writes during cutover. Take a backup with the native script
+below, restore it into the empty Supabase project using the restore checker, and inspect
+the results. That brings across the tenant, owner/password hashes, ingredient ledger,
+recipes, stock snapshots and Drizzle migration history together. Keep the old database
+until this copy has passed login, receipt, costing and history checks. Do not merge two
+populated databases or reseed real data.
+
+For a brand-new database, set these in a **secure local shell**, not in Render:
+
+| Variable | Value |
 |---|---|
-| Provider / region | **E2E Networks, Mumbai** |
-| OS | Ubuntu 24.04 LTS |
-| Size | 2 vCPU, 4 GB RAM |
-| Auth | **SSH key only — root password login disabled** |
-| Account holder | The client |
+| `NODE_ENV` | `production` |
+| `DATABASE_MIGRATION_URL` | Administrative direct/session URL from Connect |
+| `DATABASE_SSL_CA` | Database CA PEM |
+| `APP_DB_PASSWORD` | Generated password for the fixed `cafe_app` role |
 
-Chosen over DigitalOcean Bangalore and AWS Lightsail because E2E bills in **INR with a GST
-invoice**, which the client needs, and Mumbai is closer to Aurangabad than Bangalore.
+Run `npm run db:migrate`. It applies pending migrations and grants the runtime role access
+only to application tables and the ledger sequence. It refreshes those grants on every
+deployment. No schema change was needed for this hosting switch.
 
-## What already works, and what is left
+For an empty project only, set `BOOTSTRAP_TENANT_NAME`, `BOOTSTRAP_OWNER_NAME`,
+`BOOTSTRAP_OWNER_EMAIL`, and a generated `BOOTSTRAP_OWNER_PASSWORD` of 12–128 characters.
+Run `npm run db:bootstrap-owner`, then remove these four variables. This creates one
+tenant and one owner atomically, with no demo ingredients, recipes or stock. It refuses
+if any tenant exists. Existing owners create staff accounts through `/settings/users`.
+`db:seed` is sample data for development, not production setup.
 
-Done and verified locally:
+## 3. Create the Render service
 
-- `Dockerfile` — multi-stage, two targets (`runtime`, `migrate`), standalone output,
-  non-root, no dev dependencies in the final image.
-- `docker-compose.yml` — Postgres, one-shot migrations, the app, and Caddy in front.
-- `.github/workflows/ci.yml` — tests against a real Postgres, typecheck, build, and on
-  merge to `main` a push of both images to GHCR.
+Connect this repository to the client's Render workspace and use the Blueprint from
+`render.yaml`. Review the paid compute plan before creating it; the template specifies
+one instance with 1 CPU / 2 GB RAM. Keep one instance while login throttling is held in
+process memory. The client can change the plan without changing application code.
+Render supplies the client address through its ingress; the per-account login counter
+also applies. See [Render's ingress headers](https://render.com/articles/how-render-handles-ddos-attacks).
 
-Left, once the account exists:
+| Setting | Value |
+|---|---|
+| Runtime | Node.js 24 (`package.json` pins the major) |
+| Build | `npm ci --include=dev && DATABASE_URL=postgres://build:build@build-time-placeholder:5432/build npm run build` |
+| Start | `npm run start -- --hostname 0.0.0.0` |
+| Health check | `/api/health` |
+| Automatic deploys | Off; GitHub requests a tested commit after migrations |
 
-1. Create the server (client), add the developer's SSH key.
-2. Harden: `PermitRootLogin no`, `PasswordAuthentication no`, ufw to 22/80/443 only,
-   unattended-upgrades.
-3. Install Docker Engine and the compose plugin.
-4. Point a DNS A record at it — `order.cafename.com` per PROJECT-SPEC § 7.
-5. Write `docker-compose.prod.yml`. It differs from the local file in exactly two ways:
-   it **pulls a published image** instead of building, and `SITE_ADDRESS` is the real
-   hostname so Caddy provisions TLS itself. The Postgres port publication is removed —
-   only the app needs to reach the database.
-6. Add the four repository secrets and uncomment the `deploy` job in `ci.yml`.
-7. Nightly `pg_dump` to Cloudflare R2, **and a tested restore** — PROJECT-SPEC § 10.5 is
-   explicit that the restore is what gets tested, not the backup. The two scripts exist
-   (see Backups below); what is left is putting `backup.sh` in cron on the real box and
-   pointing `R2_REMOTE` at the bucket.
+Render supplies `PORT`; Next.js uses it. Render handles HTTPS for the service/domain.
+The build-only placeholder does not become the runtime connection. The health route
+returns 200 only when the runtime role can query a migrated table; a failure returns 503
+without connection details or business data. See
+[Render's Next.js guide](https://render.com/docs/deploy-nextjs-app) and
+[Blueprint reference](https://render.com/docs/blueprint-spec).
 
-## Backups, and the restore that proves them
+Set only these application variables in Render:
 
-Two scripts, both meant to run on the VPS beside `docker-compose.prod.yml`.
+| Variable | Value |
+|---|---|
+| `NODE_ENV` | `production` |
+| `NEXT_TELEMETRY_DISABLED` | `1` |
+| `DATABASE_URL` | `cafe_app` direct URL, or `cafe_app.<project-ref>` session-pooler URL |
+| `DATABASE_SSL_CA` | Database CA PEM |
+| `DATABASE_MAX_CONNECTIONS` | `5` to start; allow capacity for overlapping deploys too |
 
-**`backup.sh`** — one `pg_dump -Fc` per night, written `.partial` and moved on success,
-refused if the result is implausibly small, copied off the box, then old ones pruned. In
-that order: a prune that runs after a failed copy deletes the backups that still worked.
+Use the generated `APP_DB_PASSWORD` in that runtime URL, percent-encoded. Keep
+`DATABASE_MIGRATION_URL`, `APP_DB_PASSWORD`, bootstrap and seed passwords out of Render.
+After restoring existing data, run the migrator to create/regrant the runtime role
+**before** the first Render service deployment. Blueprint creation can initiate a first
+deployment even with later automatic deploys disabled.
 
-    # /etc/crontab on the VPS
-    0 2 * * *  cd /srv/cafe && R2_REMOTE=r2:cafe-backups ./backup.sh >> /var/log/cafe-backup.log 2>&1
+## 4. Enable the release workflow
 
-`R2_REMOTE` is an [rclone](https://rclone.org/) remote. **Without it the script still runs
-and warns**: a backup on the same disk as the database survives a bad migration and
-nothing else — not a dead disk, not a deleted instance, not ransomware.
+CI installs native PostgreSQL 16 on Ubuntu, migrates an isolated test database, fails on
+skipped DB tests, and builds Next.js. It uses no Docker service or registry.
+It also rehearses the real migration, first-owner, backup and restore scripts in two
+disposable databases, using a non-superuser migrator and checking that runtime DDL fails.
+This rehearsal has been configured but has not run here; local PostgreSQL is unavailable.
 
-**`restore-check.sh`** — restores the newest dump into a scratch database next to the live
-one, compares row counts table by table, checks the append-only trigger came back, and
-drops the scratch database. The live database is only ever read.
+Create a GitHub environment named `production`. Store its secrets:
 
-    cd /srv/cafe && ./restore-check.sh
+- `DATABASE_MIGRATION_URL` — administrative direct/session connection
+- `DATABASE_SSL_CA` — database CA PEM
+- `APP_DB_PASSWORD` — same runtime password as Render's URL
+- `RENDER_DEPLOY_HOOK_URL` — from Render service Settings, kept secret
 
-Monthly, and **once before go-live with the output kept** — that output is the handover
-deliverable in § 12, not the existence of the scripts.
+Set the **repository variable** `DEPLOY_PRODUCTION=true` only after the database and
+service are ready. Leaving it unset disables releases while CI remains active. Configure
+the environment's reviewers/branch restriction as the client prefers. Pushes to `main`
+and manual CI runs on `main` then migrate before requesting the exact tested commit SHA
+through the [Render deploy hook](https://render.com/docs/deploy-hooks).
 
-It reports a restored count *lower* than live as rows newer than the backup, which is
-normal, and an *empty* table where live has rows as a failure. `pg_restore` runs with
-`--exit-on-error`, because it otherwise prints a screen of warnings, exits 0, and leaves
-you with half a database and a passing check.
+The workflow reports that Render **accepted** the request. Check Render Events and the
+HTTPS `/api/health` response to establish that it finished. A hook response alone is not
+a completed deployment. Keep future migrations compatible with the previous running
+version: CI applies them while that version is still serving traffic.
 
-Both scripts default to `docker-compose.prod.yml`; set `COMPOSE="docker compose"` to
-rehearse against a local stack. That is how the first successful restore was run on
-16 September 2026 — ten tables, every count matching, trigger present.
+For a failed app release, select the previous successful deployment in Render. A code
+rollback does not reverse migrations. Take a backup first and use a separate migration
+for database corrections; never delete the production database to roll back code.
 
-## Rules that outlive this file
+## 5. Native backups and a demonstrated restore
 
-- **Never run `next build` on the VPS.** 4 GB will OOM. The image is built in CI and
-  shipped. This is why the compose file on the server pulls rather than builds.
-- **Deploy by `sha-` tag or digest, not `latest`.** A rollback should be a one-line change
-  to a pinned tag, not a rebuild.
-- **Migrations run as a one-shot container before the app starts**, from the same source
-  tree as the app image, so the schema and the code reading it are never mismatched.
-  Compose enforces the order with `service_completed_successfully`.
-- **The app container cannot alter the schema.** The migration runner is a separate image
-  target on purpose.
+Install native PostgreSQL **client tools matching or newer than the source server**;
+`pg_dump` and `pg_restore` must be on PATH. Node 24 runs the commands on Windows/Linux.
+Use direct or session connections, never transaction pooling. For Supabase supply the CA.
 
----
+Set `BACKUP_DATABASE_URL` to the source admin connection and `DATABASE_SSL_CA` to its CA
+(empty for an ordinary local database). Set `BACKUP_DIR` if needed. Run:
 
-## Demo box on a free VPS (not the production path above)
+```text
+npm run db:backup
+```
 
-The E2E target above still stands for production and § 13 still applies. This section is
-a **throwaway demo host**, on the developer's own free-tier account, with no client data
-on it. Do not let it drift into production: no real orders, no real customer records.
+It writes a custom-format `.dump` and a `.dump.json` manifest. Table counts come from the
+same exported repeatable-read snapshot used by `pg_dump`; the manifest also records a
+SHA-256 checksum. It includes public and drizzle only, avoiding Supabase's managed
+auth/storage schemas. Passwords are passed to client tools through their environment,
+never command arguments. Files are ignored by Git. Copy **both files** to client-owned
+off-site storage; this script neither schedules backups nor uploads/prunes them.
 
-**Provider: Oracle Cloud Always Free, Mumbai or Hyderabad.** The only free tier big
-enough to run this stack — Ampere A1, up to 4 ARM vCPU / 24 GB, free indefinitely rather
-than for 12 months. Google's e2-micro (1 GB) and Oracle's AMD micro shapes are too small
-for Postgres + Next + Caddy together. Two known annoyances: signup needs a card for
-identity verification (no charge on Always Free), and popular regions often answer
-"Out of host capacity" for A1 — retry, or take 2 vCPU / 12 GB instead of 4 / 24.
+For a rehearsal, create a separate empty local database or Supabase project. Disable its
+Data API too. Set `RESTORE_DATABASE_URL` and `RESTORE_DATABASE_SSL_CA` for that target:
 
-Ampere is ARM64, which is why CI now publishes `linux/amd64,linux/arm64` for both images.
-The same `IMAGE_TAG` works on either architecture.
+```text
+npm run db:restore-check -- backups/cafe-<timestamp>.dump
+```
 
-### 1. Create the instance — you, not an agent
+It rejects a target identifying the source (including Supabase direct/pooler aliases),
+rejects nonempty app schemas, verifies the checksum, restores with `--exit-on-error`,
+compares every table to its exact snapshot count and checks both append-only triggers.
+The target stays available for inspection and is not deleted automatically. Use an
+isolated target with no active applications; the empty-target check is not a lock against
+someone else writing to it during restoration. Do not retry into a partially restored
+target; create another empty test target instead.
 
-Account creation and card entry are yours to do. Shape `VM.Standard.A1.Flex`,
-Ubuntu 24.04, paste your SSH public key, and open 80/443 in the subnet's security list
-(Oracle blocks them by default — this is the step everyone forgets).
+Before real use, arrange nightly backups/off-site copies and provider recovery in the
+client's accounts; rehearse a restore at least monthly and keep its output. Account/plan
+configuration and the first live restore remain deployment work, not verified by the
+presence of these scripts. See [Supabase migration guidance](https://supabase.com/docs/guides/platform/migrating-to-supabase/postgres).
 
-### 2. Harden and install Docker
+## Handover acceptance
 
-    sudo apt update && sudo apt install -y unattended-upgrades
-    curl -fsSL https://get.docker.com | sudo sh
-    sudo usermod -aG docker ubuntu   # log out and back in
-    # Ubuntu images on Oracle ship iptables rules that drop 80/443 regardless of the
-    # console's security list. Both have to allow it.
-    sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
-    sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
-    sudo netfilter-persistent save
-
-### 3. Ship the three files it needs
-
-From the repo, `scp` `deploy/docker-compose.prod.yml`, `Caddyfile`, and a `.env` you
-write on the server (never committed) into `~/cafe/`:
-
-    GHCR_REPO=<lowercase owner/repo>
-    IMAGE_TAG=sha-<the sha CI published>
-    SITE_ADDRESS=:80          # demo: plain HTTP on the IP. A hostname here gets TLS free.
-    POSTGRES_PASSWORD=<generated>
-    APP_DB_PASSWORD=<a different generated one>
-    SEED_OWNER_PASSWORD=<generated>
-
-`APP_DB_PASSWORD` is not optional and is **not** the same as `POSTGRES_PASSWORD`. The
-migrator owns the schema; the app runs as `cafe_app`, which the migrator creates and
-grants data access and nothing else. `docker-compose.prod.yml` refuses to start without
-it, so a demo built from an older copy of this list fails at `up` rather than at boot.
-
-Then, if the packages are private, `docker login ghcr.io` with a PAT scoped
-`read:packages`, and:
-
-    docker compose -f docker-compose.prod.yml pull
-    docker compose -f docker-compose.prod.yml up -d
-
-Migrations run as a one-shot before the app starts, same as locally. Seeding is not
-automatic — `docker compose run --rm migrate node src/db/seed.ts` if the demo needs the
-owner account.
-
-### 4. Handing it to the client for testing
-
-The demo box exists for exactly one thing: getting the owner in front of the screens
-without waiting for the E2E account. Aurangabad to a Mumbai or Hyderabad region is a
-short hop, so it will feel local on a phone.
-
-1. **Publish an image first.** CI only pushes to GHCR on a push to `main`. Work sitting
-   on a feature branch has no image, and `IMAGE_TAG` has nothing to point at. Merge, let
-   CI finish, then take the `sha-` tag from the run.
-2. **Seed, then make him his own login.** Seed as step 3 above describes. Sign in as that
-   owner once, create *him* a real account at `/settings/users`, and keep the seeded
-   owner as the break-glass account. A shared login makes the audit log useless the
-   moment two people use it.
-3. **Send the URL and the password separately.** Different channels — the link by
-   WhatsApp, the password by voice or SMS. On `SITE_ADDRESS=:80` this is plain HTTP on a
-   bare IP, so treat the password as interceptable and make it one he uses nowhere else.
-4. **Tell him what to break, not just that it exists.** The outstanding gate is § 6 of
-   [../files/client-questions-2026-09.md](../files/client-questions-2026-09.md): a real
-   multi-line delivery entered by hand on the stock receipt screen. That form is the one
-   part of this nothing but us has ever used, and the defects in it are the ones we
-   cannot find by testing, because we already know how it is meant to be used.
-5. **Say plainly that the data is throwaway.** No backups, no tested restore, § 10.5
-   deliberately not met. Anything he types here he types again on the real server. That
-   sentence has to reach him *before* he spends an evening entering his stock, not after.
-
-**Real cafe data does not go on this box.** The recipe book and price list are already in
-the repo and will be in the image, which is a considered exception — they are his own
-figures, going to him. Live stock counts, staff accounts with real passwords and any
-customer record are not.
-
-### 5. Deleting it
-
-It is a demo. `docker compose down -v` and terminate the instance; nothing here is
-backed up, and § 10.5's tested-restore requirement is deliberately not met.
+Keep the deployed commit, service URL, database region/version, billing owners,
+credential locations, recovery contact and backup/restore evidence in the client's
+handover record. Verify owner login, role restrictions, a real delivery, recipe costing,
+movement history, restart persistence and restore results before live use. The
+[8 October audit](../files/audit-2026-10-08.md) still contains correctness issues to resolve;
+changing hosting does not resolve them. Production logging has a backend but no daily
+production UI yet. Do not describe this deployment work as completing that feature.
