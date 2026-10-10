@@ -6,9 +6,10 @@ order management, and a customer-facing tracking page. Five-month build.
 
 **Month 1 and Month 2 complete; production logging has a backend but no screen yet.**
 The user selected **Netlify Free + Supabase without Docker on 10 October 2026**,
-superseding the earlier Render choice. The dedicated Supabase database is migrated;
-Netlify setup is underway. GitHub CI passed its live database tests, production build
-and disposable backup/restore rehearsal at commit `b6730a8`. Historical
+superseding the earlier Render choice. The app is live at
+[nomeatnaaninventory.netlify.app](https://nomeatnaaninventory.netlify.app/), connected to
+the dedicated Supabase database. GitHub CI passed its live database tests, production build
+and disposable backup/restore rehearsal at deployed commit `c633ad2`. Historical
 241-test DB verification and current results are distinguished below.
 
 ---
@@ -25,13 +26,13 @@ repository. Nothing important lives in a chat log.
 | Month 1 — foundations & inventory | ✅ **complete**, steps 1–7, verified against live Postgres |
 | UI styling pass | ✅ complete, all 9 internal screens, Tailwind v4 |
 | Deployment configuration | Netlify Next.js adapter + Supabase PostgreSQL; CI uses native PostgreSQL |
-| Live deployment | Supabase migrated and first owner created; Netlify runtime verification pending |
+| Live deployment | Netlify published c633ad2; database health, owner login, 11 pages and sign-out verified |
 | Month 2 step 1 — recipe / menu schema | ✅ **done**, migration 0002 |
 | Month 2 steps 2–4 — costing engine | ✅ **done**, paper cases P1–P22 |
 | Month 2 step 5 — costing screens and editors | ✅ **done**, recipe list, cost breakdown, what-if, and the recipe / line / menu-item editors |
 | Trunk | `main`. Everything is merged; `month-2-costing` is merged and safe to delete. |
 | Tests | Historical: 241 passing against live PG. Current local run: 249 tests, 148 pass, 101 DB skips |
-| Current deployment verification | GitHub CI run 38050087973 passed; see the dated 10 October entries in PROGRESS.md |
+| Current deployment verification | GitHub CI run 38054582472 passed; see the dated 10 October entries in PROGRESS.md |
 
 ## Verified against a live database vs merely built
 
@@ -56,10 +57,13 @@ cost breakdown *were* driven in a real browser against seeded data, including th
 and all three failure states, but **no form has been filled in by hand end to end.** That
 is still where undiscovered defects are.
 
-**Hosting verification in progress** — Supabase is provisioned and Netlify is connected
-to `samueldcunha99/nomeatnaaninventory`. Its first build failed because DATABASE_URL
-was not configured. `netlify.toml` prepares a build-only placeholder; private runtime
-variables belong in Netlify. GitHub CI has exercised the native DB restore rehearsal.
+**Hosting verified on 10 October** — Netlify published `c633ad2` from
+`samueldcunha99/nomeatnaaninventory`. HTTPS readiness returns 200 against Supabase;
+owner login, all 11 checked pages, Secure/HttpOnly cookies and sign-out passed. The
+platform POST limit was observed returning 429 on request 31. Runtime credentials are
+stored in Netlify, outside Git. GitHub CI exercised its isolated DB restore rehearsal.
+This is a fresh database: historical inventory/recipes were not transferred, and a live
+Supabase restore, scheduled off-site backups and staff workflow acceptance remain open.
 
 ## What is gated, and on what
 

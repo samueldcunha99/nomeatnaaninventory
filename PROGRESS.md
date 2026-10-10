@@ -2113,3 +2113,36 @@ a skipped-test guard, the production build and disposable migration/privilege/fi
 backup/restore rehearsal. This is separate from a live Supabase restore. The Netlify
 changes passed typecheck, 29 targeted tests and the production build locally.
 Netlify runtime configuration, final deployment and live HTTPS checks are still pending.
+
+## 2026-10-10 — Netlify deployment and HTTPS owner checks passed
+
+Saved all eight runtime variables through the Netlify project UI, with the restricted
+cafe_app session-pooler connection and verified TLS CA. Administrative, bootstrap and
+owner passwords were not uploaded or committed. Pushed application commit
+`c633ad2aa2464c1748d00f46008055bbebb54d76` to inventory/main. Netlify published deploy
+`6aca38cc947b9f0008b322a7` in 39 seconds at
+https://nomeatnaaninventory.netlify.app/. Its post-processing log accepted the shared
+IP/domain rule for all POST paths, with a 30-request/180-second window.
+
+Live verification: `/api/health` returned 200 with status ok; login returned 200;
+anonymous ingredients access redirected to login. Owner login using the locally held
+password returned 303 and a Secure, HttpOnly, SameSite=Lax session cookie. Dashboard,
+ingredients/list/new, receipt, adjustment, movement history, low stock, recipes/list/new,
+user settings and costing settings all returned 200 for the owner. Sign-out returned 303
+and the revoked token redirected to login. No demo business data was created. An initial
+smoke assertion used the wrong cookie name; reading the app's session-cookie constant
+corrected the probe, with no application change required.
+
+Thirty unsupported POSTs to the health route returned 405; request 31 returned 429,
+proving the platform guard blocks without mutating inventory. Temporarily removing the
+Netlify startup loopback guard caused its regression test to fail; restoring it returned
+all 13 environment tests to green. GitHub CI run 38054582472 completed both test and build
+jobs successfully, including native PostgreSQL, the skipped-test guard and the isolated
+migration/privilege/first-owner/backup/restore rehearsal.
+
+This verifies hosting and owner access, not historical-data migration or a live Supabase
+restore. The older database remains unreachable. Nightly off-site backups, client account
+ownership/recovery details, staff workflow acceptance, audit fixes and the daily
+production/yield screen remain outstanding. Netlify function cold starts and provider
+Free-tier usage/inactivity limits still apply. A documentation-only follow-up commit uses
+`[skip netlify]` to retain the already verified application deployment.

@@ -5,7 +5,15 @@ deployment decisions. Netlify runs the Next.js app through its managed OpenNext 
 Supabase hosts PostgreSQL. Drizzle migrations, cookie authentication, tenant filtering,
 integer costing and the stock ledger stay in place. No Supabase browser client is needed.
 
-**Database provisioned; web service not yet deployed.** On 10 October 2026, the user
+**Deployed and checked on 10 October 2026.** The app is available at
+[nomeatnaaninventory.netlify.app](https://nomeatnaaninventory.netlify.app/). Netlify deploy
+`6aca38cc947b9f0008b322a7` published application commit `c633ad2` in 39 seconds. HTTPS
+readiness returned 200, owner sign-in issued a Secure/HttpOnly/SameSite=Lax cookie,
+all 11 checked owner pages returned 200, and sign-out revoked the session. The platform
+POST rule was accepted in post-processing and returned 429 on request 31; the preceding
+30 unsupported POSTs returned 405 and did not modify business data.
+
+On 10 October 2026, the user
 created the separate `Nomeatnaan Inventory` project in `samueldcunha99`, Singapore,
 reference `oqvedplcgidrvbggimnr`. All eight migrations applied to PostgreSQL 17.11;
 the twelve application tables and four append-only triggers were verified. The Data
@@ -14,15 +22,16 @@ role flags and was observed failing schema creation with PostgreSQL error 42501.
 The initial `NoMeatNaan` tenant and owner `support@nomeatnaan.com` were created with
 a generated password held locally in the ignored `.env.owner.local`. No demo inventory
 or recipes were inserted. The older local database is unreachable; historical inventory
-and recipes were not transferred. GitHub CI run 38050087973 passed its isolated native
-PostgreSQL test, build and backup/restore rehearsal at commit b6730a8. This is not a
+and recipes were not transferred. GitHub CI run 38054582472 passed its isolated native
+PostgreSQL test, build and backup/restore rehearsal at commit c633ad2. This is not a
 restore demonstration of production Supabase data.
 
 Both accounts must belong to the client, who controls
 billing and grants the developer access (PROJECT-SPEC § 13). Deployment is not a gate for
 other development. Netlify project `nomeatnaaninventory` is connected to the inventory
-repository. Its first build failed on missing DATABASE_URL; runtime verification remains
-pending. The team reports a scheduled downgrade to Free in 13 days; no billing setting
+repository. Its first build failed on missing DATABASE_URL; the build placeholder and
+eight runtime variables resolved it. The team reports a scheduled downgrade to Free in
+13 days; no billing setting
 was changed as part of this switch.
 
 ## 1. Create the database
@@ -149,7 +158,7 @@ CI installs native PostgreSQL 16 on Ubuntu, migrates an isolated test database, 
 skipped DB tests, and builds Next.js. It uses no Docker service or registry.
 It also rehearses the real migration, first-owner, backup and restore scripts in two
 disposable databases, using a non-superuser migrator and checking that runtime DDL fails.
-Run [38050087973](https://github.com/samueldcunha99/nomeatnaaninventory/actions/runs/38050087973)
+Run [38054582472](https://github.com/samueldcunha99/nomeatnaaninventory/actions/runs/38054582472)
 passed all these jobs. Local PostgreSQL remains unavailable. Netlify's Git integration
 deploys independently from CI, so review CI results before considering a release verified.
 For future schema changes, run compatible migrations with the separate administrative
@@ -158,6 +167,9 @@ The old Render deployment job/hook were removed. No migration credentials belong
 Netlify, and no migration or demo seed runs as part of its build.
 
 Check the Netlify deploy log and HTTPS `/api/health` to establish a completed deployment.
+For a documentation-only handover commit, `[skip netlify]` in the commit message avoids
+another identical deployment; it does not skip GitHub CI. See
+[Netlify deploy controls](https://docs.netlify.com/deploy/manage-deploys/manage-deploys-overview/).
 For a failed app release, select the previous successful deployment in Netlify. A code
 rollback does not reverse migrations. Take a backup first and use a separate migration
 for database corrections; never delete the production database to roll back code.
