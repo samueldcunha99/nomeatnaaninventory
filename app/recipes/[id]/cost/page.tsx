@@ -305,7 +305,7 @@ export default async function CostBreakdownPage({
               {view.missing.length} {view.missing.length === 1 ? 'ingredient has' : 'ingredients have'}{' '}
               no purchase history, so there is no price to work from:{' '}
               {view.missing.map((m, i) => (
-                <span key={m.ingredientId}>
+                <span key={m.ingredientId + ':' + i}>
                   {i > 0 ? ', ' : ''}
                   <strong>{m.name}</strong>
                   {m.path?.length ? <span className="muted"> (in {m.path.join(' → ')})</span> : null}

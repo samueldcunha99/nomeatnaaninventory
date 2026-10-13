@@ -2191,3 +2191,60 @@ current page, then opened Overview and cleared the status. Movement history beha
 same way, with the visible spinner captured in the local verification screenshot.
 No inventory, recipe, account, schema or hosting-plan changes were made by these probes.
 Remaining network and function-start delay is not hidden by cached session or cost data.
+
+## 2026-10-10 - Recipe workbook imported with explicit yields
+
+The owner requested the No Meat Naan shop Product Recipe workbook import and clarified
+that only recipes with explicit yield units should be added. They also corrected
+"browni" to "brownies". Read both sheets without changing the workbook and preserved
+source titles, rows and yield wording in recipe notes. Clear spelling errors were
+corrected; duplicate recipes keep separate version names.
+
+Imported 19 complete recipes with 154 lines and 57 ingredient records into the
+NoMeatNaan tenant through createIngredient and saveRecipe, using Zod validation,
+the active owner and restricted runtime credentials. No schema, authentication,
+ledger, purchase price, selling price or hosting changes were made. Untimed batches
+remain null; all recipe costs correctly report missing purchase history.
+
+There are 226 pending entries because of absent/unclear yield units, missing/unclear
+quantities or unresolved preparation versions. No ice-cup, pinch, teaspoon or drop
+weights were guessed. The detailed source-cell review, extraction and recovery
+manifest are local files under files/recipe-import-*. No client workbook data or
+credentials were pushed to GitHub.
+
+Nine planning tests passed. A temporary copy restoring the unit-name mutation bug
+failed the intended regression, proving the guard. Saved names, yields, source IDs,
+quantities and wastage values were checked through the one recipe graph loader.
+The live app shows 19 recipes, 57 ingredients and the corrected Brownies versions;
+stock movements and menu items remain zero. Browser verification screenshot is local.
+
+## 2026-10-14 - Continued workbook reconciliation
+
+Resolved the focaccia yeast entries from an explicit equivalent written in the same
+recipe, scoped to that ingredient and exact spoon amount. Imported one recipe and
+three ingredients through the existing validated app writers. Totals are now 20
+recipes, 60 ingredients and 165 recipe lines. There are 225 pending workbook entries.
+The owner confirmed the Graham cracker flour quantity; its yield unit remains
+unconfirmed. Conflicting namelaka yields remain pending. Corrections and manifests
+stay local. Thirteen planning tests passed, and removing ingredient identity in a
+temporary copy made the scope regression fail. Stock movements and menu items remain
+zero; no purchase prices were invented.
+
+## 2026-10-14 - Metric entry controls prepared
+
+The owner requested metric options they can enter themselves in the app. Recipe batch
+yields now offer g, kg, ml, L and pieces; ingredient lines offer compatible units.
+Switching g/kg or ml/L preserves the exact amount, while changing measurement type
+clears the field for a fresh entry. Units are submitted and checked server-side before
+conversion through the existing integer input boundary. Stored quantities remain
+canonical milli-base, with the existing permission, tenant, graph and costing guards.
+No schema change was needed.
+
+All 25 targeted quantity, unit and source-integrity tests passed, as did typecheck and
+the production build. Removing the dimension guard in a temporary copy failed the
+intended regression. Browser testing converted a focaccia ingredient from grams to
+kilograms and saved it. A read-only reload through the graph loader verified every
+quantity, source ID, yield and wastage value matched the imported recipe exactly,
+with no stock or menu changes. The browser also exposed repeated React keys in the
+existing missing-cost list, now distinguished per occurrence. Online deployment and
+exact-commit CI verification remain pending at this entry.

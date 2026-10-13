@@ -4,7 +4,8 @@ import { useActionState, useRef, useState } from 'react';
 import Link from 'next/link';
 import { saveRecipeAction, type FormState } from './actions.ts';
 import { IngredientCombobox } from '../ui/ingredient-combobox.tsx';
-import { baseUnitLabel, type UnitType } from '../../src/lib/units.ts';
+import type { UnitType } from '../../src/lib/units.ts';
+import { RECIPE_UNITS, baseRecipeUnit, recipeUnitType, changeRecipeQuantityUnit, type RecipeQuantityUnit } from '../../src/lib/recipe-quantity.ts';
 
 export type SourceOption = {
   id: string;
@@ -31,7 +32,7 @@ export type RecipeFormValues = {
  * the text names nothing. Both are kept so the field can be typed into freely without
  * losing the resolution - only the id is ever submitted.
  */
-type Row = { key: string; sourceId: string; sourceText: string; quantity: string; wastage: string };
+type Row = { key: string; sourceId: string; sourceText: string; quantity: string; quantityUnit: RecipeQuantityUnit; wastage: string };
 
 const ALERT =
   'M10 1.7 19 18H1L10 1.7Zm0 5.3a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-1-1Zm0 8.2a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3Z';
@@ -41,11 +42,8 @@ const ALERT =
  * above zero - lives behind `saveRecipe`, so this is a form over a function that already
  * refuses everything it should. Nothing here re-implements a check.
  *
- * The one thing the form itself has to get right is the UNIT. A quantity is in the unit
- * of whatever the line draws on, and that is not a choice to ask the operator to make
- * twice: pick "Butter" and the box reads grams, pick a volume sub-recipe and it reads
- * millilitres. The label is submitted alongside the quantity so the server can refuse a
- * save where the two have drifted apart.
+ * A line offers units compatible with its source. Both the selected metric unit and
+ * the source measurement type travel with the quantity for validation on the server.
  */
 export function RecipeForm({
   sources,
@@ -68,6 +66,7 @@ export function RecipeForm({
     sourceId: '',
     sourceText: '',
     quantity: '',
+    quantityUnit: 'g',
     wastage: '',
   });
 
@@ -78,6 +77,7 @@ export function RecipeForm({
           sourceId: l.sourceId,
           sourceText: sources.find((s) => s.id === l.sourceId)?.name ?? '',
           quantity: l.quantity,
+          quantityUnit: baseRecipeUnit(sources.find(s => s.id === l.sourceId)?.unitType ?? 'weight'),
           wastage: l.wastage,
         }))
       : [blank(), blank(), blank()],
@@ -85,7 +85,9 @@ export function RecipeForm({
 
   // The yield unit is state for the same reason a line's unit is derived: the label beside
   // the number has to say what the number means, and follow when it changes.
-  const [yieldUnitType, setYieldUnitType] = useState<UnitType>(initial?.yieldUnitType ?? 'weight');
+  const [yieldUnit, setYieldUnit] = useState<RecipeQuantityUnit>(baseRecipeUnit(initial?.yieldUnitType ?? 'weight'));
+  const [yieldQuantity, setYieldQuantity] = useState(initial?.yieldQty ?? '');
+  const [unitError, setUnitError] = useState<string | null>(null);
 
   const set = (i: number, patch: Partial<Row>) =>
     setRows((rs) => rs.map((r, k) => (k === i ? { ...r, ...patch } : r)));
@@ -104,6 +106,8 @@ export function RecipeForm({
   return (
     <form action={formAction} className="recipe-editor">
       {initial?.id ? <input type="hidden" name="id" value={initial.id} /> : null}
+      <input type="hidden" name="yieldUnitType" value={recipeUnitType(yieldUnit)} />
+      {unitError ? <p className="msg msg--error" role="alert">{unitError}</p> : null}
 
       {state.error ? (
         <div className="msg msg--error" role="alert">
@@ -146,36 +150,42 @@ export function RecipeForm({
                 className="input w-32 tabular-nums"
                 id="yieldQty"
                 name="yieldQty"
-                defaultValue={initial?.yieldQty}
+                value={yieldQuantity}
+                onChange={e => { setYieldQuantity(e.target.value); setUnitError(null); }}
                 inputMode="decimal"
                 required
               />
-              <span className="text-sm font-medium text-ink whitespace-nowrap">
-                {baseUnitLabel(yieldUnitType)}
-              </span>
             </div>
           </div>
 
           <div className="field mb-0">
-            <label className="sr-only" htmlFor="yieldUnitType">
-              Measured in
+            <label className="sr-only" htmlFor="yieldUnit">
+              Batch yield unit
             </label>
             <select
               className="select w-44"
-              id="yieldUnitType"
-              name="yieldUnitType"
-              value={yieldUnitType}
-              onChange={(e) => setYieldUnitType(e.target.value as UnitType)}
+              id="yieldUnit"
+              name="yieldUnit"
+              value={yieldUnit}
+              onChange={e => {
+                const next = e.target.value as RecipeQuantityUnit;
+                try {
+                  setYieldQuantity(recipeUnitType(next) === recipeUnitType(yieldUnit)
+                    ? changeRecipeQuantityUnit(yieldQuantity, yieldUnit, next) : '');
+                  setYieldUnit(next);
+                  setUnitError(null);
+                } catch {
+                  setUnitError('Finish entering the batch yield number before changing its unit.');
+                }
+              }}
             >
-              <option value="weight">by weight (g)</option>
-              <option value="volume">by volume (ml)</option>
-              <option value="count">by count (units)</option>
+              {RECIPE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
             </select>
           </div>
         </div>
         <p className="prose-note mt-1">
-          Enter the usable amount after preparation. For a batch of 85 cookies, choose
-          count and enter 85. For a sauce, enter its finished weight or volume.
+          Enter the usable amount after preparation, then choose its unit. For 85 cookies,
+          choose pieces and enter 85. For 1.5 kg of sauce, enter 1.5 and choose kg.
         </p>
       </fieldset>
 
@@ -217,7 +227,13 @@ export function RecipeForm({
                       options={options}
                       value={row.sourceId}
                       text={row.sourceText}
-                      onChange={({ id, text }) => set(i, { sourceId: id, sourceText: text })}
+                      onChange={({ id, text }) => {
+                        const selected = sources.find(s => s.id === id);
+                        const compatible = !selected || recipeUnitType(row.quantityUnit) === selected.unitType;
+                        set(i, { sourceId: id, sourceText: text,
+                          quantity: compatible ? row.quantity : '',
+                          quantityUnit: compatible ? row.quantityUnit : baseRecipeUnit(selected.unitType) });
+                      }}
                       ariaLabel={`Ingredient or recipe, line ${i + 1}`}
                       noun="ingredient or recipe"
                     />
@@ -246,10 +262,20 @@ export function RecipeForm({
                         inputMode="decimal"
                         aria-label={`Quantity, line ${i + 1}`}
                       />
-                      {/* The unit follows the source. Nothing here is typed by hand. */}
-                      <span className="text-sm font-medium text-ink whitespace-nowrap">
-                        {source ? baseUnitLabel(source.unitType) : ''}
-                      </span>
+                      <select className="select w-36" name={`lines[${i}][quantityUnit]`}
+                        aria-label={`Quantity unit, line ${i + 1}`} value={row.quantityUnit} disabled={!source}
+                        onChange={e => {
+                          const next = e.target.value as RecipeQuantityUnit;
+                          try {
+                            set(i, { quantity: changeRecipeQuantityUnit(row.quantity, row.quantityUnit, next), quantityUnit: next });
+                            setUnitError(null);
+                          } catch {
+                            setUnitError(`Finish entering the quantity on line ${i + 1} before changing its unit.`);
+                          }
+                        }}>
+                        {RECIPE_UNITS.filter(u => !source || u.unitType === source.unitType)
+                          .map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
+                      </select>
                     </div>
                   </td>
 

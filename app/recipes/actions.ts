@@ -7,6 +7,7 @@ import { collectIndexedRows, isBlankRow } from '../../src/lib/form.ts';
 import { requirePermission } from '../../src/auth/server.ts';
 import { saveRecipe, saveMenuItem, type RecipeLineInput } from '../../src/db/recipes.ts';
 import { baseUnitsToMilliBase, parseDecimalToInteger, rupeesToPaise } from '../../src/lib/units.ts';
+import { parseRecipeQuantity } from '../../src/lib/recipe-quantity.ts';
 
 export type FormState = { error: string | null };
 
@@ -37,6 +38,7 @@ function friendly(err: unknown): string {
 }
 
 const UNIT = z.enum(['weight', 'volume', 'count']);
+const QUANTITY_UNIT = z.enum(['g', 'kg', 'ml', 'l', 'unit'], { error: 'Choose g, kg, ml, L or pieces for each quantity.' });
 
 const Line = z.object({
   sourceId: z.string().uuid('Pick an ingredient or a recipe on every line that has a quantity.'),
@@ -53,6 +55,7 @@ const Line = z.object({
    * millilitres.
    */
   entryUnit: UNIT,
+  quantityUnit: QUANTITY_UNIT,
   quantity: z.string().trim().min(1, 'Every line needs a quantity.').max(DECIMAL_MAX),
   wastage: z.string().trim().max(DECIMAL_MAX),
 });
@@ -61,6 +64,7 @@ const Recipe = z.object({
   id: z.string().uuid().nullable(),
   name: z.string().trim().min(1, 'A recipe needs a name.').max(120),
   yieldUnitType: UNIT,
+  yieldUnit: QUANTITY_UNIT,
   yieldQty: z.string().trim().min(1, 'Enter what one batch yields.').max(DECIMAL_MAX),
   /*
    * Blank is a real answer and it is NOT zero: an untimed recipe is costed on its
@@ -98,6 +102,7 @@ export async function saveRecipeAction(_prev: FormState, formData: FormData): Pr
     id: String(formData.get('id') ?? '') || null,
     name: formData.get('name'),
     yieldUnitType: formData.get('yieldUnitType'),
+    yieldUnit: formData.get('yieldUnit'),
     yieldQty: formData.get('yieldQty'),
     batchMinutes: String(formData.get('batchMinutes') ?? '').trim(),
     notes: String(formData.get('notes') ?? '').trim() || null,
@@ -107,13 +112,12 @@ export async function saveRecipeAction(_prev: FormState, formData: FormData): Pr
 
   let recipeId: string;
   try {
-    // The input boundary: operator decimals in, exact integers out. Quantities are in the
-    // source's own base unit - grams, millilitres, or a count - which is how recipes are
-    // written down in the kitchen.
+    // The selected display unit is submitted with the decimal. Convert once at this
+    // boundary; saveRecipe still checks the claimed measurement type against the source.
     const lines: RecipeLineInput[] = parsed.data.lines.map((l) => ({
       ingredientId: l.sourceKind === 'ingredient' ? l.sourceId : null,
       subRecipeId: l.sourceKind === 'recipe' ? l.sourceId : null,
-      quantityMilliBase: baseUnitsToMilliBase(l.quantity),
+      quantityMilliBase: parseRecipeQuantity(l.quantity, l.quantityUnit, l.entryUnit),
       wastageMillipercent: l.wastage ? parseDecimalToInteger(l.wastage, 1000n) : 0n,
       entryUnitType: l.entryUnit,
     }));
@@ -122,7 +126,7 @@ export async function saveRecipeAction(_prev: FormState, formData: FormData): Pr
       id: parsed.data.id ?? undefined,
       name: parsed.data.name,
       yieldUnitType: parsed.data.yieldUnitType,
-      yieldQtyMilliBase: baseUnitsToMilliBase(parsed.data.yieldQty),
+      yieldQtyMilliBase: parseRecipeQuantity(parsed.data.yieldQty, parsed.data.yieldUnit, parsed.data.yieldUnitType),
       batchMinutes: parsed.data.batchMinutes,
       notes: parsed.data.notes,
       lines,
