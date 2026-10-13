@@ -2248,3 +2248,18 @@ quantity, source ID, yield and wastage value matched the imported recipe exactly
 with no stock or menu changes. The browser also exposed repeated React keys in the
 existing missing-cost list, now distinguished per occurrence. Online deployment and
 exact-commit CI verification remain pending at this entry.
+
+## 2026-10-14 - Metric controls deployed and verified
+
+Published application commit c3cae6c8ec5a5af53ac4f5b3b2ef9cd12c8eb632 to inventory/main.
+GitHub CI run 38449970338 completed its test and build jobs successfully, including
+isolated PostgreSQL tests, the no-skipped-tests guard and deployment rehearsal.
+Netlify now exposes the new metric controls on new and existing recipes.
+
+Verified kilogram ingredient entry and litre batch/ingredient entry in browser forms.
+The online app saved 0.8 L as the original 800 ml yield. A final read-only comparison
+of all 20 imported recipes and 60 ingredients through the graph loader matched their
+source IDs, exact quantities, yields and wastage values. Stock and menu counts stayed
+zero. Local build/typecheck and 25 targeted tests passed. No workbook/import data or
+credentials were published. The unresolved source measurements remain in the local
+review, ready for the owner to enter using the metric fields.

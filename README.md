@@ -9,7 +9,7 @@ The user selected **Netlify Free + Supabase without Docker on 10 October 2026**,
 superseding the earlier Render choice. The app is live at
 [nomeatnaaninventory.netlify.app](https://nomeatnaaninventory.netlify.app/), connected to
 the dedicated Supabase database. GitHub CI passed its live database tests, production build
-and disposable backup/restore rehearsal at deployed commit `97d34f2`. Historical
+and disposable backup/restore rehearsal at deployed commit `c3cae6c`. Historical
 241-test DB verification and current results are distinguished below.
 
 ---
@@ -26,13 +26,13 @@ repository. Nothing important lives in a chat log.
 | Month 1 — foundations & inventory | ✅ **complete**, steps 1–7, verified against live Postgres |
 | UI styling pass | ✅ complete, all 9 internal screens, Tailwind v4 |
 | Deployment configuration | Netlify Next.js adapter + Supabase PostgreSQL; CI uses native PostgreSQL |
-| Live deployment | Netlify serves 97d34f2; owner navigation performance update verified after the c633ad2 hosting checks |
+| Live deployment | Netlify serves c3cae6c; metric recipe input and online saves verified |
 | Month 2 step 1 — recipe / menu schema | ✅ **done**, migration 0002 |
 | Month 2 steps 2–4 — costing engine | ✅ **done**, paper cases P1–P22 |
 | Month 2 step 5 — costing screens and editors | ✅ **done**, recipe list, cost breakdown, what-if, and the recipe / line / menu-item editors |
 | Trunk | `main`. Everything is merged; `month-2-costing` is merged and safe to delete. |
 | Tests | Historical: 241 passing against live PG. Last full local run: 249 tests, 148 pass, 101 DB skips; latest isolated PostgreSQL CI passed |
-| Current deployment verification | GitHub CI run 38057547950 passed; see the dated 10 October entries in PROGRESS.md |
+| Current deployment verification | GitHub CI run 38449970338 passed; see the dated 14 October entries in PROGRESS.md |
 
 ## Verified against a live database vs merely built
 
@@ -70,6 +70,13 @@ sidebar pending feedback. Three online rounds with the empty catalogue measured 
 responses of 3.02 seconds for Overview and 1.25 seconds for recipes, previously 4.30
 and 2.93 seconds. Function/network delay still varies; session and costing reads remain
 fresh. Its isolated PostgreSQL tests and production build passed in GitHub CI.
+
+On 14 October, metric input was added to recipe batch yields and ingredient lines:
+g, kg, ml, L and pieces, with compatible units for each ingredient. Unit changes preserve
+exact quantities. Kilogram and litre saves were exercised in the browser, and a read-only
+comparison confirmed that all imported quantities stayed unchanged. CI passed at
+`c3cae6c`. The workbook import now contains 20 recipes and 60 ingredients; 225 entries
+still need explicit measurements or preparation choices. Purchase prices remain unset.
 
 ## What is gated, and on what
 
