@@ -2289,3 +2289,23 @@ historical snapshots, Kolkata day edges, tenant/role scope, prepared-stock usage
 concurrent retries, stale recipe forms, unit changes and exact storage bounds.
 CI database verification and online deployment remain pending at this entry.
 No test purchases or production runs were added to the client database.
+
+## 2026-10-15 - Daily production and reports deployed and verified
+
+Published application commit 80aaa49de3e854c845f754141f6895d2d02b4976 to
+inventory/main. GitHub CI run 38716783091 completed both test and build jobs
+successfully, including the isolated PostgreSQL suite, no-skipped-tests guard and
+disposable deployment/backup/restore rehearsal. No schema migration was needed.
+
+Netlify now serves both screens and their sidebar links. Owner sign-in passed,
+as did the online 1.5-batch material preview and exact 1100 ml to 1.1 L conversion.
+The report loaded successfully and applied a previous-day date plus recipe filter.
+The live readiness endpoint returned 200 with status ok, and the report browser
+recorded no console errors. Screenshots remain local under files/daily-*-live-*.jpg.
+
+No production, receipt, waste or stock-setting mutation was submitted against the
+client database. Populated reporting, stock writes, concurrency, historical totals
+and denied roles were exercised in isolated PostgreSQL CI. Reports therefore start
+empty until real receipts and production are entered. Purchase prices still need
+real receipts; unpriced made-to-order runs retain an unknown cost. Run undo and
+unstocking remain separate schema/design work, explicitly disclosed in the UI.
