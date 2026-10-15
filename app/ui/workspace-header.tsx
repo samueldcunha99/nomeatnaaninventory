@@ -5,6 +5,10 @@ import { WorkspaceNav, type NavigationItem } from './workspace-nav.tsx';
 export function WorkspaceHeader({ actor, title }: { actor: Actor & { name?: string }; title: string }) {
   const items: NavigationItem[] = [{ href: '/', label: 'Overview', group: 'Workspace', icon: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z' }];
   if (hasPermission(actor.role, 'recipes.view')) items.push({ href: '/recipes', label: 'Recipes & costing', group: 'Workspace', icon: 'M4 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-2H4zM13 7a3 3 0 0 1 3-3h5v15h-4a4 4 0 0 0-4 2' });
+  if (hasPermission(actor.role, 'production.record')) items.push(
+    { href: '/production', label: 'Daily production', group: 'Workspace', icon: 'M4 6h16v15H4zM8 3v6M16 3v6M4 11h16M8 15h3M8 18h7' },
+    { href: '/reports', label: 'Daily reports', group: 'Workspace', icon: 'M4 3h16v18H4zM8 8h8M8 12h8M8 16h5' },
+  );
   if (hasPermission(actor.role, 'ingredients.view')) items.push({ href: '/ingredients', label: 'Ingredients', group: 'Workspace', icon: 'm12 3 9 5-9 5-9-5 9-5ZM3 8v9l9 5 9-5V8M12 13v9' });
   if (hasPermission(actor.role, 'stock.record')) items.push(
     { href: '/stock/receipt', label: 'Stock receipts', group: 'Inventory', icon: 'M5 3h14v18l-3-2-4 2-4-2-3 2V3ZM8 7h8M8 11h8M8 15h4' },

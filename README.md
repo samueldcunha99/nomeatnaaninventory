@@ -4,7 +4,7 @@ Internal management system for a single-outlet cafe and bakery in Chhatrapati
 Sambhajinagar, Maharashtra. Ingredient-level cost visibility, self-maintaining inventory,
 order management, and a customer-facing tracking page. Five-month build.
 
-**Month 1 and Month 2 complete; production logging has a backend but no screen yet.**
+**Month 1 and Month 2 complete; daily production and reporting screens are built.**
 The user selected **Netlify Free + Supabase without Docker on 10 October 2026**,
 superseding the earlier Render choice. The app is live at
 [nomeatnaaninventory.netlify.app](https://nomeatnaaninventory.netlify.app/), connected to
@@ -30,6 +30,7 @@ repository. Nothing important lives in a chat log.
 | Month 2 step 1 — recipe / menu schema | ✅ **done**, migration 0002 |
 | Month 2 steps 2–4 — costing engine | ✅ **done**, paper cases P1–P22 |
 | Month 2 step 5 — costing screens and editors | ✅ **done**, recipe list, cost breakdown, what-if, and the recipe / line / menu-item editors |
+| Daily production and reports | Built at `/production` and `/reports`; deployment verification in progress |
 | Trunk | `main`. Everything is merged; `month-2-costing` is merged and safe to delete. |
 | Tests | Historical: 241 passing against live PG. Last full local run: 249 tests, 148 pass, 101 DB skips; latest isolated PostgreSQL CI passed |
 | Current deployment verification | GitHub CI run 38449970338 passed; see the dated 14 October entries in PROGRESS.md |
@@ -79,6 +80,31 @@ comparison confirmed that all imported quantities stayed unchanged. CI passed at
 still need explicit measurements or preparation choices. Purchase prices remain unset.
 
 ## What is gated, and on what
+
+### Daily production and reports
+
+Owners and managers use **Daily production** to select a working date, recipe, batch
+count and measured output (g/kg, ml/L or pieces). The preview calls the same pure planner
+as the stock writer. Recording atomically saves the run and deducts its materials;
+repeating the same form cannot deduct them twice. Recipe changes while a form is open
+require a refresh. Runs cannot yet be edited or undone.
+
+**Daily reports** accepts a date and optional recipe filter. It shows purchases and
+money paid, batch counts, expected/measured output, yield variance, saved material costs,
+ingredient/component usage, and separately entered wastage. Purchases and separate losses
+use their entry date in Asia/Kolkata. Production and its material deductions use the day
+the batch was made, including late entries. Usage reads the ledger and costs read saved
+snapshots; neither is recalculated from the current recipe. Unknown costs stay unknown.
+
+The recipe filter applies to production and its materials; purchases and wastage cover
+the whole day. A stocked preparation consumes its ingredients when made, and a parent
+uses that preparation's shelf quantity. Reports keep those rows separate, without
+counting the raw ingredients twice. Marking a recipe **Hold in stock** affects future
+runs only and cannot currently be reversed. The purchase price of every input must be
+recorded before a stocked batch can be valued. `/production/YYYY-MM-DD` opens that day's
+report. No schema migration is needed for these screens.
+
+## Remaining handover items
 
 **Provisioning is no longer a gate** (changed 2026-08-21). Blocking a month of schema and
 costing work on an account that is a week or two out was the wrong trade. The deploy step

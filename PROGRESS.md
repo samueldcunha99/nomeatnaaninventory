@@ -2263,3 +2263,29 @@ source IDs, exact quantities, yields and wastage values. Stock and menu counts s
 zero. Local build/typecheck and 25 targeted tests passed. No workbook/import data or
 credentials were published. The unresolved source measurements remain in the local
 review, ready for the owner to enter using the metric fields.
+
+## 2026-10-15 - Daily production and date reports built
+
+The owner requested date-based purchases, batch counts and material usage. Added
+/production with recipe/batch selection, metric measured output, expected-yield and
+material previews, notes, and an explicit option to hold preparations in stock.
+/reports combines receipts, saved batch/output/cost snapshots, ledger material usage,
+yield variance and separate wastage; an optional recipe filter applies to production
+and its materials. Backdated production usage follows produced_on, while purchases
+and separate waste use Kolkata entry-day boundaries. Reports use one read-only
+repeatable-read snapshot and tenant-scoped joins. No schema change or alternate
+stock/cost arithmetic was introduced.
+
+Production forms carry a request ID to prevent duplicate consumption on retries,
+including concurrent submissions, plus the displayed recipe version and yield type.
+Number-storage bounds reject quantities that cannot remain exact. Existing sorted
+ingredient locks and the lock-before-cost-read order are preserved. Owner/manager
+checks apply to pages and actions; the cost report also checks recipes.view.
+
+The production build and typecheck passed, as did 27 targeted tests. Deliberately
+merging historical grams and millilitres made the new unit-grouping regression fail;
+restoring the guard made it pass. Nine new isolated-DB tests cover late entries,
+historical snapshots, Kolkata day edges, tenant/role scope, prepared-stock usage,
+concurrent retries, stale recipe forms, unit changes and exact storage bounds.
+CI database verification and online deployment remain pending at this entry.
+No test purchases or production runs were added to the client database.

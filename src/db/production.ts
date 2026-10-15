@@ -17,6 +17,7 @@ import { istDayStart, istToday } from '../lib/time.ts';
 import { assertPermission, type Actor } from '../lib/auth.ts';
 import type { MissingCost } from '../lib/costing.ts';
 import type { UnitType } from '../lib/units.ts';
+import { assertLineUnitCompatible } from '../lib/costing.ts';
 
 /**
  * The purchase unit a shelf row is created with, from what the recipe yields.
@@ -111,6 +112,10 @@ export async function stockRecipe(actor: Actor, recipeId: string): Promise<strin
 }
 
 export type ProductionRunInput = {
+  /** A form-generated ID prevents retries from consuming stock twice. */
+  requestId?: string;
+  recipeUpdatedAt?: string;
+  yieldUnitType?: UnitType;
   recipeId: string;
   /** The Kolkata working day it was made, `YYYY-MM-DD`. Today or earlier. */
   producedOn: string;
@@ -120,6 +125,17 @@ export type ProductionRunInput = {
   actualYieldMilliBase: bigint;
   note?: string | null;
 };
+
+export class ProductionAlreadyRecordedError extends Error {
+  constructor() { super('This form has already recorded a batch. Open Daily production again to record another.'); this.name = 'ProductionAlreadyRecordedError'; }
+}
+
+function storedInteger(value: bigint, label: string): number {
+  if (value > BigInt(Number.MAX_SAFE_INTEGER) || value < -BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new RangeError(`${label} is too large to record exactly.`);
+  }
+  return Number(value);
+}
 
 export type ProductionRunResult = {
   runId: string;
@@ -170,10 +186,21 @@ export async function recordProductionRun(
     throw new RangeError('A batch cannot be logged against a day that has not happened yet.');
   }
 
-  const runId = randomUUID();
+  const runId = input.requestId ?? randomUUID();
   return db.transaction(async (tx) => {
+    if (input.requestId) {
+      await tx.execute(raw`select pg_advisory_xact_lock(hashtextextended(${`production-request:${actor.tenantId}:${runId}`}, 0))`);
+      const [existing] = await tx.select({ id: productionRuns.id }).from(productionRuns)
+        .where(and(eq(productionRuns.tenantId, actor.tenantId), eq(productionRuns.id, runId)));
+      if (existing) throw new ProductionAlreadyRecordedError();
+    }
     const graph = await loadRecipeGraphForTenant(actor.tenantId, tx);
     if (!graph.has(input.recipeId)) throw new RangeError('That recipe no longer exists.');
+    const current = graph.get(input.recipeId)!;
+    if (input.yieldUnitType) assertLineUnitCompatible(input.yieldUnitType, current.yieldUnitType, current.name);
+    if (input.recipeUpdatedAt && current.updatedAt.toISOString() !== input.recipeUpdatedAt) {
+      throw new RangeError('This recipe changed while the form was open. Refresh and review the batch again.');
+    }
 
     // 2 and 3: structure, then locks - before a single price is read.
     const { recipe, draws } = planDraws(input.recipeId, graph, input.batchesMilli);
@@ -197,11 +224,11 @@ export async function recordProductionRun(
       tenantId: actor.tenantId,
       recipeId: input.recipeId,
       producedOn: input.producedOn,
-      batchesMilli: Number(plan.batchesMilli),
-      expectedYieldMilliBase: Number(plan.expectedYieldMilliBase),
-      actualYieldMilliBase: Number(plan.actualYieldMilliBase),
+      batchesMilli: storedInteger(plan.batchesMilli, 'Batch count'),
+      expectedYieldMilliBase: storedInteger(plan.expectedYieldMilliBase, 'Expected yield'),
+      actualYieldMilliBase: storedInteger(plan.actualYieldMilliBase, 'Measured output'),
       yieldUnitType: plan.yieldUnitType,
-      batchCostPaise: plan.batchCostPaise === null ? null : Number(plan.batchCostPaise),
+      batchCostPaise: plan.batchCostPaise === null ? null : storedInteger(plan.batchCostPaise, 'Batch cost'),
       note: input.note?.trim() || null,
       createdByUserId: actor.id,
     });
@@ -219,7 +246,7 @@ export async function recordProductionRun(
         ...common,
         ingredientId: d.ingredientId,
         movementType: 'consumption' as const,
-        quantityMilliBase: Number(-d.issuedMilliBase),
+        quantityMilliBase: storedInteger(-d.issuedMilliBase, 'Ingredient usage'),
       })),
       ...(plan.output
         ? [
@@ -227,9 +254,9 @@ export async function recordProductionRun(
               ...common,
               ingredientId: plan.output.ingredientId,
               movementType: 'production' as const,
-              quantityMilliBase: Number(plan.output.qtyMilliBase),
-              unitCostMillipaisePerBase: Number(plan.output.unitCostMillipaisePerBase),
-              totalCostPaise: Number(plan.output.totalCostPaise),
+              quantityMilliBase: storedInteger(plan.output.qtyMilliBase, 'Stock output'),
+              unitCostMillipaisePerBase: storedInteger(plan.output.unitCostMillipaisePerBase, 'Stock rate'),
+              totalCostPaise: storedInteger(plan.output.totalCostPaise, 'Stock cost'),
             },
           ]
         : []),
