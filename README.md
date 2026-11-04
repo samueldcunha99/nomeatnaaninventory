@@ -5,6 +5,10 @@ Sambhajinagar, Maharashtra. Ingredient-level cost visibility, self-maintaining i
 order management, and a customer-facing tracking page. Five-month build.
 
 **Month 1 and Month 2 complete; daily production and reporting screens are built.**
+**Readiness checked 4 November 2026:** the live connection is healthy again, and all
+270 existing tests pass against isolated native PostgreSQL with no skips. Additional
+acceptance probes reproduced nine correctness/retry defects; resolve them before using
+the app as the cafe's sole inventory record. See the [current QA report](files/qa-2026-11-04.md).
 The user selected **Netlify Free + Supabase without Docker on 10 October 2026**,
 superseding the earlier Render choice. The app is live at
 [nomeatnaaninventory.netlify.app](https://nomeatnaaninventory.netlify.app/), connected to
@@ -32,8 +36,8 @@ repository. Nothing important lives in a chat log.
 | Month 2 step 5 — costing screens and editors | ✅ **done**, recipe list, cost breakdown, what-if, and the recipe / line / menu-item editors |
 | Daily production and reports | Live at `/production` and `/reports`; date, recipe and metric controls verified |
 | Trunk | `main`. Everything is merged; `month-2-costing` is merged and safe to delete. |
-| Tests | Historical: 241 passing against live PG. Last full local run: 249 tests, 148 pass, 101 DB skips; latest isolated PostgreSQL CI passed |
-| Current deployment verification | GitHub CI run 38716783091 passed both jobs, including isolated PostgreSQL and restore checks; see the 15 October entries in PROGRESS.md |
+| Tests | 4 November: 270 passed against isolated native PostgreSQL 17.11, 0 skipped; 18 compiled-app HTTP workflow checks passed. Separate audit probes reproduced nine defects. |
+| Current deployment verification | 4 November: live health, owner sign-in/out and all 16 protected owner pages passed; actual Supabase backup restored locally and runtime reads verified. Application commit remains 80aaa49. |
 
 ## Verified against a live database vs merely built
 
@@ -52,11 +56,12 @@ violations the database must refuse; the four cost-basis cases; a nested recipe 
 to end from real purchase history; and the butter-price demo — a second delivery moving the
 weighted average and the item recosting.
 
-**Built and type-checked but never exercised by a human** — most of the UI. Every page
-compiles and every server action is tested at the function layer. The recipe list and the
-cost breakdown *were* driven in a real browser against seeded data, including the what-if
-and all three failure states, but **no form has been filled in by hand end to end.** That
-is still where undiscovered defects are.
+**Workflow acceptance is still separate from automated tests.** Selected recipe edits,
+costing screens and metric controls have been exercised in the browser. On 4 November,
+the compiled app's actual HTTP forms were tested with a populated isolated database,
+including receipts, production, reports and role restrictions. Windows browser control
+stopped at its URL safety check in that run, so it does not establish visual interaction
+coverage or staff acceptance. The current QA report records passing paths and failures.
 
 **Hosting verified on 10 October** — Netlify published `c633ad2` from
 `samueldcunha99/nomeatnaaninventory`. HTTPS readiness returns 200 against Supabase;
@@ -64,7 +69,10 @@ owner login, all 11 checked pages, Secure/HttpOnly cookies and sign-out passed. 
 platform POST limit was observed returning 429 on request 31. Runtime credentials are
 stored in Netlify, outside Git. GitHub CI exercised its isolated DB restore rehearsal.
 This is a fresh database: historical inventory/recipes were not transferred, and a live
-Supabase restore, scheduled off-site backups and staff workflow acceptance remain open.
+Supabase restore, scheduled off-site backups and staff workflow acceptance remained open
+at that time. On 4 November an actual Supabase snapshot was successfully restored into
+an isolated local target and runtime permissions were verified. Nightly/off-site backup
+arrangements and staff acceptance remain open.
 
 The navigation update at `97d34f2` reduces recipe database reads and shows immediate
 sidebar pending feedback. Three online rounds with the empty catalogue measured median
@@ -104,12 +112,11 @@ report. No schema migration is needed for these screens.
 
 ## Remaining handover items
 
-**Provisioning is no longer a gate** (changed 2026-08-21). Blocking a month of schema and
-costing work on an account that is a week or two out was the wrong trade. The deploy step
-stays stubbed; everything else runs locally against our own Postgres. **Do not
-re-introduce the gate.**
-
-**Still outstanding:** the owner exercising the multi-line receipt form by hand.
+Deployment is operational and does not gate development. The 4 November QA report lists
+the costing, unit, small-batch and receipt-retry fixes required before full handover.
+The owner/staff must still exercise a real delivery and production day, with actual
+opening stock and costs, and compare the results manually. Production undo/unstocking,
+the unresolved workbook entries and nightly off-site backup scheduling remain open.
 
 The production accounts must be created by the client, in
 the client's name, on the client's payment method. This is contractual, not a preference,

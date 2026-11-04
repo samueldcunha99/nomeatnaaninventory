@@ -5,6 +5,13 @@ deployment decisions. Netlify runs the Next.js app through its managed OpenNext 
 Supabase hosts PostgreSQL. Drizzle migrations, cookie authentication, tenant filtering,
 integer costing and the stock ledger stay in place. No Supabase browser client is needed.
 
+**Rechecked 4 November 2026:** the project and live health are healthy again; the twelve
+app tables and eight Drizzle migrations are present. An actual Supabase dump was restored
+into an isolated local database with matching table counts, and the restricted runtime
+role could read it after its grants were reapplied. Nightly scheduling/off-site copies
+remain open. See [the QA report](../files/qa-2026-11-04.md) for the nine reproduced
+correctness/retry defects; a healthy deployment does not make these figures safe to trust.
+
 **Deployed and checked on 10 October 2026.** The app is available at
 [nomeatnaaninventory.netlify.app](https://nomeatnaaninventory.netlify.app/). Netlify deploy
 `6aca38cc947b9f0008b322a7` published application commit `c633ad2` in 39 seconds. HTTPS
@@ -209,10 +216,18 @@ isolated target with no active applications; the empty-target check is not a loc
 someone else writing to it during restoration. Do not retry into a partially restored
 target; create another empty test target instead.
 
+The restore uses `--no-owner --no-acl`, so table counts alone do not prove the web app
+has access. On the **restore target**, set its administrative `DATABASE_MIGRATION_URL`
+and its own `APP_DB_PASSWORD`, then run `npm run db:migrate` to reapply runtime grants.
+Verify reads through the restricted runtime role before switching any application to
+the recovered database. Keep migration credentials out of the web service.
+
 Before real use, arrange nightly backups/off-site copies and provider recovery in the
 client's accounts; rehearse a restore at least monthly and keep its output. Account/plan
-configuration and the first live restore remain deployment work, not verified by the
-presence of these scripts. See [Supabase migration guidance](https://supabase.com/docs/guides/platform/migrating-to-supabase/postgres).
+configuration remain deployment work, not verified by the presence of these scripts.
+The first actual Supabase snapshot restore was verified locally on 4 November 2026;
+this does not schedule backups or prove restoration into a second Supabase project.
+See [Supabase migration guidance](https://supabase.com/docs/guides/platform/migrating-to-supabase/postgres).
 
 ## Handover acceptance
 
@@ -221,5 +236,7 @@ credential locations, recovery contact and backup/restore evidence in the client
 handover record. Verify owner login, role restrictions, a real delivery, recipe costing,
 movement history, restart persistence and restore results before live use. The
 [8 October audit](../files/audit-2026-10-08.md) still contains correctness issues to resolve;
-changing hosting does not resolve them. Production logging has a backend but no daily
-production UI yet. Do not describe this deployment work as completing that feature.
+changing hosting does not resolve them. Daily production and reports have since been
+built and deployed; their normal HTTP workflows passed in the 4 November test run.
+Their unresolved correctness cases and remaining staff acceptance are in the current
+QA report.

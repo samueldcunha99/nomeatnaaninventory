@@ -2309,3 +2309,39 @@ and denied roles were exercised in isolated PostgreSQL CI. Reports therefore sta
 empty until real receipts and production are entered. Purchase prices still need
 real receipts; unpriced made-to-order runs retain an unknown cost. Run undo and
 unstocking remain separate schema/design work, explicitly disclosed in the UI.
+
+## 2026-11-04 - Full verification and recovery rehearsal
+
+The owner requested testing of the implemented app. Native PostgreSQL 17.11 ran on
+localhost port 55434 in an ignored, password-protected disposable cluster, with no
+Docker or system service installation. Typecheck, production build and the full
+existing suite passed: 270 tests, zero failures and zero skips. Eighteen compiled-app
+HTTP workflow checks passed against a separate QA database, covering actual server
+actions for login, receipts, production, reports, waste, retries, input refusals and
+role restrictions. These are not pixel/interactive browser checks: Windows Computer
+Use stopped at its browser URL policy check before any input.
+
+An initial live health check returned 503 and the session pooler reported tenant/user
+not found. After the owner reported the project active and supplied its Healthy
+screenshot, both saved connections worked and readiness returned 200. No credentials
+or application code were changed, so the transient outage cause remains unconfirmed.
+Verified 12 app tables, eight Drizzle migrations, 60 ingredients and 20 recipes. Live
+owner sign-in, Secure/HttpOnly/SameSite cookies, all 16 protected owner pages and
+sign-out passed. No test business mutations were made in the client database; its
+ledger and production counts remain zero.
+
+The deployment rehearsal and two populated restore paths passed. The populated QA
+snapshot included three runs and seven movements. An actual read-only Supabase dump
+was restored into a separate empty local database; all table counts matched. Reapplied
+the target runtime grants via the existing migrator and verified restricted-role
+reads. The client dump and checksum manifest are retained under ignored
+backups/verified-2026-11-04. Nightly scheduling and off-site copies are still open.
+
+Targeted probes reproduced nine defects outside the passing suite: unpriced opening
+stock dilution, a missing overhead rate becoming zero, incomplete descendant overhead,
+menu portions reinterpreted after a yield-unit change, unknown ingredient price shown
+as zero, an independently changeable shelf unit, a raw zero-movement error for a tiny
+batch, loss of explicit zero rates on unchanged saves, and duplicate purchases when
+a receipt form is retried. Normal production request-id retry protection passed.
+No fixes are claimed. files/qa-2026-11-04.md records evidence, limitations and repair
+priorities. Private probe scripts, logs, snapshots and data remain local.
