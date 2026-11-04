@@ -3,6 +3,7 @@ import { WorkspaceHeader } from '../../ui/workspace-header.tsx';
 import { requirePermission } from '../../../src/auth/server.ts';
 import { listUsers } from '../../../src/db/users.ts';
 import { NewStaffForm, StaffTable, type StaffRow } from './users-form.tsx';
+import { getTranslations } from '../../i18n/server.ts';
 
 /**
  * Who can sign in, and as what.
@@ -14,6 +15,7 @@ import { NewStaffForm, StaffTable, type StaffRow } from './users-form.tsx';
  */
 export default async function StaffPage() {
   const actor = await requirePermission('users.manage');
+  const t = await getTranslations();
   const users = await listUsers(actor);
 
   const staff: StaffRow[] = users
@@ -26,29 +28,21 @@ export default async function StaffPage() {
 
   return (
     <>
-      <WorkspaceHeader actor={actor} title="Staff" />
+      <WorkspaceHeader actor={actor} title={t("Staff")} />
 
       <main className="page" id="main-content" tabIndex={-1}>
-        <h1>Who can sign in</h1>
-        <p className="prose-note">
-          Everyone gets their own account. Shared logins make the movement history useless:
-          when a count is wrong, the question is who counted, and a stock ledger that says
-          "the owner" for every line cannot answer it.
-        </p>
+        <h1>{t("Who can sign in")}</h1>
+        <p className="prose-note">{t(" Everyone gets their own account. Shared logins make the movement history useless: when a count is wrong, the question is who counted, and a stock ledger that says \"the owner\" for every line cannot answer it. ")}</p>
 
         <StaffTable staff={staff} canGrantOwner={canGrantOwner} />
 
-        <p className="prose-note mt-4">
-          Deactivating signs someone out immediately and keeps everything they recorded.
-          Accounts are never deleted, for the same reason movements are not.
-          {canGrantOwner ? null : ' Only an owner can add or change another owner.'}
+        <p className="prose-note mt-4">{t(" Deactivating signs someone out immediately and keeps everything they recorded. Accounts are never deleted, for the same reason movements are not. ")}{canGrantOwner ? null : t(" Only an owner can add or change another owner.")}
         </p>
 
-        <h2 className="section-title mt-8">Add someone</h2>
+        <h2 className="section-title mt-8">{t("Add someone")}</h2>
         <NewStaffForm canGrantOwner={canGrantOwner} />
 
-        <p className="prose-note mt-4">
-          Changing hourly rates is on <Link href="/settings/costing">costing settings</Link>.
+        <p className="prose-note mt-4">{t(" Changing hourly rates is on ")}<Link href="/settings/costing">{t("costing settings")}</Link>.
         </p>
       </main>
     </>

@@ -10,6 +10,7 @@ import {
   costPerPurchaseUnitPaise,
   formatINR,
 } from '../../../src/lib/units.ts';
+import { useTranslations } from '../../i18n/provider.tsx';
 
 export type IngredientOption = {
   id: string;
@@ -52,6 +53,7 @@ export function ReceiptForm({
   ingredients: IngredientOption[];
   suppliers: Array<{ id: string; name: string }>;
 }) {
+  const t = useTranslations();
   const [state, formAction, pending] = useActionState<FormState, FormData>(recordReceiptAction, {
     error: null,
     ok: null,
@@ -87,9 +89,8 @@ export function ReceiptForm({
             <path d="M10 1.7 19 18H1L10 1.7Zm0 5.3a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-1-1Zm0 8.2a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3Z" />
           </svg>
           <span>
-            <span className="msg__title">Receipt not saved. </span>
-            {state.error} Nothing was written — the whole receipt is one transaction.
-          </span>
+            <span className="msg__title">{t("Receipt not saved. ")}</span>
+            {t.message(state.error)}{t(" Nothing was written — the whole receipt is one transaction. ")}</span>
         </div>
       ) : null}
 
@@ -99,15 +100,14 @@ export function ReceiptForm({
             <path d="M8 14.2 3.8 10l1.4-1.4L8 11.4l6.8-6.8L16.2 6 8 14.2Z" />
           </svg>
           <span>
-            <span className="msg__title">Saved. </span>
-            {state.ok}
+            <span className="msg__title">{t("Saved. ")}</span>
+            {t(state.ok)}
           </span>
         </div>
       ) : null}
 
       <div className="field max-w-sm">
-        <label className="label" htmlFor="supplierId">
-          Supplier <span className="font-normal muted">(optional)</span>
+        <label className="label" htmlFor="supplierId">{t(" Supplier ")}<span className="font-normal muted">{t("(optional)")}</span>
         </label>
         <select className="select" id="supplierId" name="supplierId">
           <option value="">—</option>
@@ -123,12 +123,10 @@ export function ReceiptForm({
         <table className="table">
           <thead>
             <tr>
-              <th scope="col" className="w-56">Ingredient</th>
-              <th scope="col" className="w-40">Quantity</th>
-              <th scope="col" className="w-36">Total paid (₹)</th>
-              <th scope="col" className="num whitespace-nowrap">
-                Works out at
-              </th>
+              <th scope="col" className="w-56">{t("Ingredient")}</th>
+              <th scope="col" className="w-40">{t("Quantity")}</th>
+              <th scope="col" className="w-36">{t("Total paid (₹)")}</th>
+              <th scope="col" className="num whitespace-nowrap">{t(" Works out at ")}</th>
             </tr>
           </thead>
           <tbody>
@@ -156,7 +154,7 @@ export function ReceiptForm({
                         value={row.quantity}
                         onChange={(e) => set(i, { quantity: e.target.value })}
                         inputMode="decimal"
-                        aria-label={`Quantity, line ${i + 1}`}
+                        aria-label={t("Quantity, line {0}", { "0": i + 1 })}
                       />
                       <span className="text-sm font-medium text-ink whitespace-nowrap">
                         {ing?.purchaseUnit ?? ''}
@@ -185,7 +183,7 @@ export function ReceiptForm({
                       value={row.totalCost}
                       onChange={(e) => set(i, { totalCost: e.target.value })}
                       inputMode="decimal"
-                      aria-label={`Total paid, line ${i + 1}`}
+                      aria-label={t("Total paid, line {0}", { "0": i + 1 })}
                     />
                   </td>
 
@@ -196,7 +194,7 @@ export function ReceiptForm({
                     }`}
                     aria-live="polite"
                   >
-                    {cost}
+                      {t(cost)}
                   </td>
                 </tr>
               );
@@ -206,20 +204,17 @@ export function ReceiptForm({
       </div>
 
       <p className="mt-3">
-        <button className="btn btn--secondary" type="button" onClick={() => setRows((rs) => [...rs, blank()])}>
-          + Add line
-        </button>
+        <button className="btn btn--secondary" type="button" onClick={() => setRows((rs) => [...rs, blank()])}>{t(" + Add line ")}</button>
       </p>
 
       <div className="field max-w-xl">
-        <label className="label" htmlFor="note">
-          Note <span className="font-normal muted">(optional)</span>
+        <label className="label" htmlFor="note">{t(" Note ")}<span className="font-normal muted">{t("(optional)")}</span>
         </label>
         <input className="input" id="note" name="note" maxLength={500} />
       </div>
 
       <button className="btn" type="submit" disabled={pending}>
-        {pending ? 'Saving…' : 'Record receipt'}
+        {pending ? t("Saving…") : t("Record receipt")}
       </button>
     </form>
   );

@@ -1,3 +1,7 @@
+'use client';
+
+import { useTranslations } from '../i18n/provider.tsx';
+
 /**
  * Status badges, shared by the ingredient, low-stock and history tables.
  *
@@ -24,26 +28,24 @@ export function Glyph({ path }: { path: string }) {
 }
 
 export function StatusBadge({ kind }: { kind: StatusKind }) {
+  const t = useTranslations();
   if (kind === null) return null;
 
   if (kind === 'oversold') {
     return (
-      <span className="badge badge--out" title="Sold more than the system thinks was in stock">
-        <Glyph path={ALERT} /> Oversold
-      </span>
+      <span className="badge badge--out" title={t("Sold more than the system thinks was in stock")}>
+        <Glyph path={ALERT} />{t(" Oversold ")}</span>
     );
   }
   if (kind === 'low') {
     return (
-      <span className="badge badge--low" title="At or below the low stock threshold">
-        <Glyph path={ALERT} /> Low
-      </span>
+      <span className="badge badge--low" title={t("At or below the low stock threshold")}>
+        <Glyph path={ALERT} />{t(" Low ")}</span>
     );
   }
   // Only rendered where a positive confirmation is the point of the screen, never in a list.
   return (
     <span className="badge badge--ok">
-      <Glyph path={CHECK} /> In stock
-    </span>
+      <Glyph path={CHECK} />{t(" In stock ")}</span>
   );
 }

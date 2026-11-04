@@ -7,16 +7,18 @@ import { updateIngredientAction } from '../actions.ts';
 import { IngredientForm } from '../ingredient-form.tsx';
 import { StatusBadge } from '../../ui/status-badge.tsx';
 import {
-  formatQty,
+
   formatINR,
   costPerPurchaseUnitPaise,
   milliBaseToPurchaseUnits,
   baseUnitLabel,
   isLowStock,
 } from '../../../src/lib/units.ts';
+import { getTranslations } from '../../i18n/server.ts';
 
 export default async function EditIngredientPage({ params }: { params: Promise<{ id: string }> }) {
   const actor = await requirePermission('ingredients.manage');
+  const t = await getTranslations();
   const { id } = await params;
   const ingredient = await getIngredient(actor, id);
   if (!ingredient) notFound();
@@ -26,17 +28,17 @@ export default async function EditIngredientPage({ params }: { params: Promise<{
 
   return (
     <>
-      <WorkspaceHeader actor={actor} title="Ingredient" />
+      <WorkspaceHeader actor={actor} title={t("Ingredient")} />
 
       <main className="page" id="main-content" tabIndex={-1}>
         <p>
-          <Link href="/ingredients">← Ingredients</Link>
+          <Link href="/ingredients">{t("← Ingredients")}</Link>
         </p>
 
         <div className="flex flex-wrap items-center gap-3">
           <h1>{ingredient.name}</h1>
           <StatusBadge kind={oversold ? 'oversold' : low ? 'low' : null} />
-          {!ingredient.isActive ? <span className="badge badge--muted">Inactive</span> : null}
+          {!ingredient.isActive ? <span className="badge badge--muted">{t("Inactive")}</span> : null}
         </div>
 
         {/*
@@ -45,17 +47,17 @@ export default async function EditIngredientPage({ params }: { params: Promise<{
          */}
         <dl className="grid gap-4 sm:grid-cols-3 my-6 p-4 bg-surface border-2 border-mist rounded-md">
           <div>
-            <dt className="text-sm uppercase tracking-wide muted">On hand</dt>
+            <dt className="text-sm uppercase tracking-wide muted">{t("On hand")}</dt>
             <dd className={`text-lg font-semibold tabular-nums ${oversold ? 'text-danger' : ''}`}>
               {milliBaseToPurchaseUnits(ingredient.qtyMilliBase, ingredient.purchaseUnitInBase)}{' '}
               {ingredient.purchaseUnit}
               <span className="block text-sm font-normal muted">
-                {formatQty(ingredient.qtyMilliBase, ingredient.unitType)}
+                {t.quantity(ingredient.qtyMilliBase, ingredient.unitType)}
               </span>
             </dd>
           </div>
           <div>
-            <dt className="text-sm uppercase tracking-wide muted">Weighted avg cost</dt>
+            <dt className="text-sm uppercase tracking-wide muted">{t("Weighted avg cost")}</dt>
             <dd className="text-lg font-semibold tabular-nums">
               {formatINR(
                 costPerPurchaseUnitPaise(
@@ -63,32 +65,29 @@ export default async function EditIngredientPage({ params }: { params: Promise<{
                   ingredient.purchaseUnitInBase,
                 ),
               )}
-              <span className="block text-sm font-normal muted">per {ingredient.purchaseUnit}</span>
+              <span className="block text-sm font-normal muted">{t("per ")}{ingredient.purchaseUnit}</span>
             </dd>
           </div>
           <div>
-            <dt className="text-sm uppercase tracking-wide muted">Bought by</dt>
+            <dt className="text-sm uppercase tracking-wide muted">{t("Bought by")}</dt>
             <dd className="text-lg font-semibold">
               {ingredient.purchaseUnit}
               <span className="block text-sm font-normal muted">
-                = {ingredient.purchaseUnitInBase} {baseUnitLabel(ingredient.unitType)}
+                = {ingredient.purchaseUnitInBase} {t(baseUnitLabel(ingredient.unitType))}
               </span>
             </dd>
           </div>
         </dl>
 
-        <p className="prose-note">
-          Stock and cost move only through the stock ledger, never by editing here.{' '}
-          <Link href={{ pathname: '/stock/history', query: { ingredientId: ingredient.id } }}>
-            See this ingredient’s movements
-          </Link>
+        <p className="prose-note">{t(" Stock and cost move only through the stock ledger, never by editing here.")}{' '}
+          <Link href={{ pathname: '/stock/history', query: { ingredientId: ingredient.id } }}>{t(" See this ingredient’s movements ")}</Link>
           .
         </p>
 
-        <h2 className="section-title mt-6">Details</h2>
+        <h2 className="section-title mt-6">{t("Details")}</h2>
         <IngredientForm
           action={updateIngredientAction}
-          submitLabel="Save changes"
+          submitLabel={t("Save changes")}
           initial={{
             id: ingredient.id,
             name: ingredient.name,

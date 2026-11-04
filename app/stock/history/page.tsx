@@ -5,11 +5,12 @@ import { listMovements } from '../../../src/db/history.ts';
 import { listIngredients } from '../../../src/db/ingredients.ts';
 import { TIMEZONE, istDayStart, istDayAfter } from '../../../src/lib/time.ts';
 import {
-  formatQty,
+
   formatINR,
   costPerPurchaseUnitPaise,
   milliBaseToPurchaseUnits,
 } from '../../../src/lib/units.ts';
+import { getTranslations } from '../../i18n/server.ts';
 
 const TYPE_LABEL: Record<string, string> = {
   purchase: 'Receipt',
@@ -24,11 +25,11 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 /** Asia/Kolkata at the display boundary; stored UTC. */
-const IST = new Intl.DateTimeFormat('en-IN', {
+const timeOptions: Intl.DateTimeFormatOptions = {
   timeZone: TIMEZONE,
   dateStyle: 'medium',
   timeStyle: 'short',
-});
+};
 
 export default async function HistoryPage({
   searchParams,
@@ -36,6 +37,8 @@ export default async function HistoryPage({
   searchParams: Promise<{ ingredientId?: string; from?: string; to?: string; page?: string }>;
 }) {
   const actor = await requirePermission('ingredients.view');
+  const t = await getTranslations();
+  const IST = new Intl.DateTimeFormat(t.intlLocale, timeOptions);
   const params = await searchParams;
 
   const [ingredients, result] = await Promise.all([
@@ -76,87 +79,61 @@ export default async function HistoryPage({
 
   return (
     <>
-      <WorkspaceHeader actor={actor} title="Movement history" />
+      <WorkspaceHeader actor={actor} title={t("Movement history")} />
 
       <main className="page" id="main-content" tabIndex={-1}>
-        <h1>Movement history</h1>
-        <p className="prose-note">
-          Read-only. Corrections are new movements — nothing here is ever edited or deleted.
-          Times shown in Asia/Kolkata.
-        </p>
+        <h1>{t("Movement history")}</h1>
+        <p className="prose-note">{t(" Read-only. Corrections are new movements — nothing here is ever edited or deleted. Times shown in Asia/Kolkata. ")}</p>
 
         <form method="get" className="toolbar">
           <div className="field grow max-w-xs">
-            <label className="label" htmlFor="ingredientId">
-              Ingredient
-            </label>
+            <label className="label" htmlFor="ingredientId">{t(" Ingredient ")}</label>
             <select className="select" id="ingredientId" name="ingredientId" defaultValue={params.ingredientId ?? ''}>
-              <option value="">All ingredients</option>
+              <option value="">{t("All ingredients")}</option>
               {ingredients.map((i) => (
                 <option key={i.id} value={i.id}>
                   {i.name}
-                  {i.isActive ? '' : ' (inactive)'}
+                  {i.isActive ? '' : t(" (inactive)")}
                 </option>
               ))}
             </select>
           </div>
 
           <div className="field">
-            <label className="label" htmlFor="from">
-              From
-            </label>
+            <label className="label" htmlFor="from">{t(" From ")}</label>
             <input className="input" id="from" name="from" type="date" defaultValue={params.from ?? ''} />
           </div>
 
           <div className="field">
-            <label className="label" htmlFor="to">
-              To
-            </label>
+            <label className="label" htmlFor="to">{t(" To ")}</label>
             <input className="input" id="to" name="to" type="date" defaultValue={params.to ?? ''} />
           </div>
 
-          <button className="btn btn--secondary" type="submit">
-            Apply
-          </button>
+          <button className="btn btn--secondary" type="submit">{t(" Apply ")}</button>
         </form>
 
         {!result.showBalance ? (
-          <p className="prose-note">
-            Choose a single ingredient to see a running balance — a balance across different
-            ingredients would be adding grams to millilitres.
-          </p>
+          <p className="prose-note">{t(" Choose a single ingredient to see a running balance — a balance across different ingredients would be adding grams to millilitres. ")}</p>
         ) : null}
 
         {result.rows.length === 0 ? (
-          <p className="prose-note">No movements match those filters.</p>
+          <p className="prose-note">{t("No movements match those filters.")}</p>
         ) : (
           <div className="table-wrap">
             <table className="table">
               <thead>
                 <tr>
-                  <th scope="col">When</th>
-                  <th scope="col">Type</th>
-                  {!params.ingredientId ? <th scope="col">Ingredient</th> : null}
-                  <th scope="col" className="num">
-                    Quantity
-                  </th>
+                  <th scope="col">{t("When")}</th>
+                  <th scope="col">{t("Type")}</th>
+                  {!params.ingredientId ? <th scope="col">{t("Ingredient")}</th> : null}
+                  <th scope="col" className="num">{t(" Quantity ")}</th>
                   {result.showBalance ? (
-                    <th scope="col" className="num">
-                      Balance
-                    </th>
+                    <th scope="col" className="num">{t(" Balance ")}</th>
                   ) : null}
-                  <th scope="col" className="num col-secondary">
-                    Unit cost
-                  </th>
-                  <th scope="col" className="num col-secondary">
-                    Total paid
-                  </th>
-                  <th scope="col" className="col-secondary">
-                    Reason / note
-                  </th>
-                  <th scope="col" className="col-secondary">
-                    By
-                  </th>
+                  <th scope="col" className="num col-secondary">{t(" Unit cost ")}</th>
+                  <th scope="col" className="num col-secondary">{t(" Total paid ")}</th>
+                  <th scope="col" className="col-secondary">{t(" Reason / note ")}</th>
+                  <th scope="col" className="col-secondary">{t(" By ")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -172,11 +149,10 @@ export default async function HistoryPage({
                       </th>
 
                       <td className="whitespace-nowrap">
-                        {TYPE_LABEL[r.movementType] ?? r.movementType}
+                        {t(TYPE_LABEL[r.movementType] ?? r.movementType)}
                         {grouped ? (
-                          <span className="block text-xs muted" title={`One receipt of ${lines} lines`}>
-                            {lines}-line receipt
-                          </span>
+                          <span className="block text-xs muted" title={t("One receipt of {0} lines", { "0": lines })}>
+                            {lines}{t("-line receipt ")}</span>
                         ) : null}
                       </td>
 
@@ -189,7 +165,7 @@ export default async function HistoryPage({
                         </span>
                         <span className="block text-xs muted tabular-nums">
                           {r.quantityMilliBase > 0 ? '+' : ''}
-                          {formatQty(r.quantityMilliBase, r.unitType)}
+                          {t.quantity(r.quantityMilliBase, r.unitType)}
                         </span>
                       </td>
 
@@ -199,7 +175,7 @@ export default async function HistoryPage({
                         >
                           {milliBaseToPurchaseUnits(r.balanceMilliBase, r.purchaseUnitInBase)} {r.purchaseUnit}
                           <span className="block text-xs muted tabular-nums">
-                            {formatQty(r.balanceMilliBase, r.unitType)}
+                            {t.quantity(r.balanceMilliBase, r.unitType)}
                           </span>
                         </td>
                       ) : null}
@@ -215,7 +191,7 @@ export default async function HistoryPage({
                       </td>
 
                       <td className="col-secondary text-sm">
-                        {r.reason ? <span className="capitalize">{r.reason.replace(/_/g, ' ')}</span> : null}
+                        {r.reason ? <span className="capitalize">{t(r.reason)}</span> : null}
                         {r.reason && r.note ? ' — ' : ''}
                         {r.note ?? ''}
                         {!r.reason && !r.note ? '—' : ''}
@@ -236,18 +212,14 @@ export default async function HistoryPage({
         )}
 
         {result.hasPreviousPage || result.hasNextPage ? (
-          <nav className="flex items-center gap-3 mt-4" aria-label="Pagination">
+          <nav className="flex items-center gap-3 mt-4" aria-label={t("Pagination")}>
             {result.hasPreviousPage ? (
-              <Link className="btn btn--secondary" href={pageHref(result.page - 1)}>
-                ← Newer
-              </Link>
+              <Link className="btn btn--secondary" href={pageHref(result.page - 1)}>{t(" ← Newer ")}</Link>
             ) : null}
             {result.hasNextPage ? (
-              <Link className="btn btn--secondary" href={pageHref(result.page + 1)}>
-                Older →
-              </Link>
+              <Link className="btn btn--secondary" href={pageHref(result.page + 1)}>{t(" Older → ")}</Link>
             ) : null}
-            <span className="muted text-sm">Page {result.page}</span>
+            <span className="muted text-sm">{t("Page ")}{result.page}</span>
           </nav>
         ) : null}
       </main>

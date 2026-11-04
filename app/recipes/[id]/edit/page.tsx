@@ -5,9 +5,11 @@ import { requirePermission } from '../../../../src/auth/server.ts';
 import { getRecipeForEdit, listLineSources } from '../../../../src/db/recipes.ts';
 import { RecipeForm } from '../../recipe-form.tsx';
 import { milliBaseToBaseUnits, millipercentToPercent } from '../../../../src/lib/units.ts';
+import { getTranslations } from '../../../i18n/server.ts';
 
 export default async function EditRecipePage({ params }: { params: Promise<{ id: string }> }) {
   const actor = await requirePermission('recipes.manage');
+  const t = await getTranslations();
   const { id } = await params;
 
   const [recipe, sources] = await Promise.all([
@@ -18,21 +20,18 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
 
   return (
     <>
-      <WorkspaceHeader actor={actor} title="Edit recipe" />
+      <WorkspaceHeader actor={actor} title={t("Edit recipe")} />
 
       <main className="page" id="main-content" tabIndex={-1}>
         <p>
           <Link href={`/recipes/${recipe.id}/cost`}>← {recipe.name}</Link>
         </p>
-        <h1>Edit {recipe.name}</h1>
-        <p className="prose-note">
-          Update the ingredients, usable batch yield and preparation time. Save to review
-          the revised cost breakdown.
-        </p>
+        <h1>{t("Edit ")}{recipe.name}</h1>
+        <p className="prose-note">{t(" Update the ingredients, usable batch yield and preparation time. Save to review the revised cost breakdown. ")}</p>
 
         <RecipeForm
           sources={sources}
-          submitLabel="Save changes"
+          submitLabel={t("Save changes")}
           initial={{
             id: recipe.id,
             name: recipe.name,

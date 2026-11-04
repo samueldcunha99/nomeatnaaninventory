@@ -6,9 +6,10 @@ import { listLowStock, countDeliveriesSince } from '../src/db/history.ts';
 import { listIngredients } from '../src/db/ingredients.ts';
 import { listRecipes } from '../src/db/recipes.ts';
 import { startOfDayIST, TIMEZONE } from '../src/lib/time.ts';
-import { formatINR, formatQty, costPerPurchaseUnitPaise, milliBaseToPurchaseUnits } from '../src/lib/units.ts';
+import { formatINR, costPerPurchaseUnitPaise, milliBaseToPurchaseUnits } from '../src/lib/units.ts';
 import { portionCostPaise } from '../src/lib/costing.ts';
 import { StatusBadge } from './ui/status-badge.tsx';
+import { getTranslations } from './i18n/server.ts';
 
 /**
  * The home screen answers "what needs me right now", and only then offers a way out to
@@ -24,6 +25,7 @@ import { StatusBadge } from './ui/status-badge.tsx';
  */
 export default async function HomePage() {
   const user = await requireSession();
+  const t = await getTranslations();
   const canView = hasPermission(user.role, 'ingredients.view');
   const canRecord = hasPermission(user.role, 'stock.record');
   const canCost = hasPermission(user.role, 'recipes.view');
@@ -38,7 +40,7 @@ export default async function HomePage() {
   ]);
   const uncosted = recipes.filter((r) => !r.cost.ok);
 
-  const today = new Date().toLocaleDateString('en-IN', {
+  const today = new Date().toLocaleDateString(t.intlLocale, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -62,35 +64,35 @@ export default async function HomePage() {
 
   return (
     <>
-      <WorkspaceHeader actor={user} title="Overview" />
+      <WorkspaceHeader actor={user} title={t("Overview")} />
 
       <main className="page" id="main-content" tabIndex={-1}>
         {canCost ? (
           <section className="costing-hero">
             <div>
               <p className="eyebrow">No Meat Naan · {today}</p>
-              <h1>Know what every serving costs.</h1>
-              <p>Bring your ingredients, batch yields and selling prices together.<br className="hidden lg:block" /> See the cost behind every item on your menu.</p>
+              <h1>{t("Know what every serving costs.")}</h1>
+              <p>{t("Bring your ingredients, batch yields and selling prices together.")}<br className="hidden lg:block" />{t(" See the cost behind every item on your menu.")}</p>
             </div>
             <div className="hero-actions">
-              {hasPermission(user.role, 'recipes.manage') ? <Link className="btn" href="/recipes/new">+ Create a recipe</Link> : null}
-              <Link className="btn btn--secondary" href="/recipes">View all recipes</Link>
+              {hasPermission(user.role, 'recipes.manage') ? <Link className="btn" href="/recipes/new">{t("+ Create a recipe")}</Link> : null}
+              <Link className="btn btn--secondary" href="/recipes">{t("View all recipes")}</Link>
             </div>
           </section>
-        ) : <div className="page-heading"><h1>Today</h1><p className="muted">{today}</p></div>}
+        ) : <div className="page-heading"><h1>{t("Today")}</h1><p className="muted">{today}</p></div>}
 
         {canCost && recipes.length > 0 ? (
           <section className="mb-8" aria-labelledby="recent-recipes">
-            <div className="section-heading"><h2 id="recent-recipes">Your recipes</h2><Link href="/recipes">View all {recipes.length} →</Link></div>
+            <div className="section-heading"><h2 id="recent-recipes">{t("Your recipes")}</h2><Link href="/recipes">{t("View all ")}{recipes.length} →</Link></div>
             <div className="recipe-grid">
               {[...recipes].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, 3).map((recipe) => (
                 <Link className="recipe-card" key={recipe.id} href={`/recipes/${recipe.id}/cost`}>
-                  <span className="eyebrow">{recipe.usedByCount > 0 ? 'Sub-recipe' : 'Recipe'}</span>
+                  <span className="eyebrow">{recipe.usedByCount > 0 ? t("Sub-recipe") : t("Recipe")}</span>
                   <h3>{recipe.name}</h3>
-                  <p>{recipe.lineCount} ingredients & components · Yields {formatQty(recipe.yieldQtyMilliBase, recipe.yieldUnitType)}</p>
+                  <p>{recipe.lineCount}{t(" ingredients & components · Yields ")}{t.quantity(recipe.yieldQtyMilliBase, recipe.yieldUnitType)}</p>
                   <div className="recipe-card__footer">
-                    <span>{recipe.cost.ok ? <><strong>{formatINR(costPerPurchaseUnitPaise(recipe.cost.rateMillipaisePerBase, recipe.yieldUnitType === 'count' ? 1 : 1000))}</strong><small> / {recipe.yieldUnitType === 'count' ? 'unit' : recipe.yieldUnitType === 'weight' ? 'kg' : 'litre'}</small></> : <span className="badge badge--low">Missing ingredient costs</span>}</span>
-                    <span aria-label="View breakdown">↗</span>
+                    <span>{recipe.cost.ok ? <><strong>{formatINR(costPerPurchaseUnitPaise(recipe.cost.rateMillipaisePerBase, recipe.yieldUnitType === 'count' ? 1 : 1000))}</strong><small> / {recipe.yieldUnitType === 'count' ? t("unit") : recipe.yieldUnitType === 'weight' ? t("kg") : t("litre")}</small></> : <span className="badge badge--low">{t("Missing ingredient costs")}</span>}</span>
+                    <span aria-label={t("View breakdown")}>↗</span>
                   </div>
                 </Link>
               ))}
@@ -105,22 +107,22 @@ export default async function HomePage() {
                 className={`stat stat--link h-full${low.length > 0 ? ' stat--bad' : ''}`}
                 href="/stock/low"
               >
-                <span className="stat__label">Need reordering</span>
+                <span className="stat__label">{t("Need reordering")}</span>
                 <span className="stat__value text-4xl">{low.length}</span>
                 <span className="stat__hint">
                   {low.length === 0
-                    ? `all ${ingredients.length} above threshold`
-                    : `of ${ingredients.length} ingredients`}
+                    ? t("all {0} above threshold", { "0": ingredients.length })
+                    : t("of {0} ingredients", { "0": ingredients.length })}
                 </span>
               </Link>
             </li>
 
             <li>
               <Link className="stat stat--link h-full" href="/stock/history">
-                <span className="stat__label">Deliveries today</span>
+                <span className="stat__label">{t("Deliveries today")}</span>
                 <span className="stat__value text-4xl">{deliveries}</span>
                 <span className="stat__hint">
-                  {deliveries === 0 ? 'none recorded yet' : 'recorded since midnight'}
+                  {deliveries === 0 ? t("none recorded yet") : t("recorded since midnight")}
                 </span>
               </Link>
             </li>
@@ -134,11 +136,10 @@ export default async function HomePage() {
                * precisely the kind of number this system exists not to print.
                */}
               <Link className="stat stat--link h-full" href="/ingredients">
-                <span className="stat__label">Ingredients</span>
+                <span className="stat__label">{t("Ingredients")}</span>
                 <span className="stat__value text-4xl">{ingredients.length}</span>
                 <span className="stat__hint">
-                  {formatINR(shelfValuePaise)} at recorded quantities
-                </span>
+                  {formatINR(shelfValuePaise)}{t(" at recorded quantities ")}</span>
               </Link>
             </li>
 
@@ -148,12 +149,12 @@ export default async function HomePage() {
                   className={`stat stat--link h-full${uncosted.length > 0 ? ' stat--bad' : ''}`}
                   href="/recipes"
                 >
-                  <span className="stat__label">Cannot be costed</span>
+                  <span className="stat__label">{t("Cannot be costed")}</span>
                   <span className="stat__value text-4xl">{uncosted.length}</span>
                   <span className="stat__hint">
                     {uncosted.length === 0
-                      ? `all ${recipes.length} have ingredient costs`
-                      : 'missing a purchase price'}
+                      ? t("all {0} have ingredient costs", { "0": recipes.length })
+                      : t("missing a purchase price")}
                   </span>
                 </Link>
               </li>
@@ -165,7 +166,7 @@ export default async function HomePage() {
         {canView && !nothingTracked ? (
           needsYou ? (
             <>
-              <h2 className="section-title">Needs you</h2>
+              <h2 className="section-title">{t("Needs you")}</h2>
 
               {low.length > 0 ? (
                 <>
@@ -176,7 +177,7 @@ export default async function HomePage() {
                         <span className="alertrow__name">{row.name}</span>
                         <span className="alertrow__fact">
                           {milliBaseToPurchaseUnits(row.qtyMilliBase, row.purchaseUnitInBase)}{' '}
-                          {row.purchaseUnit} on hand ·{' '}
+                          {row.purchaseUnit}{t(" on hand ·")}{' '}
                           {/*
                            * At the threshold exactly is the common case - a threshold is
                            * usually set to what a full shelf holds - and "1 kg on hand,
@@ -184,18 +185,18 @@ export default async function HomePage() {
                            * fact. Say where the line is instead of repeating the number.
                            */}
                           {row.qtyMilliBase === row.lowStockThresholdMilliBase
-                            ? 'at the reorder point'
-                            : `reorder at ${milliBaseToPurchaseUnits(
+                            ? t("at the reorder point")
+                            : t("reorder at {0} {1}", { "0": milliBaseToPurchaseUnits(
                                 row.lowStockThresholdMilliBase,
                                 row.purchaseUnitInBase,
-                              )} ${row.purchaseUnit}`}
+                              ), "1": row.purchaseUnit })}
                         </span>
                       </li>
                     ))}
                   </ul>
                   <p className="prose-note mb-6">
                     <Link href="/stock/low">
-                      {low.length > 4 ? `See all ${low.length} low` : 'See the low stock screen'} →
+                      {low.length > 4 ? t("See all {0} low", { "0": low.length }) : t("See the low stock screen")} →
                     </Link>
                   </p>
                 </>
@@ -216,27 +217,22 @@ export default async function HomePage() {
                               // recipe) names no ingredient, so it carries its own
                               // sentence. Falling through to the list below would read
                               // " have no purchase history" with nothing in front of it.
-                              (recipe.cost.problem ??
-                              recipe.cost.missing.map((m) => m.name).join(', ') +
-                                ` ${recipe.cost.missing.length === 1 ? 'has' : 'have'} no purchase history`)
+                              (recipe.cost.problem ? t.message(recipe.cost.problem) :
+                              t('{0} have no purchase history', { '0': recipe.cost.missing.map((m) => m.name).join(', ') }))
                             : null}
                         </span>
                       </li>
                     ))}
                   </ul>
                   <p className="prose-note mb-6">
-                    <Link href="/stock/receipt">Record what arrived</Link> and the cost appears
-                    on its own.
-                  </p>
+                    <Link href="/stock/receipt">{t("Record what arrived")}</Link>{t(" and the cost appears on its own. ")}</p>
                 </>
               ) : null}
             </>
           ) : (
             <p className="msg msg--ok">
               <span>
-                <span className="msg__title">Nothing needs you. </span>
-                All {ingredients.length} ingredients are above their reorder threshold
-                {canCost && recipes.length > 0 ? ', and every recipe can be costed' : ''}.
+                <span className="msg__title">{t("Nothing needs you. ")}</span>{t(" All ")}{ingredients.length}{t(" ingredients are above their reorder threshold ")}{canCost && recipes.length > 0 ? t(", and every recipe can be costed") : ''}.
               </span>
             </p>
           )
@@ -245,17 +241,15 @@ export default async function HomePage() {
         {nothingTracked ? (
           <p className="msg msg--warn">
             <span>
-              <span className="msg__title">Nothing is being tracked yet. </span>
-              <Link href="/ingredients/new">Add the first ingredient</Link>, then record what
-              arrived. Stock and cost follow from the ledger on their own.
-            </span>
+              <span className="msg__title">{t("Nothing is being tracked yet. ")}</span>
+              <Link href="/ingredients/new">{t("Add the first ingredient")}</Link>{t(", then record what arrived. Stock and cost follow from the ledger on their own. ")}</span>
           </p>
         ) : null}
 
         {/* ---- The catalogue, reachable without a detour ---------------------- */}
         {canView && !nothingTracked ? (
           <>
-            <h2 className="section-title">What you stock</h2>
+            <h2 className="section-title">{t("What you stock")}</h2>
             {/*
              * A plain GET straight at the ingredients screen. Ninety-six ingredients is
              * more than anyone scrolls: typing three letters of "cardamom" here is the
@@ -264,22 +258,17 @@ export default async function HomePage() {
              */}
             <form method="get" action="/ingredients" className="toolbar">
               <div className="field grow max-w-md mb-0">
-                <label className="label" htmlFor="find">
-                  Find an ingredient
-                </label>
+                <label className="label" htmlFor="find">{t(" Find an ingredient ")}</label>
                 <input
                   className="input"
                   id="find"
                   name="q"
-                  placeholder="cardamom, butter, pizza box"
+                  placeholder={t("cardamom, butter, pizza box")}
                   autoComplete="off"
                 />
               </div>
-              <button className="btn" type="submit">
-                Search
-              </button>
-              <Link className="btn btn--secondary" href="/ingredients">
-                All {ingredients.length}
+              <button className="btn" type="submit">{t(" Search ")}</button>
+              <Link className="btn btn--secondary" href="/ingredients">{t(" All ")}{ingredients.length}
               </Link>
             </form>
           </>
@@ -288,18 +277,14 @@ export default async function HomePage() {
         {/* ---- The two things people come here to do -------------------------- */}
         {canRecord ? (
           <>
-            <h2 className="section-title">Record</h2>
+            <h2 className="section-title">{t("Record")}</h2>
             <ul className="navgrid">
               <li>
-                <Link className="navcard navcard--write" href="/stock/receipt">
-                  Stock receipt
-                  <span className="navcard__hint">Enter a delivery that has arrived</span>
+                <Link className="navcard navcard--write" href="/stock/receipt">{t(" Stock receipt ")}<span className="navcard__hint">{t("Enter a delivery that has arrived")}</span>
                 </Link>
               </li>
               <li>
-                <Link className="navcard navcard--write" href="/stock/adjust">
-                  Adjustment / wastage
-                  <span className="navcard__hint">Correct a count, or record what was lost</span>
+                <Link className="navcard navcard--write" href="/stock/adjust">{t(" Adjustment / wastage ")}<span className="navcard__hint">{t("Correct a count, or record what was lost")}</span>
                 </Link>
               </li>
             </ul>
@@ -308,27 +293,21 @@ export default async function HomePage() {
 
         {canView || canCost ? (
           <>
-            <h2 className="section-title">Everything else</h2>
+            <h2 className="section-title">{t("Everything else")}</h2>
             <ul className="navrow">
               {canView ? (
                 <>
                   <li>
-                    <Link className="navchip" href="/stock/history">
-                      Movement history
-                    </Link>
+                    <Link className="navchip" href="/stock/history">{t(" Movement history ")}</Link>
                   </li>
                   <li>
-                    <Link className="navchip" href="/stock/low">
-                      Low stock
-                    </Link>
+                    <Link className="navchip" href="/stock/low">{t(" Low stock ")}</Link>
                   </li>
                 </>
               ) : null}
               {canCost ? (
                 <li>
-                  <Link className="navchip" href="/recipes">
-                    Recipes
-                  </Link>
+                  <Link className="navchip" href="/recipes">{t(" Recipes ")}</Link>
                 </li>
               ) : null}
             </ul>
@@ -336,10 +315,7 @@ export default async function HomePage() {
         ) : null}
 
         {!canView && !canRecord && !canCost ? (
-          <p className="prose-note">
-            There is nothing here for your role yet. Ask the owner if you were expecting a
-            screen.
-          </p>
+          <p className="prose-note">{t(" There is nothing here for your role yet. Ask the owner if you were expecting a screen. ")}</p>
         ) : null}
       </main>
     </>

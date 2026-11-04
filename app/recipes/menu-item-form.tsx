@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { saveMenuItemAction, type FormState } from './actions.ts';
 import { baseUnitLabel, type UnitType } from '../../src/lib/units.ts';
+import { useTranslations } from '../i18n/provider.tsx';
 
 export type MenuItemFormValues = {
   id?: string;
@@ -34,6 +35,7 @@ export function MenuItemForm({
   initial?: MenuItemFormValues;
   submitLabel: string;
 }) {
+  const t = useTranslations();
   const [state, formAction, pending] = useActionState<FormState, FormData>(saveMenuItemAction, {
     error: null,
   });
@@ -51,17 +53,15 @@ export function MenuItemForm({
             <path d={ALERT} />
           </svg>
           <span>
-            <span className="msg__title">Not saved. </span>
-            {state.error}
+            <span className="msg__title">{t("Not saved. ")}</span>
+            {t.message(state.error)}
           </span>
         </div>
       ) : null}
 
       <div className="flex flex-wrap items-start gap-4">
         <div className="field grow max-w-xs mb-0">
-          <label className="label" htmlFor={`name-${id}`}>
-            Menu item name
-          </label>
+          <label className="label" htmlFor={`name-${id}`}>{t(" Menu item name ")}</label>
           <input
             className="input"
             id={`name-${id}`}
@@ -69,14 +69,12 @@ export function MenuItemForm({
             defaultValue={initial?.name}
             required
             maxLength={120}
-            placeholder="Cinnamon roll"
+            placeholder={t("Cinnamon roll")}
           />
         </div>
 
         <div className="field mb-0">
-          <label className="label" htmlFor={`portionQty-${id}`}>
-            Quantity per serving
-          </label>
+          <label className="label" htmlFor={`portionQty-${id}`}>{t(" Quantity per serving ")}</label>
           <div className="flex items-center gap-2">
             <input
               className="input w-28 tabular-nums"
@@ -87,15 +85,13 @@ export function MenuItemForm({
               required
             />
             <span className="text-sm font-medium text-ink whitespace-nowrap">
-              {baseUnitLabel(yieldUnitType)}
+              {t(baseUnitLabel(yieldUnitType))}
             </span>
           </div>
         </div>
 
         <div className="field mb-0">
-          <label className="label" htmlFor={`sellingPrice-${id}`}>
-            Selling price (₹)
-          </label>
+          <label className="label" htmlFor={`sellingPrice-${id}`}>{t(" Selling price (₹) ")}</label>
           <input
             className="input w-28 tabular-nums"
             id={`sellingPrice-${id}`}
@@ -113,12 +109,12 @@ export function MenuItemForm({
          * delete. An unchecked box submits nothing at all; that is the whole encoding.
          */}
         <input type="checkbox" name="isActive" defaultChecked={initial?.isActive ?? true} />
-        <span>On the menu</span>
+        <span>{t("On the menu")}</span>
       </label>
 
       <p className="mt-3 mb-0">
         <button className="btn" type="submit" disabled={pending}>
-          {pending ? 'Saving…' : submitLabel}
+          {pending ? t("Saving…") : submitLabel}
         </button>
       </p>
     </form>

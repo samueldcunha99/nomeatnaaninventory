@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react';
 import type { FormState } from './actions.ts';
+import { useTranslations } from '../i18n/provider.tsx';
 
 export type FormValues = {
   id?: string;
@@ -23,6 +24,7 @@ export function IngredientForm({
   initial?: FormValues;
   submitLabel: string;
 }) {
+  const t = useTranslations();
   const [state, formAction, pending] = useActionState(action, { error: null });
 
   return (
@@ -35,22 +37,19 @@ export function IngredientForm({
             <path d="M10 1.7 19 18H1L10 1.7Zm0 5.3a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-1-1Zm0 8.2a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3Z" />
           </svg>
           <span>
-            <span className="msg__title">Not saved. </span>
-            {state.error}
+            <span className="msg__title">{t("Not saved. ")}</span>
+            {t.message(state.error)}
           </span>
         </div>
       ) : null}
 
       <div className="field">
-        <label className="label" htmlFor="name">
-          Name
-        </label>
+        <label className="label" htmlFor="name">{t(" Name ")}</label>
         <input className="input" id="name" name="name" defaultValue={initial?.name} required maxLength={120} />
       </div>
 
       <div className="field">
-        <label className="label" htmlFor="brand">
-          Brand <span className="font-normal muted">(optional)</span>
+        <label className="label" htmlFor="brand">{t(" Brand ")}<span className="font-normal muted">{t("(optional)")}</span>
         </label>
         <input
           className="input"
@@ -58,45 +57,35 @@ export function IngredientForm({
           name="brand"
           defaultValue={initial?.brand}
           maxLength={120}
-          placeholder="Aashirvaad, Amul, Van Houten"
+          placeholder={t("Aashirvaad, Amul, Van Houten")}
           aria-describedby="brand-hint"
         />
-        <p id="brand-hint" className="prose-note mt-1">
-          Leave blank for anything bought loose. It is what the reorder list needs to say
-          which pack to buy, and it is kept out of the name so a change of supplier is not
-          a rename.
-        </p>
+        <p id="brand-hint" className="prose-note mt-1">{t(" Leave blank for anything bought loose. It is what the reorder list needs to say which pack to buy, and it is kept out of the name so a change of supplier is not a rename. ")}</p>
       </div>
 
       <div className="field max-w-xs">
-        <label className="label" htmlFor="unitType">
-          Measured in
-        </label>
+        <label className="label" htmlFor="unitType">{t(" Measured in ")}</label>
         <select className="select" id="unitType" name="unitType" defaultValue={initial?.unitType ?? 'weight'}>
-          <option value="weight">Weight (grams)</option>
-          <option value="volume">Volume (millilitres)</option>
-          <option value="count">Count (units)</option>
+          <option value="weight">{t("Weight (grams)")}</option>
+          <option value="volume">{t("Volume (millilitres)")}</option>
+          <option value="count">{t("Count (units)")}</option>
         </select>
       </div>
 
       <div className="field max-w-xs">
-        <label className="label" htmlFor="purchaseUnit">
-          Purchase unit
-        </label>
+        <label className="label" htmlFor="purchaseUnit">{t(" Purchase unit ")}</label>
         <input
           className="input"
           id="purchaseUnit"
           name="purchaseUnit"
           defaultValue={initial?.purchaseUnit}
-          placeholder="kg, litre, tray"
+          placeholder={t("kg, litre, tray")}
           required
         />
       </div>
 
       <div className="field max-w-xs">
-        <label className="label" htmlFor="purchaseUnitInBase">
-          Base units per purchase unit
-        </label>
+        <label className="label" htmlFor="purchaseUnitInBase">{t(" Base units per purchase unit ")}</label>
         <input
           className="input tabular-nums"
           id="purchaseUnitInBase"
@@ -108,15 +97,11 @@ export function IngredientForm({
           required
           aria-describedby="puib-hint"
         />
-        <p id="puib-hint" className="prose-note mt-1">
-          Buying in kg with grams as the base unit gives 1000. A tray of 30 eggs gives 30.
-        </p>
+        <p id="puib-hint" className="prose-note mt-1">{t(" Buying in kg with grams as the base unit gives 1000. A tray of 30 eggs gives 30. ")}</p>
       </div>
 
       <div className="field max-w-xs">
-        <label className="label" htmlFor="lowStockThreshold">
-          Low stock threshold
-        </label>
+        <label className="label" htmlFor="lowStockThreshold">{t(" Low stock threshold ")}</label>
         <input
           className="input tabular-nums"
           id="lowStockThreshold"
@@ -125,13 +110,11 @@ export function IngredientForm({
           inputMode="decimal"
           aria-describedby="threshold-hint"
         />
-        <p id="threshold-hint" className="prose-note mt-1">
-          In purchase units. The ingredient appears on the low stock list at or below this.
-        </p>
+        <p id="threshold-hint" className="prose-note mt-1">{t(" In purchase units. The ingredient appears on the low stock list at or below this. ")}</p>
       </div>
 
       <button className="btn" type="submit" disabled={pending}>
-        {pending ? 'Saving…' : submitLabel}
+        {pending ? t("Saving…") : submitLabel}
       </button>
     </form>
   );

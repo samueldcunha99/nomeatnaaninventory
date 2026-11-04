@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '../i18n/provider.tsx';
 
 export function AutoSubmitCheckbox({
   name,
@@ -13,6 +14,7 @@ export function AutoSubmitCheckbox({
   label: string;
   className?: string;
 }) {
+  const t = useTranslations();
   return (
     <label className={className ?? 'checkfield'}>
       <input
@@ -23,7 +25,7 @@ export function AutoSubmitCheckbox({
         className="size-5"
         onChange={(e) => e.currentTarget.form?.requestSubmit()}
       />
-      {label}
+      {t(label)}
     </label>
   );
 }

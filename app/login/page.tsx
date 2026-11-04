@@ -3,6 +3,8 @@
 import { useActionState, useState } from 'react';
 import { loginAction } from './actions.ts';
 import { Emblem, Star, Wordmark } from '../ui/brand-mark.tsx';
+import { useTranslations } from '../i18n/provider.tsx';
+import { LanguageSwitcher } from '../i18n/language-switcher.tsx';
 
 /** One eye, drawn once. The slash is added over it when the password is showing. */
 const EYE =
@@ -13,6 +15,7 @@ const EYE =
  * and the single generic failure message are unchanged.
  */
 export default function LoginPage() {
+  const t = useTranslations();
   const [error, formAction, pending] = useActionState(loginAction, null);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -24,6 +27,7 @@ export default function LoginPage() {
      */
     <main className="auth" id="main-content">
       <div className="auth__card">
+        <LanguageSwitcher />
         <div className="auth__crest">
           <Emblem size={76} detail />
           <span className="auth__estd">
@@ -34,10 +38,8 @@ export default function LoginPage() {
           <Wordmark />
         </div>
 
-        <h1>Sign in</h1>
-        <p className="prose-note">
-          Staff access only.
-        </p>
+        <h1>{t("Sign in")}</h1>
+        <p className="prose-note">{t(" Staff access only. ")}</p>
 
         <form action={formAction} noValidate>
           {error ? (
@@ -57,16 +59,14 @@ export default function LoginPage() {
                 <path d="M10 1.7 19 18H1L10 1.7Zm0 5.3a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-1-1Zm0 8.2a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3Z" />
               </svg>
               <span>
-                <span className="msg__title">Couldn’t sign in. </span>
-                {error}
+                <span className="msg__title">{t("Couldn’t sign in. ")}</span>
+                {t.message(error)}
               </span>
             </div>
           ) : null}
 
           <div className="field">
-            <label className="label" htmlFor="email">
-              Email
-            </label>
+            <label className="label" htmlFor="email">{t(" Email ")}</label>
             <input
               className="input"
               id="email"
@@ -80,9 +80,7 @@ export default function LoginPage() {
           </div>
 
           <div className="field">
-            <label className="label" htmlFor="password">
-              Password
-            </label>
+            <label className="label" htmlFor="password">{t(" Password ")}</label>
             {/*
              * A password typed on a tablet, one-handed, in a kitchen is mistyped often
              * enough that "Incorrect email or password" is usually a typo rather than the
@@ -110,8 +108,8 @@ export default function LoginPage() {
                 aria-pressed={showPassword}
                 // The label names the ACTION, and the icon draws the same action, so the
                 // two cannot contradict each other in a screen reader and on screen.
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                title={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showPassword ? t("Hide password") : t("Show password")}
+                title={showPassword ? t("Hide password") : t("Show password")}
               >
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                   <path d={EYE} />
@@ -124,7 +122,7 @@ export default function LoginPage() {
           </div>
 
           <button className="btn btn--block" type="submit" disabled={pending}>
-            {pending ? 'Signing in…' : 'Sign in'}
+            {pending ? t("Signing in…") : t("Sign in")}
           </button>
         </form>
       </div>

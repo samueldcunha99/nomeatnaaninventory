@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from 'react';
 import { createUserAction, changeUserAction, type FormState } from './actions.ts';
+import { useTranslations } from '../../i18n/provider.tsx';
 
 const ALERT =
   'M10 1.7 19 18H1L10 1.7Zm0 5.3a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-1-1Zm0 8.2a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3Z';
@@ -21,10 +22,11 @@ const ROLE_NOTE: Record<StaffRow['role'], string> = {
   owner: 'Everything, including staff and hourly rates.',
   manager: 'Everything except granting the owner role.',
   counter: 'Takes deliveries and records stock. No costing.',
-  kitchen: 'Sees recipes. Records nothing.',
+  kitchen: 'No workspace access yet.',
 };
 
 function Messages({ state, what }: { state: FormState; what: string }) {
+  const t = useTranslations();
   return (
     <>
       {state.error ? (
@@ -33,8 +35,8 @@ function Messages({ state, what }: { state: FormState; what: string }) {
             <path d={ALERT} />
           </svg>
           <span>
-            <span className="msg__title">{what} </span>
-            {state.error}
+            <span className="msg__title">{t(what)} </span>
+            {t.message(state.error)}
           </span>
         </div>
       ) : null}
@@ -44,8 +46,8 @@ function Messages({ state, what }: { state: FormState; what: string }) {
             <path d={TICK} />
           </svg>
           <span>
-            <span className="msg__title">Saved. </span>
-            {state.ok}
+            <span className="msg__title">{t("Saved. ")}</span>
+            {t(state.ok)}
           </span>
         </div>
       ) : null}
@@ -59,6 +61,7 @@ function Messages({ state, what }: { state: FormState; what: string }) {
  * being changed.
  */
 export function StaffTable({ staff, canGrantOwner }: { staff: StaffRow[]; canGrantOwner: boolean }) {
+  const t = useTranslations();
   const [state, formAction, pending] = useActionState<FormState, FormData>(changeUserAction, {
     error: null,
     ok: null,
@@ -72,11 +75,11 @@ export function StaffTable({ staff, canGrantOwner }: { staff: StaffRow[]; canGra
         <table className="table">
           <thead>
             <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Email</th>
-              <th scope="col" className="w-48">Role</th>
-              <th scope="col">Status</th>
-              <th scope="col"><span className="sr-only">Actions</span></th>
+              <th scope="col">{t("Name")}</th>
+              <th scope="col">{t("Email")}</th>
+              <th scope="col" className="w-48">{t("Role")}</th>
+              <th scope="col">{t("Status")}</th>
+              <th scope="col"><span className="sr-only">{t("Actions")}</span></th>
             </tr>
           </thead>
           <tbody>
@@ -84,7 +87,7 @@ export function StaffTable({ staff, canGrantOwner }: { staff: StaffRow[]; canGra
               <tr key={u.id}>
                 <th scope="row">
                   {u.name}
-                  {u.isSelf ? <span className="badge badge--muted ml-2">You</span> : null}
+                  {u.isSelf ? <span className="badge badge--muted ml-2">{t("You")}</span> : null}
                 </th>
                 <td className="muted">{u.email}</td>
                 <td>
@@ -98,7 +101,7 @@ export function StaffTable({ staff, canGrantOwner }: { staff: StaffRow[]; canGra
                     name="role"
                     defaultValue={u.role}
                     disabled={pending || u.isSelf || (u.role === 'owner' && !canGrantOwner)}
-                    aria-label={`Role for ${u.name}`}
+                    aria-label={t("Role for {0}", { "0": u.name })}
                     onChange={(e) => {
                       const form = e.currentTarget.form!;
                       (form.elements.namedItem('userId') as HTMLInputElement).value = u.id;
@@ -108,22 +111,22 @@ export function StaffTable({ staff, canGrantOwner }: { staff: StaffRow[]; canGra
                   >
                     {(['owner', 'manager', 'counter', 'kitchen'] as const).map((r) => (
                       <option key={r} value={r} disabled={r === 'owner' && !canGrantOwner}>
-                        {r}
+                        {t(r)}
                       </option>
                     ))}
                   </select>
-                  <span className="block text-xs muted mt-1">{ROLE_NOTE[u.role]}</span>
+                  <span className="block text-xs muted mt-1">{t(ROLE_NOTE[u.role])}</span>
                 </td>
                 <td>
                   {u.isActive ? (
-                    <span className="badge">Active</span>
+                    <span className="badge">{t("Active")}</span>
                   ) : (
-                    <span className="badge badge--muted">Deactivated</span>
+                    <span className="badge badge--muted">{t("Deactivated")}</span>
                   )}
                 </td>
                 <td>
                   {u.isSelf ? (
-                    <span className="muted text-xs">Ask another owner</span>
+                    <span className="muted text-xs">{t("Ask another owner")}</span>
                   ) : (
                     <button
                       className="btn-quiet"
@@ -135,7 +138,7 @@ export function StaffTable({ staff, canGrantOwner }: { staff: StaffRow[]; canGra
                         (form.elements.namedItem('active') as HTMLInputElement).value = u.isActive ? 'off' : 'on';
                       }}
                     >
-                      {u.isActive ? 'Deactivate' : 'Reactivate'}
+                      {u.isActive ? t("Deactivate") : t("Reactivate")}
                     </button>
                   )}
                 </td>
@@ -153,6 +156,7 @@ export function StaffTable({ staff, canGrantOwner }: { staff: StaffRow[]; canGra
 }
 
 export function NewStaffForm({ canGrantOwner }: { canGrantOwner: boolean }) {
+  const t = useTranslations();
   const [state, formAction, pending] = useActionState<FormState, FormData>(createUserAction, {
     error: null,
     ok: null,
@@ -170,17 +174,17 @@ export function NewStaffForm({ canGrantOwner }: { canGrantOwner: boolean }) {
       <Messages state={state} what="Not added." />
 
       <div className="field max-w-sm">
-        <label className="label" htmlFor="name">Name</label>
+        <label className="label" htmlFor="name">{t("Name")}</label>
         <input className="input" id="name" name="name" maxLength={120} required autoComplete="off" />
       </div>
 
       <div className="field max-w-sm">
-        <label className="label" htmlFor="email">Email</label>
+        <label className="label" htmlFor="email">{t("Email")}</label>
         <input className="input" id="email" name="email" type="email" maxLength={320} required autoComplete="off" />
       </div>
 
       <div className="field max-w-sm">
-        <label className="label" htmlFor="password">First password</label>
+        <label className="label" htmlFor="password">{t("First password")}</label>
         <input
           className="input"
           id="password"
@@ -191,26 +195,22 @@ export function NewStaffForm({ canGrantOwner }: { canGrantOwner: boolean }) {
           autoComplete="new-password"
           aria-describedby="password-hint"
         />
-        <p id="password-hint" className="prose-note mt-1">
-          At least 12 characters. Three ordinary words with a number is easier to remember
-          than a short one full of symbols, and harder to guess. Tell it to them in person —
-          it is not emailed, and nobody, including you, can read it back afterwards.
-        </p>
+        <p id="password-hint" className="prose-note mt-1">{t(" At least 12 characters. Three ordinary words with a number is easier to remember than a short one full of symbols, and harder to guess. Tell it to them in person — it is not emailed, and nobody, including you, can read it back afterwards. ")}</p>
       </div>
 
       <div className="field max-w-sm">
-        <label className="label" htmlFor="role">Role</label>
+        <label className="label" htmlFor="role">{t("Role")}</label>
         <select className="select" id="role" name="role" defaultValue="counter">
           {(['owner', 'manager', 'counter', 'kitchen'] as const).map((r) => (
             <option key={r} value={r} disabled={r === 'owner' && !canGrantOwner}>
-              {r} — {ROLE_NOTE[r]}
+              {t(r)} — {t(ROLE_NOTE[r])}
             </option>
           ))}
         </select>
       </div>
 
       <button className="btn" type="submit" disabled={pending}>
-        {pending ? 'Adding…' : 'Add to the team'}
+        {pending ? t("Adding…") : t("Add to the team")}
       </button>
     </form>
   );

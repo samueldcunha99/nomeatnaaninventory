@@ -6,6 +6,7 @@ import { saveRecipeAction, type FormState } from './actions.ts';
 import { IngredientCombobox } from '../ui/ingredient-combobox.tsx';
 import type { UnitType } from '../../src/lib/units.ts';
 import { RECIPE_UNITS, baseRecipeUnit, recipeUnitType, changeRecipeQuantityUnit, type RecipeQuantityUnit } from '../../src/lib/recipe-quantity.ts';
+import { useTranslations } from '../i18n/provider.tsx';
 
 export type SourceOption = {
   id: string;
@@ -54,6 +55,7 @@ export function RecipeForm({
   initial?: RecipeFormValues;
   submitLabel: string;
 }) {
+  const t = useTranslations();
   const [state, formAction, pending] = useActionState<FormState, FormData>(saveRecipeAction, {
     error: null,
   });
@@ -107,7 +109,7 @@ export function RecipeForm({
     <form action={formAction} className="recipe-editor">
       {initial?.id ? <input type="hidden" name="id" value={initial.id} /> : null}
       <input type="hidden" name="yieldUnitType" value={recipeUnitType(yieldUnit)} />
-      {unitError ? <p className="msg msg--error" role="alert">{unitError}</p> : null}
+      {unitError ? <p className="msg msg--error" role="alert">{t.message(unitError)}</p> : null}
 
       {state.error ? (
         <div className="msg msg--error" role="alert">
@@ -115,18 +117,16 @@ export function RecipeForm({
             <path d={ALERT} />
           </svg>
           <span>
-            <span className="msg__title">Not saved. </span>
-            {state.error}
+            <span className="msg__title">{t("Not saved. ")}</span>
+            {t.message(state.error)}
           </span>
         </div>
       ) : null}
 
       <section className="form-section" aria-labelledby="batch-heading">
-      <h2 id="batch-heading"><span className="form-section-number">01</span> Batch & yield</h2>
+      <h2 id="batch-heading"><span className="form-section-number">01</span>{t(" Batch & yield")}</h2>
       <div className="field max-w-xl">
-        <label className="label" htmlFor="name">
-          Recipe name
-        </label>
+        <label className="label" htmlFor="name">{t(" Recipe name ")}</label>
         <input
           className="input"
           id="name"
@@ -134,17 +134,15 @@ export function RecipeForm({
           defaultValue={initial?.name}
           required
           maxLength={120}
-          placeholder="e.g. Double chocolate chunk cookies"
+          placeholder={t("e.g. Double chocolate chunk cookies")}
         />
       </div>
 
       <fieldset className="mb-4 border-0 p-0 m-0">
-        <legend className="label">One batch yields</legend>
+        <legend className="label">{t("One batch yields")}</legend>
         <div className="flex flex-wrap items-start gap-3">
           <div className="field mb-0">
-            <label className="sr-only" htmlFor="yieldQty">
-              Batch yield quantity
-            </label>
+            <label className="sr-only" htmlFor="yieldQty">{t(" Batch yield quantity ")}</label>
             <div className="flex items-center gap-2">
               <input
                 className="input w-32 tabular-nums"
@@ -159,9 +157,7 @@ export function RecipeForm({
           </div>
 
           <div className="field mb-0">
-            <label className="sr-only" htmlFor="yieldUnit">
-              Batch yield unit
-            </label>
+            <label className="sr-only" htmlFor="yieldUnit">{t(" Batch yield unit ")}</label>
             <select
               className="select w-44"
               id="yieldUnit"
@@ -179,39 +175,27 @@ export function RecipeForm({
                 }
               }}
             >
-              {RECIPE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
+              {RECIPE_UNITS.map(u => <option key={u.value} value={u.value}>{t(u.label)}</option>)}
             </select>
           </div>
         </div>
-        <p className="prose-note mt-1">
-          Enter the usable amount after preparation, then choose its unit. For 85 cookies,
-          choose pieces and enter 85. For 1.5 kg of sauce, enter 1.5 and choose kg.
-        </p>
+        <p className="prose-note mt-1">{t(" Enter the usable amount after preparation, then choose its unit. For 85 cookies, choose pieces and enter 85. For 1.5 kg of sauce, enter 1.5 and choose kg. ")}</p>
       </fieldset>
 
       </section>
       <section className="form-section" aria-labelledby="ingredients-heading">
-      <h2 id="ingredients-heading"><span className="form-section-number">02</span> Ingredients & components</h2>
-      <p className="prose-note">
-        Add everything used for the whole batch. You can include a saved recipe, such as
-        garlic butter filling, or a packaging ingredient. Each quantity uses the unit shown.
-      </p>
+      <h2 id="ingredients-heading"><span className="form-section-number">02</span>{t(" Ingredients & components")}</h2>
+      <p className="prose-note">{t(" Add everything used for the whole batch. You can include a saved recipe, such as garlic butter filling, or a packaging ingredient. Each quantity uses the unit shown. ")}</p>
 
       <div className="table-wrap max-w-3xl">
         <table className="table">
           <thead>
             <tr>
-              <th scope="col" className="w-64">
-                Ingredient or recipe
-              </th>
-              <th scope="col" className="w-40">
-                Quantity
-              </th>
-              <th scope="col" className="w-32">
-                Wastage
-              </th>
+              <th scope="col" className="w-64">{t(" Ingredient or recipe ")}</th>
+              <th scope="col" className="w-40">{t(" Quantity ")}</th>
+              <th scope="col" className="w-32">{t(" Wastage ")}</th>
               <th scope="col" className="w-24">
-                <span className="sr-only">Remove line</span>
+                <span className="sr-only">{t("Remove line")}</span>
               </th>
             </tr>
           </thead>
@@ -221,7 +205,7 @@ export function RecipeForm({
               return (
                 <tr key={row.key}>
                   <td>
-                    <span className="editor-step-label">Ingredient or recipe · {i + 1}</span>
+                    <span className="editor-step-label">{t("Ingredient or recipe · ")}{i + 1}</span>
                     <IngredientCombobox
                       fieldName={`lines[${i}][sourceId]`}
                       options={options}
@@ -243,8 +227,7 @@ export function RecipeForm({
                      * worth pointing at.
                      */}
                     {source?.kind === 'recipe' ? (
-                      <span className="block text-xs muted mt-1">
-                        Sub-recipe, measured by {source.unitType}
+                      <span className="block text-xs muted mt-1">{t(" Sub-recipe, measured by ")}{t(source.unitType)}
                       </span>
                     ) : null}
                     <input type="hidden" name={`lines[${i}][sourceKind]`} value={source?.kind ?? ''} />
@@ -252,7 +235,7 @@ export function RecipeForm({
                   </td>
 
                   <td>
-                    <span className="editor-step-label">Quantity</span>
+                    <span className="editor-step-label">{t("Quantity")}</span>
                     <div className="flex items-center gap-2">
                       <input
                         className="input w-24 tabular-nums"
@@ -260,10 +243,10 @@ export function RecipeForm({
                         value={row.quantity}
                         onChange={(e) => set(i, { quantity: e.target.value })}
                         inputMode="decimal"
-                        aria-label={`Quantity, line ${i + 1}`}
+                        aria-label={t("Quantity, line {0}", { "0": i + 1 })}
                       />
                       <select className="select w-36" name={`lines[${i}][quantityUnit]`}
-                        aria-label={`Quantity unit, line ${i + 1}`} value={row.quantityUnit} disabled={!source}
+                        aria-label={t("Quantity unit, line {0}", { "0": i + 1 })} value={row.quantityUnit} disabled={!source}
                         onChange={e => {
                           const next = e.target.value as RecipeQuantityUnit;
                           try {
@@ -274,13 +257,13 @@ export function RecipeForm({
                           }
                         }}>
                         {RECIPE_UNITS.filter(u => !source || u.unitType === source.unitType)
-                          .map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
+                          .map(u => <option key={u.value} value={u.value}>{t(u.label)}</option>)}
                       </select>
                     </div>
                   </td>
 
                   <td>
-                    <span className="editor-step-label">Wastage</span>
+                    <span className="editor-step-label">{t("Wastage")}</span>
                     <div className="flex items-center gap-2">
                       <input
                         className="input w-20 tabular-nums"
@@ -289,7 +272,7 @@ export function RecipeForm({
                         onChange={(e) => set(i, { wastage: e.target.value })}
                         inputMode="decimal"
                         placeholder="0"
-                        aria-label={`Wastage percent, line ${i + 1}`}
+                        aria-label={t("Wastage percent, line {0}", { "0": i + 1 })}
                       />
                       <span className="text-sm font-medium text-ink">%</span>
                     </div>
@@ -302,9 +285,7 @@ export function RecipeForm({
                       onClick={() =>
                         setRows((rs) => (rs.length === 1 ? [blank()] : rs.filter((_, k) => k !== i)))
                       }
-                    >
-                      Remove
-                      <span className="sr-only"> line {i + 1}</span>
+                    >{t(" Remove ")}<span className="sr-only">{t(" line ")}{i + 1}</span>
                     </button>
                   </td>
                 </tr>
@@ -315,27 +296,24 @@ export function RecipeForm({
       </div>
 
       <p className="mt-3">
-        <button className="btn btn--secondary" type="button" onClick={() => setRows((rs) => [...rs, blank()])}>
-          + Add ingredient or recipe
-        </button>
+        <button className="btn btn--secondary" type="button" onClick={() => setRows((rs) => [...rs, blank()])}>{t(" + Add ingredient or recipe ")}</button>
       </p>
-      <p className="prose-note mb-0">Wastage adds extra ingredient usage. Leave it at 0 if there is none. Batch losses are already reflected in your usable yield.</p>
+      <p className="prose-note mb-0">{t("Wastage adds extra ingredient usage. Leave it at 0 if there is none. Batch losses are already reflected in your usable yield.")}</p>
       </section>
 
       <section className="form-section" aria-labelledby="time-heading">
-      <h2 id="time-heading"><span className="form-section-number">03</span> Time & method</h2>
+      <h2 id="time-heading"><span className="form-section-number">03</span>{t(" Time & method")}</h2>
       <div className="field max-w-xl">
-        <label className="label" htmlFor="batchMinutes">Batch preparation time <span className="font-normal muted">(optional)</span></label>
+        <label className="label" htmlFor="batchMinutes">{t("Batch preparation time ")}<span className="font-normal muted">{t("(optional)")}</span></label>
         <div className="flex items-center gap-2">
           <input className="input w-28 tabular-nums" id="batchMinutes" name="batchMinutes" defaultValue={initial?.batchMinutes} inputMode="numeric" placeholder="90" aria-describedby="batch-hint" />
-          <span className="text-sm font-medium text-ink">minutes</span>
+          <span className="text-sm font-medium text-ink">{t("minutes")}</span>
         </div>
-        <p id="batch-hint" className="prose-note mt-1">Start to finish, including proving and baking. This time and your hourly rates determine the batch’s labour and kitchen costs. Leave blank if you have not timed it yet.</p>
+        <p id="batch-hint" className="prose-note mt-1">{t("Start to finish, including proving and baking. This time and your hourly rates determine the batch’s labour and kitchen costs. Leave blank if you have not timed it yet.")}</p>
       </div>
 
       <div className="field max-w-xl">
-        <label className="label" htmlFor="notes">
-          Method notes <span className="font-normal muted">(optional)</span>
+        <label className="label" htmlFor="notes">{t(" Method notes ")}<span className="font-normal muted">{t("(optional)")}</span>
         </label>
         <textarea
           className="input"
@@ -348,9 +326,9 @@ export function RecipeForm({
       </div>
       </section>
       <div className="save-bar">
-      <p className="prose-note mb-0">Save your recipe, then review its cost and set serving prices.</p>
-      <div className="flex gap-3 items-center"><Link className="btn btn--secondary" href={initial?.id ? `/recipes/${initial.id}/cost` : '/recipes'}>Cancel</Link><button className="btn" type="submit" disabled={pending}>
-        {pending ? 'Saving…' : submitLabel}
+      <p className="prose-note mb-0">{t("Save your recipe, then review its cost and set serving prices.")}</p>
+      <div className="flex gap-3 items-center"><Link className="btn btn--secondary" href={initial?.id ? `/recipes/${initial.id}/cost` : '/recipes'}>{t("Cancel")}</Link><button className="btn" type="submit" disabled={pending}>
+        {pending ? t("Saving…") : submitLabel}
       </button></div>
       </div>
     </form>

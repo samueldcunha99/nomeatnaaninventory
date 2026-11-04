@@ -1,5 +1,7 @@
 import { Cinzel, Poppins } from 'next/font/google';
 import './globals.css';
+import { getLocale, getTranslations } from './i18n/server.ts';
+import { LanguageProvider } from './i18n/provider.tsx';
 
 /*
  * next/font downloads these at BUILD time and serves them from our own origin. There is
@@ -10,7 +12,7 @@ import './globals.css';
  * a slow connection for a screen someone is waiting on during a rush.
  */
 const poppins = Poppins({
-  subsets: ['latin'],
+  subsets: ['latin', 'devanagari'],
   weight: ['400', '600', '700'],
   display: 'swap',
   variable: '--font-poppins',
@@ -33,12 +35,16 @@ const cinzel = Cinzel({
   variable: '--font-display-web',
 });
 
-export const metadata = { title: 'No Meat Naan — Management' };
+export async function generateMetadata() {
+  const t = await getTranslations();
+  return { title: `No Meat Naan — ${t('Management')}` };
+}
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await getLocale();
   return (
-    <html lang="en" className={`${poppins.variable} ${cinzel.variable}`}>
-      <body>{children}</body>
+    <html lang={locale} className={`${poppins.variable} ${cinzel.variable}`}>
+      <body><LanguageProvider locale={locale}>{children}</LanguageProvider></body>
     </html>
   );
 }

@@ -1,8 +1,11 @@
 import { hasPermission, type Actor } from '../../src/lib/auth.ts';
 import { logoutAction } from '../login/actions.ts';
 import { WorkspaceNav, type NavigationItem } from './workspace-nav.tsx';
+import { getTranslations } from '../i18n/server.ts';
+import { LanguageSwitcher } from '../i18n/language-switcher.tsx';
 
-export function WorkspaceHeader({ actor, title }: { actor: Actor & { name?: string }; title: string }) {
+export async function WorkspaceHeader({ actor, title }: { actor: Actor & { name?: string }; title: string }) {
+  const t = await getTranslations();
   const items: NavigationItem[] = [{ href: '/', label: 'Overview', group: 'Workspace', icon: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z' }];
   if (hasPermission(actor.role, 'recipes.view')) items.push({ href: '/recipes', label: 'Recipes & costing', group: 'Workspace', icon: 'M4 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-2H4zM13 7a3 3 0 0 1 3-3h5v15h-4a4 4 0 0 0-4 2' });
   if (hasPermission(actor.role, 'production.record')) items.push(
@@ -21,11 +24,11 @@ export function WorkspaceHeader({ actor, title }: { actor: Actor & { name?: stri
   if (hasPermission(actor.role, 'recipes.manage')) items.push({ href: '/settings/costing', label: 'Hourly rates', group: 'Settings', icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 7v5l4 2' });
   if (hasPermission(actor.role, 'users.manage')) items.push({ href: '/settings/users', label: 'Staff', group: 'Settings', icon: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8' });
   return <>
-    <a className="skip-link" href="#main-content">Skip to content</a>
+    <a className="skip-link" href="#main-content">{t("Skip to content")}</a>
     <WorkspaceNav items={items} />
     <header className="workspace-header">
-      <div><span className="workspace-context">Costing workspace</span><span className="workspace-current">{title}</span></div>
-      <div className="workspace-account"><span className="workspace-avatar" aria-hidden="true">{(actor.name || actor.role).slice(0, 1).toUpperCase()}</span><span className="workspace-identity">{actor.name || 'Staff'}<small>{actor.role}</small></span><form action={logoutAction}><button type="submit" className="btn-quiet">Sign out</button></form></div>
+      <div><span className="workspace-context">{t("Costing workspace")}</span><span className="workspace-current">{t(title)}</span></div>
+      <div className="workspace-account"><LanguageSwitcher /><span className="workspace-avatar" aria-hidden="true">{(actor.name || actor.role).slice(0, 1).toUpperCase()}</span><span className="workspace-identity">{actor.name || t("Staff")}<small>{t(actor.role)}</small></span><form action={logoutAction}><button type="submit" className="btn-quiet">{t("Sign out")}</button></form></div>
     </header>
   </>;
 }

@@ -2345,3 +2345,33 @@ batch, loss of explicit zero rates on unchanged saves, and duplicate purchases w
 a receipt form is retried. Normal production request-id retry protection passed.
 No fixes are claimed. files/qa-2026-11-04.md records evidence, limitations and repair
 priorities. Private probe scripts, logs, snapshots and data remain local.
+
+## 2026-11-04 - English, Hindi and Marathi interface
+
+Added a language selector to login and the shared workspace header. A validated,
+HttpOnly/SameSite preference cookie selects English, Hindi or Marathi per browser for
+one year, with English fallback for unsupported values. Request-cached server rendering
+and a client provider use the same catalogue of 609 bilingual entries. The document
+language, dates, navigation, forms, help text, status and validation messages follow the
+selection. Saved names and notes stay untouched. Quantity display uses the existing
+exact formatter; only the count label is localized. Standard g/ml codes, submitted unit
+and role values, auth enforcement, tenant scope, ledger and cost arithmetic are unchanged.
+Poppins now includes self-hosted Devanagari. No migration or external translation API.
+
+The production build/typecheck passed. Full isolated native PostgreSQL regression:
+278 passed, 0 failed, 0 skipped. Seventeen compiled-app language acceptance checks
+covered 51 protected page requests, preference cookie flags, translated login/recipe/
+production validation, unknown-language fallback, localized 404s, concurrent request
+isolation and identical form fields/options/currency values. Business table counts did
+not change. Removing a required translation was watched failing the coverage guard;
+deliberately translating a submitted role value also failed its guard, then both were
+restored and all tests passed.
+
+In-app browser checks confirmed Hindi and Marathi login/workspace rendering, persistence
+after reload and navigation, a Marathi mobile menu, and a production form retaining its
+selected recipe, 1.5 batches, 14 pieces and notes while switching to Hindi. At 320 px the
+new selector initially overflowed the header; a two-row mobile header fixed it, verified
+with no page overflow. Localhost port 3000 was restarted with the new production build
+and the existing restricted runtime connection. No test business data was added to the
+client Supabase database. The nine previously documented defects remain unresolved.
+Publishing and online verification follow this entry.

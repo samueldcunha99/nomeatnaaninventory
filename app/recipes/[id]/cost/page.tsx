@@ -7,7 +7,7 @@ import { getRecipeCostBreakdown, type Breakdown } from '../../../../src/db/recip
 import { portionCostPaise, menuItemMargin, type RecipeExplanation } from '../../../../src/lib/costing.ts';
 import {
   formatINR,
-  formatQty,
+
   costPerPurchaseUnitPaise,
   unitCostMillipaisePerBase,
   millipercentToPercent,
@@ -15,6 +15,7 @@ import {
   type UnitType,
 } from '../../../../src/lib/units.ts';
 import { Glyph } from '../../../ui/status-badge.tsx';
+import { getTranslations } from '../../../i18n/server.ts';
 
 const ALERT = 'M10 1.7 19 18H1L10 1.7Zm0 5.3a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-1-1Zm0 8.2a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3Z';
 
@@ -24,12 +25,13 @@ function perUnit(unitType: UnitType): { inBase: number; label: string } {
   return { inBase: 1000, label: unitType === 'volume' ? 'per litre' : 'per kg' };
 }
 
-function Rate({ rate, unitType }: { rate: bigint; unitType: UnitType }) {
+async function Rate({ rate, unitType }: { rate: bigint; unitType: UnitType }) {
+  const t = await getTranslations();
   const u = perUnit(unitType);
   return (
     <>
       {formatINR(costPerPurchaseUnitPaise(rate, u.inBase))}
-      <span className="block text-xs muted">{u.label}</span>
+      <span className="block text-xs muted">{t(u.label)}</span>
     </>
   );
 }
@@ -41,7 +43,7 @@ function Rate({ rate, unitType }: { rate: bigint; unitType: UnitType }) {
  * "what is expensive here", and the answer should be the first row. Recipes carry no
  * stored line order to preserve.
  */
-function Lines({
+async function Lines({
   explanation,
   sources,
   nested = false,
@@ -50,6 +52,7 @@ function Lines({
   sources: Breakdown['sources'];
   nested?: boolean;
 }) {
+  const t = await getTranslations();
   const lines = [...explanation.lines].sort((a, b) =>
     a.contributionPaise === b.contributionPaise ? 0 : b.contributionPaise > a.contributionPaise ? 1 : -1,
   );
@@ -59,19 +62,11 @@ function Lines({
     <table className={`table${nested ? ' table--nested' : ''}`}>
       <thead>
         <tr>
-          <th scope="col">{nested ? 'Goes into ' + explanation.name : 'Ingredient'}</th>
-          <th scope="col" className="num">
-            Quantity
-          </th>
-          <th scope="col" className="num col-secondary">
-            Rate
-          </th>
-          <th scope="col" className="num">
-            Cost
-          </th>
-          <th scope="col" className="num w-32">
-            Share
-          </th>
+          <th scope="col">{nested ? t('Goes into {0}', { '0': explanation.name }) : t("Ingredient")}</th>
+          <th scope="col" className="num">{t(" Quantity ")}</th>
+          <th scope="col" className="num col-secondary">{t(" Rate ")}</th>
+          <th scope="col" className="num">{t(" Cost ")}</th>
+          <th scope="col" className="num w-32">{t(" Share ")}</th>
         </tr>
       </thead>
       <tbody>
@@ -85,13 +80,12 @@ function Lines({
                 {source.name}
                 {line.wastageMillipercent > 0n ? (
                   <span className="block text-xs muted font-normal">
-                    {formatQty(line.quantityMilliBase, source.unitType)} plus{' '}
-                    {millipercentToPercent(line.wastageMillipercent)}% wastage
-                  </span>
+                    {t.quantity(line.quantityMilliBase, source.unitType)}{t(" plus")}{' '}
+                    {millipercentToPercent(line.wastageMillipercent)}{t("% wastage ")}</span>
                 ) : null}
               </th>
               <td className="num whitespace-nowrap">
-                {formatQty(line.effectiveMilliBase, source.unitType)}
+                {t.quantity(line.effectiveMilliBase, source.unitType)}
               </td>
               <td className="num whitespace-nowrap col-secondary">
                 <Rate rate={line.rateMillipaisePerBase} unitType={source.unitType} />
@@ -117,9 +111,7 @@ function Lines({
               <tr className="subrow" key={line.sourceId + i + '-sub'}>
                 <td colSpan={5}>
                   <details className="subdetails">
-                    <summary>
-                      What makes up {source.name} — {formatINR(line.children.batchPaise)} per batch
-                      of {formatQty(line.children.yieldQtyMilliBase, line.children.yieldUnitType)}
+                    <summary>{t(" What makes up ")}{source.name} — {formatINR(line.children.batchPaise)}{t(" per batch of ")}{t.quantity(line.children.yieldQtyMilliBase, line.children.yieldUnitType)}
                     </summary>
                     <div className="subdetails__body">
                       <Lines explanation={line.children} sources={sources} nested />
@@ -134,7 +126,7 @@ function Lines({
       <tfoot>
         <tr>
           <th scope="row" className="text-right">
-            {explanation.overhead.applied ? 'Ingredients' : 'Batch total'}
+            {explanation.overhead.applied ? t("Ingredients") : t("Batch total")}
           </th>
           <td />
           <td className="col-secondary" />
@@ -150,9 +142,7 @@ function Lines({
         {explanation.overhead.applied ? (
           <>
             <tr>
-              <th scope="row" className="text-right font-normal">
-                Labour
-                <span className="block text-xs muted">{explanation.batchMinutes} min</span>
+              <th scope="row" className="text-right font-normal">{t(" Labour ")}<span className="block text-xs muted">{explanation.batchMinutes}{t(" min")}</span>
               </th>
               <td />
               <td className="col-secondary" />
@@ -162,9 +152,7 @@ function Lines({
               <td />
             </tr>
             <tr>
-              <th scope="row" className="text-right font-normal">
-                Kitchen
-                <span className="block text-xs muted">gas, power, rent</span>
+              <th scope="row" className="text-right font-normal">{t(" Kitchen ")}<span className="block text-xs muted">{t("gas, power, rent")}</span>
               </th>
               <td />
               <td className="col-secondary" />
@@ -174,9 +162,7 @@ function Lines({
               <td />
             </tr>
             <tr>
-              <th scope="row" className="text-right">
-                Batch total
-              </th>
+              <th scope="row" className="text-right">{t(" Batch total ")}</th>
               <td />
               <td className="col-secondary" />
               <td className="num whitespace-nowrap font-bold text-navy">
@@ -199,6 +185,7 @@ export default async function CostBreakdownPage({
   searchParams: Promise<{ wi?: string; wp?: string }>;
 }) {
   const actor = await requirePermission('recipes.view');
+  const t = await getTranslations();
   const { id } = await params;
   const { wi, wp } = await searchParams;
 
@@ -239,26 +226,19 @@ export default async function CostBreakdownPage({
 
   return (
     <>
-      <WorkspaceHeader actor={actor} title="Cost breakdown" />
+      <WorkspaceHeader actor={actor} title={t("Cost breakdown")} />
 
       <main className="page" id="main-content" tabIndex={-1}>
         <p>
-          <Link href="/recipes">← Recipes</Link>
+          <Link href="/recipes">{t("← Recipes")}</Link>
         </p>
         <h1>{view.recipe.name}</h1>
-        <p className="prose-note">
-          One batch yields {formatQty(view.recipe.yieldQtyMilliBase, view.recipe.yieldUnitType)}.
-          Ingredient costs use the weighted average of your recorded purchases.
-        </p>
+        <p className="prose-note">{t(" One batch yields ")}{t.quantity(view.recipe.yieldQtyMilliBase, view.recipe.yieldUnitType)}{t(". Ingredient costs use the weighted average of your recorded purchases. ")}</p>
 
         {canManage ? (
           <p className="flex flex-wrap gap-3">
-            <Link className="btn btn--secondary" href={`/recipes/${id}/edit`}>
-              Edit recipe
-            </Link>
-            <Link className="btn btn--secondary" href={`/recipes/${id}/menu`}>
-              Portions & selling prices
-            </Link>
+            <Link className="btn btn--secondary" href={`/recipes/${id}/edit`}>{t(" Edit recipe ")}</Link>
+            <Link className="btn btn--secondary" href={`/recipes/${id}/menu`}>{t(" Portions & selling prices ")}</Link>
           </p>
         ) : null}
 
@@ -268,10 +248,8 @@ export default async function CostBreakdownPage({
               <path d={ALERT} />
             </svg>
             <span>
-              <span className="msg__title">What-if — nothing is saved. </span>
-              Every figure below assumes {whatIf.ingredientName}. The ledger is untouched
-              and no price has been changed.{' '}
-              <Link href={`/recipes/${id}/cost`}>Back to actual costs</Link>
+              <span className="msg__title">{t("What-if — nothing is saved. ")}</span>{t(" Every figure below assumes ")}{whatIf.ingredientName}{t(". The ledger is untouched and no price has been changed.")}{' '}
+              <Link href={`/recipes/${id}/cost`}>{t("Back to actual costs")}</Link>
             </span>
           </div>
         ) : null}
@@ -282,8 +260,8 @@ export default async function CostBreakdownPage({
               <path d={ALERT} />
             </svg>
             <span>
-              <span className="msg__title">What-if not applied. </span>
-              {whatIfError}
+              <span className="msg__title">{t("What-if not applied. ")}</span>
+              {t.message(whatIfError)}
             </span>
           </div>
         ) : null}
@@ -299,21 +277,17 @@ export default async function CostBreakdownPage({
               <path d={ALERT} />
             </svg>
             <span>
-              <span className="msg__title">
-                This cannot be costed yet.{' '}
+              <span className="msg__title">{t(" This cannot be costed yet.")}{' '}
               </span>
-              {view.missing.length} {view.missing.length === 1 ? 'ingredient has' : 'ingredients have'}{' '}
-              no purchase history, so there is no price to work from:{' '}
+              {view.missing.length} {view.missing.length === 1 ? t("ingredient has") : t("ingredients have")}{' '}{t(" no purchase history, so there is no price to work from:")}{' '}
               {view.missing.map((m, i) => (
                 <span key={m.ingredientId + ':' + i}>
                   {i > 0 ? ', ' : ''}
                   <strong>{m.name}</strong>
-                  {m.path?.length ? <span className="muted"> (in {m.path.join(' → ')})</span> : null}
+                  {m.path?.length ? <span className="muted">{t(" (in ")}{m.path.join(' → ')})</span> : null}
                 </span>
               ))}
-              . <Link href="/stock/receipt">Record a delivery</Link> for each and the cost
-              appears on its own.
-            </span>
+              . <Link href="/stock/receipt">{t("Record a delivery")}</Link>{t(" for each and the cost appears on its own. ")}</span>
           </div>
         ) : null}
 
@@ -323,10 +297,7 @@ export default async function CostBreakdownPage({
               <path d={ALERT} />
             </svg>
             <span>
-              <span className="msg__title">This recipe has no lines. </span>
-              An empty recipe costs nothing because it contains nothing — not because it is
-              free. Add its ingredients and the cost follows.
-            </span>
+              <span className="msg__title">{t("This recipe has no lines. ")}</span>{t(" An empty recipe costs nothing because it contains nothing — not because it is free. Add its ingredients and the cost follows. ")}</span>
           </div>
         ) : null}
 
@@ -334,36 +305,29 @@ export default async function CostBreakdownPage({
           <>
             <ul className="statgrid">
               <li className="stat">
-                <span className="stat__label">
-                  Calculated batch cost
-                </span>
+                <span className="stat__label">{t(" Calculated batch cost ")}</span>
                 <span className="stat__value">
                   {formatINR(view.explanation.totalBatchPaise)}
                 </span>
-                <span className="stat__hint">
-                  per {formatQty(view.recipe.yieldQtyMilliBase, view.recipe.yieldUnitType)}
+                <span className="stat__hint">{t(" per ")}{t.quantity(view.recipe.yieldQtyMilliBase, view.recipe.yieldUnitType)}
                 </span>
               </li>
               <li className="stat">
-                <span className="stat__label">Unit cost</span>
+                <span className="stat__label">{t("Unit cost")}</span>
                 <span className="stat__value">
                   {formatINR(
                     costPerPurchaseUnitPaise(view.explanation.rateMillipaisePerBase, unit.inBase),
                   )}
                 </span>
-                <span className="stat__hint">{unit.label}</span>
+                <span className="stat__hint">{t(unit.label)}</span>
               </li>
             </ul>
 
-            <h2 className="section-title">What it is made of</h2>
+            <h2 className="section-title">{t("What it is made of")}</h2>
             <div className="table-wrap">
               <Lines explanation={view.explanation} sources={view.sources} />
             </div>
-            <p className="prose-note mt-2">
-              The cost column adds up to the batch total exactly. A sub-recipe contributes
-              at its own rounded rate, which is what keeps these figures consistent with
-              the ones inside it.
-            </p>
+            <p className="prose-note mt-2">{t(" The cost column adds up to the batch total exactly. A sub-recipe contributes at its own rounded rate, which is what keeps these figures consistent with the ones inside it. ")}</p>
 
             {/*
              * Two different silences, and they need different sentences. No rates set is a
@@ -372,17 +336,13 @@ export default async function CostBreakdownPage({
              */}
             {!view.rates ? (
               <p className="prose-note mt-2">
-                <strong>Ingredients only.</strong> Labour and kitchen overhead are not in
-                these figures because no hourly rates are set.{' '}
-                {canManage ? <Link href="/settings/costing">Set them</Link> : 'Ask the owner to set them'}{' '}
-                and every recipe recosts itself.
-              </p>
+                <strong>{t("Ingredients only.")}</strong>{t(" Labour and kitchen overhead are not in these figures because no hourly rates are set.")}{' '}
+                {canManage ? <Link href="/settings/costing">{t("Set them")}</Link> : t("Ask the owner to set them")}{' '}{t(" and every recipe recosts itself. ")}</p>
             ) : !view.explanation.overhead.applied ? (
               <p className="prose-note mt-2">
-                <strong>Ingredients only.</strong> This recipe has no batch time, so there
-                is nothing to charge labour or kitchen overhead against.{' '}
+                <strong>{t("Ingredients only.")}</strong>{t(" This recipe has no batch time, so there is nothing to charge labour or kitchen overhead against.")}{' '}
                 {canManage ? (
-                  <Link href={`/recipes/${id}/edit`}>Add how long a batch takes</Link>
+                  <Link href={`/recipes/${id}/edit`}>{t("Add how long a batch takes")}</Link>
                 ) : null}
               </p>
             ) : null}
@@ -390,7 +350,7 @@ export default async function CostBreakdownPage({
             {/* ---- What it sells for ------------------------------------- */}
             {view.menuItems.length > 0 ? (
               <>
-                <h2 className="section-title mt-8">On the menu</h2>
+                <h2 className="section-title mt-8">{t("On the menu")}</h2>
                 {view.menuItems.map((item) => {
                   const cost = portionCostPaise(
                     view.explanation!.rateMillipaisePerBase,
@@ -402,33 +362,30 @@ export default async function CostBreakdownPage({
                     <section key={item.id} className="mb-6">
                       <h3 className="mb-2">
                         {item.name}{' '}
-                        <span className="text-sm font-normal muted">
-                          — one portion is{' '}
-                          {formatQty(item.portionQtyMilliBase, view.recipe.yieldUnitType)}
+                        <span className="text-sm font-normal muted">{t(" — one portion is")}{' '}
+                          {t.quantity(item.portionQtyMilliBase, view.recipe.yieldUnitType)}
                         </span>
-                        {!item.isActive ? <span className="badge badge--muted ml-2">Off menu</span> : null}
+                        {!item.isActive ? <span className="badge badge--muted ml-2">{t("Off menu")}</span> : null}
                         {canManage ? (
                           <>
                             {' '}
-                            <Link className="btn-quiet" href={`/recipes/${id}/menu`}>
-                              Edit
-                              <span className="sr-only"> {item.name}</span>
+                            <Link className="btn-quiet" href={`/recipes/${id}/menu`}>{t(" Edit ")}<span className="sr-only"> {item.name}</span>
                             </Link>
                           </>
                         ) : null}
                       </h3>
                       <ul className="statgrid">
                         <li className="stat">
-                          <span className="stat__label">Portion cost</span>
+                          <span className="stat__label">{t("Portion cost")}</span>
                           <span className="stat__value">{formatINR(m.costPaise)}</span>
                         </li>
                         <li className="stat">
-                          <span className="stat__label">Selling price</span>
+                          <span className="stat__label">{t("Selling price")}</span>
                           <span className="stat__value">{formatINR(item.sellingPricePaise)}</span>
                         </li>
                         <li className={`stat ${belowCost ? 'stat--bad' : 'stat--headline'}`}>
                           <span className="stat__label">
-                            {belowCost ? 'Loss per portion' : 'Gross margin'}
+                            {belowCost ? t("Loss per portion") : t("Gross margin")}
                           </span>
                           <span className="stat__value">
                             {formatINR(belowCost ? -m.marginPaise : m.marginPaise)}
@@ -436,24 +393,23 @@ export default async function CostBreakdownPage({
                           <span className="stat__hint">
                             {belowCost ? (
                               <>
-                                <Glyph path={ALERT} /> Sold below what it costs to make
-                              </>
+                                <Glyph path={ALERT} />{t(" Sold below what it costs to make ")}</>
                             ) : Number.isFinite(m.marginPercent) ? (
-                              `${m.marginPercent.toFixed(1)}% of the price`
+                              t('{0}% of the price', { '0': m.marginPercent.toFixed(1) })
                             ) : (
-                              'No price set'
+                              t('No price set')
                             )}
                           </span>
                         </li>
                         <li className="stat">
                           <span className="stat__label">
-                            {view.explanation!.overhead.applied ? 'Total cost' : 'Food cost'}
+                            {view.explanation!.overhead.applied ? t("Total cost") : t("Food cost")}
                           </span>
                           <span className="stat__value">
                             {Number.isFinite(m.foodCostPercent) ? `${m.foodCostPercent.toFixed(1)}%` : '—'}
                           </span>
                           <span className="stat__hint">
-                            {Number.isFinite(m.foodCostPercent) ? 'of the selling price' : 'price is zero'}
+                            {Number.isFinite(m.foodCostPercent) ? t("of the selling price") : t("price is zero")}
                           </span>
                         </li>
                       </ul>
@@ -462,14 +418,10 @@ export default async function CostBreakdownPage({
                 })}
               </>
             ) : (
-              <p className="prose-note mt-6">
-                Nothing on the menu sells this yet, so there is no price to compare against.
-                {canManage ? (
+              <p className="prose-note mt-6">{t(" Nothing on the menu sells this yet, so there is no price to compare against. ")}{canManage ? (
                   <>
                     {' '}
-                    <Link href={`/recipes/${id}/menu`}>Put it on the menu</Link> and the margin
-                    appears here.
-                  </>
+                    <Link href={`/recipes/${id}/menu`}>{t("Put it on the menu")}</Link>{t(" and the margin appears here. ")}</>
                 ) : null}
               </p>
             )}
@@ -479,33 +431,26 @@ export default async function CostBreakdownPage({
         {/* ---- The what-if control -------------------------------------- */}
         {view.ingredientsUsed.length > 0 ? (
           <>
-            <h2 className="section-title mt-8">Try a different price</h2>
-            <p className="prose-note">
-              See what happens to this cost if an ingredient’s price changes. This only
-              looks — it writes nothing, and the real cost still comes from the ledger.
-            </p>
+            <h2 className="section-title mt-8">{t("Try a different price")}</h2>
+            <p className="prose-note">{t(" See what happens to this cost if an ingredient’s price changes. This only looks — it writes nothing, and the real cost still comes from the ledger. ")}</p>
             <form method="get" className="toolbar">
               <div className="field grow max-w-xs">
-                <label className="label" htmlFor="wi">
-                  Ingredient
-                </label>
+                <label className="label" htmlFor="wi">{t(" Ingredient ")}</label>
                 <select className="select" id="wi" name="wi" defaultValue={wi ?? ''}>
                   {view.ingredientsUsed.map((x) => (
                     <option key={x.id} value={x.id}>
                       {x.name}
                       {x.rateMillipaisePerBase === null
-                        ? ' (no price yet)'
-                        : ` (now ${formatINR(
+                        ? t(" (no price yet)")
+                        : t(" (now {0} per {1})", { "0": formatINR(
                             costPerPurchaseUnitPaise(x.rateMillipaisePerBase, x.purchaseUnitInBase),
-                          )} per ${x.purchaseUnit})`}
+                          ), "1": x.purchaseUnit })}
                     </option>
                   ))}
                 </select>
               </div>
               <div className="field max-w-40">
-                <label className="label" htmlFor="wp">
-                  New price ₹
-                </label>
+                <label className="label" htmlFor="wp">{t(" New price ₹ ")}</label>
                 <input
                   className="input"
                   id="wp"
@@ -515,13 +460,9 @@ export default async function CostBreakdownPage({
                   placeholder="620"
                 />
               </div>
-              <button className="btn" type="submit">
-                Show me
-              </button>
+              <button className="btn" type="submit">{t(" Show me ")}</button>
               {whatIf ? (
-                <Link className="btn btn--secondary" href={`/recipes/${id}/cost`}>
-                  Actual costs
-                </Link>
+                <Link className="btn btn--secondary" href={`/recipes/${id}/cost`}>{t(" Actual costs ")}</Link>
               ) : null}
             </form>
           </>

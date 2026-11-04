@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react';
 import { recordCorrectionAction, type FormState } from '../actions.ts';
+import { useTranslations } from '../../i18n/provider.tsx';
 
 export type IngredientOption = { id: string; name: string; purchaseUnit: string; purchaseUnitInBase: number };
 
@@ -21,6 +22,7 @@ const WASTAGE_REASONS = [
 ] as const;
 
 export function AdjustForm({ ingredients }: { ingredients: IngredientOption[] }) {
+  const t = useTranslations();
   const [state, formAction, pending] = useActionState<FormState, FormData>(recordCorrectionAction, {
     error: null,
     ok: null,
@@ -51,8 +53,8 @@ export function AdjustForm({ ingredients }: { ingredients: IngredientOption[] })
             <path d="M10 1.7 19 18H1L10 1.7Zm0 5.3a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-1-1Zm0 8.2a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3Z" />
           </svg>
           <span>
-            <span className="msg__title">Not recorded. </span>
-            {state.error}
+            <span className="msg__title">{t("Not recorded. ")}</span>
+            {t.message(state.error)}
           </span>
         </div>
       ) : null}
@@ -63,14 +65,14 @@ export function AdjustForm({ ingredients }: { ingredients: IngredientOption[] })
             <path d="M8 14.2 3.8 10l1.4-1.4L8 11.4l6.8-6.8L16.2 6 8 14.2Z" />
           </svg>
           <span>
-            <span className="msg__title">Saved. </span>
-            {state.ok}
+            <span className="msg__title">{t("Saved. ")}</span>
+            {t(state.ok)}
           </span>
         </div>
       ) : null}
 
       <fieldset className="field border-0 p-0 m-0 mb-4">
-        <legend className="label">What happened</legend>
+        <legend className="label">{t("What happened")}</legend>
         <div className="flex flex-wrap gap-2">
           {/*
            * Two big targets rather than small radios. This is the first decision on the
@@ -84,8 +86,8 @@ export function AdjustForm({ ingredients }: { ingredients: IngredientOption[] })
               checked={kind === 'adjustment'}
               onChange={() => switchKind('adjustment')}
             />
-            <span className="font-semibold">Adjustment</span>
-            <span className="radiocard__hint">The count was wrong</span>
+            <span className="font-semibold">{t("Adjustment")}</span>
+            <span className="radiocard__hint">{t("The count was wrong")}</span>
           </label>
 
           <label className={`radiocard ${kind === 'wastage' ? 'radiocard--on' : ''}`}>
@@ -95,16 +97,14 @@ export function AdjustForm({ ingredients }: { ingredients: IngredientOption[] })
               checked={kind === 'wastage'}
               onChange={() => switchKind('wastage')}
             />
-            <span className="font-semibold">Wastage</span>
-            <span className="radiocard__hint">Stock was lost</span>
+            <span className="font-semibold">{t("Wastage")}</span>
+            <span className="radiocard__hint">{t("Stock was lost")}</span>
           </label>
         </div>
       </fieldset>
 
       <div className="field">
-        <label className="label" htmlFor="ingredientId">
-          Ingredient
-        </label>
+        <label className="label" htmlFor="ingredientId">{t(" Ingredient ")}</label>
         <select
           className="select"
           id="ingredientId"
@@ -124,16 +124,12 @@ export function AdjustForm({ ingredients }: { ingredients: IngredientOption[] })
 
       {kind === 'adjustment' ? (
         <fieldset className="field border-0 p-0 m-0 mb-4">
-          <legend className="label">Direction</legend>
+          <legend className="label">{t("Direction")}</legend>
           <div className="flex flex-wrap gap-4">
             <label className="checkfield">
-              <input type="radio" name="direction" value="remove" defaultChecked className="size-5" />
-              Remove stock
-            </label>
+              <input type="radio" name="direction" value="remove" defaultChecked className="size-5" />{t(" Remove stock ")}</label>
             <label className="checkfield">
-              <input type="radio" name="direction" value="add" className="size-5" />
-              Add stock
-            </label>
+              <input type="radio" name="direction" value="add" className="size-5" />{t(" Add stock ")}</label>
           </div>
         </fieldset>
       ) : (
@@ -142,16 +138,13 @@ export function AdjustForm({ ingredients }: { ingredients: IngredientOption[] })
       )}
 
       <div className="field max-w-xs">
-        <label className="label" htmlFor="quantity">
-          Quantity {unit ? <span className="font-normal muted">({unit})</span> : null}
+        <label className="label" htmlFor="quantity">{t(" Quantity ")}{unit ? <span className="font-normal muted">({unit})</span> : null}
         </label>
         <input className="input tabular-nums" id="quantity" name="quantity" inputMode="decimal" required />
       </div>
 
       <div className="field max-w-xs">
-        <label className="label" htmlFor="reason">
-          Reason
-        </label>
+        <label className="label" htmlFor="reason">{t(" Reason ")}</label>
         <select
           className="select"
           id="reason"
@@ -161,19 +154,18 @@ export function AdjustForm({ ingredients }: { ingredients: IngredientOption[] })
         >
           {reasons.map(([value, label]) => (
             <option key={value} value={value}>
-              {label}
+              {t(label)}
             </option>
           ))}
         </select>
       </div>
 
       <div className="field">
-        <label className="label" htmlFor="note">
-          Note{' '}
+        <label className="label" htmlFor="note">{t(" Note")}{' '}
           {reason === 'other' ? (
-            <span className="text-danger">(required)</span>
+            <span className="text-danger">{t("(required)")}</span>
           ) : (
-            <span className="font-normal muted">(optional)</span>
+            <span className="font-normal muted">{t("(optional)")}</span>
           )}
         </label>
         <input
@@ -187,7 +179,7 @@ export function AdjustForm({ ingredients }: { ingredients: IngredientOption[] })
       </div>
 
       <button className="btn" type="submit" disabled={pending}>
-        {pending ? 'Saving…' : `Record ${kind}`}
+        {pending ? t("Saving…") : t("Record {0}", { "0": t(kind) })}
       </button>
     </form>
   );

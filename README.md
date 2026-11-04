@@ -6,7 +6,8 @@ order management, and a customer-facing tracking page. Five-month build.
 
 **Month 1 and Month 2 complete; daily production and reporting screens are built.**
 **Readiness checked 4 November 2026:** the live connection is healthy again, and all
-270 existing tests pass against isolated native PostgreSQL with no skips. Additional
+278 tests pass against isolated native PostgreSQL with no skips, including eight
+language regression checks. Additional
 acceptance probes reproduced nine correctness/retry defects; resolve them before using
 the app as the cafe's sole inventory record. See the [current QA report](files/qa-2026-11-04.md).
 The user selected **Netlify Free + Supabase without Docker on 10 October 2026**,
@@ -36,7 +37,7 @@ repository. Nothing important lives in a chat log.
 | Month 2 step 5 — costing screens and editors | ✅ **done**, recipe list, cost breakdown, what-if, and the recipe / line / menu-item editors |
 | Daily production and reports | Live at `/production` and `/reports`; date, recipe and metric controls verified |
 | Trunk | `main`. Everything is merged; `month-2-costing` is merged and safe to delete. |
-| Tests | 4 November: 270 passed against isolated native PostgreSQL 17.11, 0 skipped; 18 compiled-app HTTP workflow checks passed. Separate audit probes reproduced nine defects. |
+| Tests | 4 November: 278 passed against isolated native PostgreSQL 17.11, 0 skipped; 18 compiled-app workflow checks and 17 language acceptance checks passed. Separate audit probes reproduced nine defects. |
 | Current deployment verification | 4 November: live health, owner sign-in/out and all 16 protected owner pages passed; actual Supabase backup restored locally and runtime reads verified. Application commit remains 80aaa49. |
 
 ## Verified against a live database vs merely built
@@ -86,6 +87,29 @@ exact quantities. Kilogram and litre saves were exercised in the browser, and a 
 comparison confirmed that all imported quantities stayed unchanged. CI passed at
 `c3cae6c`. The workbook import now contains 20 recipes and 60 ingredients; 225 entries
 still need explicit measurements or preparation choices. Purchase prices remain unset.
+
+## Website languages
+
+Choose **English**, **हिन्दी** or **मराठी** on the sign-in screen or in the workspace
+header. The selection applies to navigation, forms, reports, help text and operator
+messages, and is saved in that browser for one year. Changing language preserves an
+unfinished form. Dates use the selected language and the existing Asia/Kolkata time
+zone. Recipe names, ingredient names, staff names and saved notes keep their original
+wording; quantities, currency and submitted units retain their exact values.
+
+Translations live in `src/lib/i18n/messages.ts`, shared by server rendering and the
+client language provider. Add both Hindi and Marathi whenever interface copy changes.
+The coverage test checks visible text, custom validation messages, metric labels and
+the translation keys; a separate guard prevents translated labels from becoming
+submitted values or identifiers. Unsupported language cookies fall back to English.
+Poppins includes self-hosted Devanagari glyphs. This feature needs no database migration
+and uses no external translation service.
+
+The production build and all 278 tests passed locally. Compiled-app HTTP checks covered
+all 17 protected screens in each language, identical form contracts and money values,
+translated validation, request isolation and authentication guards. Browser checks
+verified language switching, persistence, preservation of batch inputs and notes, and
+mobile controls at 320 px. These checks do not resolve the nine existing QA defects.
 
 ## Daily production and reports
 

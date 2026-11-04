@@ -3,9 +3,10 @@ import Link from 'next/link';
 import { requirePermission } from '../../src/auth/server.ts';
 import { hasPermission } from '../../src/lib/auth.ts';
 import { listRecipes } from '../../src/db/recipes.ts';
-import { formatQty, formatINR, costPerPurchaseUnitPaise, type UnitType } from '../../src/lib/units.ts';
+import {  formatINR, costPerPurchaseUnitPaise, type UnitType } from '../../src/lib/units.ts';
 import { Glyph } from '../ui/status-badge.tsx';
 import { TIMEZONE } from '../../src/lib/time.ts';
+import { getTranslations } from '../i18n/server.ts';
 
 /**
  * A recipe's cost is millipaise per base unit, which is not a figure anyone says out
@@ -26,6 +27,7 @@ export default async function RecipesPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const actor = await requirePermission('recipes.view');
+  const t = await getTranslations();
   const { q } = await searchParams;
   const rows = await listRecipes(actor, { search: q });
 
@@ -34,60 +36,43 @@ export default async function RecipesPage({
 
   return (
     <>
-      <WorkspaceHeader actor={actor} title="Recipes" />
+      <WorkspaceHeader actor={actor} title={t("Recipes")} />
 
       <main className="page" id="main-content" tabIndex={-1}>
         <div className="page-heading">
-          <h1>Recipes & costing</h1>
+          <h1>{t("Recipes & costing")}</h1>
           {canManage ? (
             <span className="flex flex-wrap gap-2">
-              <Link className="btn btn--secondary" href="/settings/costing">
-                Hourly rates
-              </Link>
-              <Link className="btn" href="/recipes/new">
-                + New recipe
-              </Link>
+              <Link className="btn btn--secondary" href="/settings/costing">{t(" Hourly rates ")}</Link>
+              <Link className="btn" href="/recipes/new">{t(" + New recipe ")}</Link>
             </span>
           ) : null}
         </div>
-        <p className="prose-note">
-          Open a recipe to see its cost breakdown, portions and margins. Ingredient costs
-          update when you record a delivery at a new price.
-        </p>
+        <p className="prose-note">{t(" Open a recipe to see its cost breakdown, portions and margins. Ingredient costs update when you record a delivery at a new price. ")}</p>
 
         <form method="get" className="toolbar">
           <div className="field grow max-w-xs">
-            <label className="label" htmlFor="q">
-              Search
-            </label>
-            <input className="input" id="q" name="q" defaultValue={q ?? ''} placeholder="Recipe name" />
+            <label className="label" htmlFor="q">{t(" Search ")}</label>
+            <input className="input" id="q" name="q" defaultValue={q ?? ''} placeholder={t("Recipe name")} />
           </div>
-          <button className="btn btn--secondary" type="submit">
-            Search
-          </button>
-          {q ? <Link className="btn-quiet" href="/recipes">Clear search</Link> : null}
+          <button className="btn btn--secondary" type="submit">{t(" Search ")}</button>
+          {q ? <Link className="btn-quiet" href="/recipes">{t("Clear search")}</Link> : null}
         </form>
 
         {rows.length === 0 ? (
-          <div className="empty-panel"><h2>{q ? `No recipes matching “${q}”` : 'Your first recipe starts here'}</h2><p className="prose-note">{q ? 'Try a shorter name or clear your search.' : 'Add the ingredients and usable yield for one batch, then set your serving size and selling price.'}</p>{canManage && !q ? <Link className="btn" href="/recipes/new">+ Create a recipe</Link> : null}</div>
+          <div className="empty-panel"><h2>{q ? t("No recipes matching “{0}”", { "0": q }) : t("Your first recipe starts here")}</h2><p className="prose-note">{q ? t("Try a shorter name or clear your search.") : t("Add the ingredients and usable yield for one batch, then set your serving size and selling price.")}</p>{canManage && !q ? <Link className="btn" href="/recipes/new">{t("+ Create a recipe")}</Link> : null}</div>
         ) : (
           <div className="table-wrap">
             <table className="table">
               <thead>
                 <tr>
-                  <th scope="col">Recipe</th>
-                  <th scope="col" className="num">
-                    Yield
-                  </th>
-                  <th scope="col" className="num">
-                    Cost
-                  </th>
-                  <th scope="col" className="col-secondary">
-                    Last updated
-                  </th>
+                  <th scope="col">{t("Recipe")}</th>
+                  <th scope="col" className="num">{t(" Yield ")}</th>
+                  <th scope="col" className="num">{t(" Cost ")}</th>
+                  <th scope="col" className="col-secondary">{t(" Last updated ")}</th>
                   {canManage ? (
                     <th scope="col" className="w-24">
-                      <span className="sr-only">Edit</span>
+                      <span className="sr-only">{t("Edit")}</span>
                     </th>
                   ) : null}
                 </tr>
@@ -102,7 +87,7 @@ export default async function RecipesPage({
                           {r.name}
                         </Link>
                         <span className="block text-xs muted font-normal">
-                          {r.lineCount} {r.lineCount === 1 ? 'line' : 'lines'}
+                          {r.lineCount} {r.lineCount === 1 ? t("line") : t("lines")}
                           {/*
                            * A sub-recipe is not a different kind of row, it is a recipe
                            * something else draws on - so it is labelled where that fact
@@ -113,16 +98,14 @@ export default async function RecipesPage({
                             <>
                               {' · '}
                               <span className="badge badge--muted">
-                                <Glyph path={NESTED} /> Sub-recipe
-                              </span>{' '}
-                              used by {r.usedByCount}
+                                <Glyph path={NESTED} />{t(" Sub-recipe ")}</span>{' '}{t(" used by ")}{r.usedByCount}
                             </>
                           ) : null}
                         </span>
                       </th>
 
                       <td className="num whitespace-nowrap">
-                        {formatQty(r.yieldQtyMilliBase, r.yieldUnitType)}
+                        {t.quantity(r.yieldQtyMilliBase, r.yieldUnitType)}
                       </td>
 
                       <td className="num whitespace-nowrap">
@@ -131,7 +114,7 @@ export default async function RecipesPage({
                             {formatINR(
                               costPerPurchaseUnitPaise(r.cost.rateMillipaisePerBase, unit.inBase),
                             )}
-                            <span className="block text-xs muted">{unit.label}</span>
+                            <span className="block text-xs muted">{t(unit.label)}</span>
                           </>
                         ) : (
                           /*
@@ -140,14 +123,12 @@ export default async function RecipesPage({
                            * row name lists which ingredients and why.
                            */
                           <span className="badge badge--low">
-                            <Glyph path="M10 1.7 19 18H1L10 1.7Zm-1 5.3v5h2v-5H9Zm0 7v2h2v-2H9Z" />
-                            No cost yet
-                          </span>
+                            <Glyph path="M10 1.7 19 18H1L10 1.7Zm-1 5.3v5h2v-5H9Zm0 7v2h2v-2H9Z" />{t(" No cost yet ")}</span>
                         )}
                       </td>
 
                       <td className="col-secondary whitespace-nowrap muted text-sm">
-                        {r.updatedAt.toLocaleDateString('en-IN', {
+                        {r.updatedAt.toLocaleDateString(t.intlLocale, {
                           day: 'numeric',
                           month: 'short',
                           year: 'numeric',
@@ -158,9 +139,7 @@ export default async function RecipesPage({
                       {/* Above the row-link overlay, or the breakdown swallows the click. */}
                       {canManage ? (
                         <td>
-                          <Link className="btn-quiet row-action" href={`/recipes/${r.id}/edit`}>
-                            Edit
-                            <span className="sr-only"> {r.name}</span>
+                          <Link className="btn-quiet row-action" href={`/recipes/${r.id}/edit`}>{t(" Edit ")}<span className="sr-only"> {r.name}</span>
                           </Link>
                         </td>
                       ) : null}

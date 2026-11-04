@@ -95,6 +95,13 @@
     line-height: 1.5;
   }
 
+  html:lang(hi) h1, html:lang(mr) h1,
+  html:lang(hi) h2, html:lang(mr) h2 {
+    font-family: var(--font-sans);
+    letter-spacing: normal;
+    line-height: 1.6;
+  }
+
   /*
    * H1 is the one place the display face earns its keep: one per screen, large, and the
    * first thing read. Small caps rather than full caps - the book sets the wordmark in
@@ -703,7 +710,10 @@
   .workspace-header { margin-left: 232px; min-height: 82px; padding: 16px 36px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: var(--color-surface); border-bottom: 1px solid var(--color-line); }
   .workspace-context { display: block; color: var(--color-ink-muted); font-size: 11px; margin-bottom: 3px; }
   .workspace-current { font-size: 14px; font-weight: 600; }
-  .workspace-account { display: flex; align-items: center; gap: 12px; }
+  .workspace-account { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+  .language-switcher { display: flex; align-items: center; gap: 8px; margin: 0; }
+  .language-switcher .select { min-height: var(--spacing-tap); width: 136px; margin: 0; font-family: var(--font-sans); }
+  .auth__card > .language-switcher { justify-content: flex-end; margin-bottom: 16px; }
   .workspace-avatar { display: grid; place-content: center; width: 36px; height: 36px; border-radius: 50%; color: var(--color-navy); background: var(--color-selected); font-weight: 600; }
   .workspace-identity { font-size: 12px; font-weight: 600; }
   .workspace-identity small { display: block; color: var(--color-ink-muted); font-weight: 400; text-transform: capitalize; }
@@ -776,7 +786,9 @@
     .workspace-brand, .workspace-note { display: none; }
     .workspace-sidebar nav { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .workspace-navgroup { margin: 0; }
-    .workspace-header { margin-left: 0; padding: 16px; padding-left: 138px; }
+    .workspace-header { margin-left: 0; padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .workspace-header > div:first-child { min-height: 44px; padding-left: 122px; display: flex; align-items: center; }
+    .workspace-account { justify-content: space-between; min-width: 0; }
     .workspace-context, .workspace-identity, .workspace-avatar { display: none; }
     .workspace-current { font-size: 12px; }
     .workspace-header ~ .page { margin: 0; padding: 24px 16px 40px; }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useTranslations } from '../i18n/provider.tsx';
 
 export type IngredientChoice = {
   id: string;
@@ -50,6 +51,7 @@ export function IngredientCombobox({
   noun?: string;
   placeholder?: string;
 }) {
+  const t = useTranslations();
   const listId = useId();
   const optionId = (i: number) => `${listId}-opt-${i}`;
 
@@ -142,10 +144,10 @@ export function IngredientCombobox({
         aria-controls={listId}
         aria-autocomplete="list"
         aria-activedescendant={open && matches[active] ? optionId(active) : undefined}
-        aria-label={ariaLabel}
+        aria-label={t(ariaLabel)}
         aria-invalid={unresolved || undefined}
         autoComplete="off"
-        placeholder={placeholder}
+        placeholder={t(placeholder)}
         value={text}
         onChange={(e) => {
           const typed = e.target.value;
@@ -166,12 +168,12 @@ export function IngredientCombobox({
           ref={listRef}
           id={listId}
           role="listbox"
-          aria-label={ariaLabel}
+          aria-label={t(ariaLabel)}
           className="combo-list"
           style={rect ? { left: rect.left, top: rect.top, width: Math.max(rect.width, 240) } : undefined}
         >
           {matches.length === 0 ? (
-            <li className="combo-empty">No {noun} matches “{text.trim()}”</li>
+            <li className="combo-empty">{t('No {noun} matches “{query}”', { noun: t(noun), query: text.trim() })}</li>
           ) : (
             matches.map((m, i) => (
               <li
@@ -187,7 +189,7 @@ export function IngredientCombobox({
                 onMouseEnter={() => setActive(i)}
               >
                 {m.name}
-                {m.hint ? <span className="ml-2 text-xs muted">{m.hint}</span> : null}
+                {m.hint ? <span className="ml-2 text-xs muted">{t(m.hint)}</span> : null}
               </li>
             ))
           )}
@@ -195,7 +197,7 @@ export function IngredientCombobox({
       ) : null}
 
       {unresolved ? (
-        <span className="block text-xs text-danger font-semibold mt-1">No such {noun}</span>
+        <span className="block text-xs text-danger font-semibold mt-1">{t('No such {noun}', { noun: t(noun) })}</span>
       ) : null}
     </div>
   );

@@ -7,12 +7,13 @@ import { setActiveAction } from './actions.ts';
 import { StatusBadge } from '../ui/status-badge.tsx';
 import { AutoSubmitCheckbox } from '../ui/auto-submit-checkbox.tsx';
 import {
-  formatQty,
+
   formatINR,
   costPerPurchaseUnitPaise,
   milliBaseToPurchaseUnits,
   isLowStock,
 } from '../../src/lib/units.ts';
+import { getTranslations } from '../i18n/server.ts';
 
 export default async function IngredientsPage({
   searchParams,
@@ -20,6 +21,7 @@ export default async function IngredientsPage({
   searchParams: Promise<{ q?: string; all?: string }>;
 }) {
   const actor = await requirePermission('ingredients.view');
+  const t = await getTranslations();
   const { q, all } = await searchParams;
   const activeOnly = all !== '1';
   const rows = await listIngredients(actor, { search: q, activeOnly });
@@ -29,24 +31,20 @@ export default async function IngredientsPage({
 
   return (
     <>
-      <WorkspaceHeader actor={actor} title="Ingredients" />
+      <WorkspaceHeader actor={actor} title={t("Ingredients")} />
 
       <main className="page" id="main-content" tabIndex={-1}>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1>Ingredients</h1>
+          <h1>{t("Ingredients")}</h1>
           {canManage ? (
-            <Link className="btn" href="/ingredients/new">
-              + New ingredient
-            </Link>
+            <Link className="btn" href="/ingredients/new">{t(" + New ingredient ")}</Link>
           ) : null}
         </div>
 
         <form method="get" className="toolbar">
           <div className="field grow max-w-xs">
-            <label className="label" htmlFor="q">
-              Search
-            </label>
-            <input className="input" id="q" name="q" defaultValue={q ?? ''} placeholder="Ingredient name" />
+            <label className="label" htmlFor="q">{t(" Search ")}</label>
+            <input className="input" id="q" name="q" defaultValue={q ?? ''} placeholder={t("Ingredient name")} />
           </div>
 
           <AutoSubmitCheckbox
@@ -56,32 +54,25 @@ export default async function IngredientsPage({
             label="Include inactive"
           />
 
-          <button className="btn btn--secondary" type="submit">
-            Apply
-          </button>
+          <button className="btn btn--secondary" type="submit">{t(" Apply ")}</button>
         </form>
 
         {rows.length === 0 ? (
-          <p className="prose-note">
-            No ingredients{q ? ` matching “${q}”` : ''}.
-            {activeOnly ? ' Tick “include inactive” to widen the search.' : ''}
+          <p className="prose-note">{t(" No ingredients")}{q ? t(" matching “{0}”", { "0": q }) : ''}.
+            {activeOnly ? t(" Tick “include inactive” to widen the search.") : ''}
           </p>
         ) : (
           <div className="table-wrap">
             <table className="table">
               <thead>
                 <tr>
-                  <th scope="col">Ingredient</th>
-                  <th scope="col" className="num">
-                    On hand
-                  </th>
-                  <th scope="col" className="num">
-                    Avg cost
-                  </th>
-                  <th scope="col" className="w-28">Status</th>
+                  <th scope="col">{t("Ingredient")}</th>
+                  <th scope="col" className="num">{t(" On hand ")}</th>
+                  <th scope="col" className="num">{t(" Avg cost ")}</th>
+                  <th scope="col" className="w-28">{t("Status")}</th>
                   {canManage ? (
                     <th scope="col" className="w-28 text-right">
-                      <span className="sr-only">Actions</span>
+                      <span className="sr-only">{t("Actions")}</span>
                     </th>
                   ) : null}
                 </tr>
@@ -118,7 +109,7 @@ export default async function IngredientsPage({
                           {milliBaseToPurchaseUnits(r.qtyMilliBase, r.purchaseUnitInBase)} {r.purchaseUnit}
                         </span>
                         <span className="block text-xs muted tabular-nums">
-                          {formatQty(r.qtyMilliBase, r.unitType)}
+                          {t.quantity(r.qtyMilliBase, r.unitType)}
                         </span>
                       </td>
 
@@ -126,7 +117,7 @@ export default async function IngredientsPage({
                         {formatINR(
                           costPerPurchaseUnitPaise(r.weightedAvgCostMillipaisePerBase, r.purchaseUnitInBase),
                         )}
-                        <span className="block text-xs muted">per {r.purchaseUnit}</span>
+                        <span className="block text-xs muted">{t("per ")}{r.purchaseUnit}</span>
                       </td>
 
                       {/*
@@ -136,7 +127,7 @@ export default async function IngredientsPage({
                       <td className="w-28">
                         <div className="flex flex-wrap items-center gap-1">
                           <StatusBadge kind={oversold ? 'oversold' : low ? 'low' : null} />
-                          {!r.isActive ? <span className="badge badge--muted">Inactive</span> : null}
+                          {!r.isActive ? <span className="badge badge--muted">{t("Inactive")}</span> : null}
                         </div>
                       </td>
 
@@ -146,7 +137,7 @@ export default async function IngredientsPage({
                             <input type="hidden" name="id" value={r.id} />
                             <input type="hidden" name="isActive" value={r.isActive ? 'false' : 'true'} />
                             <button className="btn-quiet" type="submit">
-                              {r.isActive ? 'Deactivate' : 'Reactivate'}
+                              {r.isActive ? t("Deactivate") : t("Reactivate")}
                               <span className="sr-only"> {r.name}</span>
                             </button>
                           </form>

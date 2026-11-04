@@ -5,62 +5,49 @@ import { hasPermission } from '../../../src/lib/auth.ts';
 import { listLowStock } from '../../../src/db/history.ts';
 import { StatusBadge } from '../../ui/status-badge.tsx';
 import {
-  formatQty,
+
   formatINR,
   costPerPurchaseUnitPaise,
   milliBaseToPurchaseUnits,
 } from '../../../src/lib/units.ts';
+import { getTranslations } from '../../i18n/server.ts';
 
 export default async function LowStockPage() {
   const actor = await requirePermission('ingredients.view');
+  const t = await getTranslations();
   const rows = await listLowStock(actor);
   const canRecord = hasPermission(actor.role, 'stock.record');
 
   return (
     <>
-      <WorkspaceHeader actor={actor} title="Low stock" />
+      <WorkspaceHeader actor={actor} title={t("Low stock")} />
 
       <main className="page" id="main-content" tabIndex={-1}>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1>Low stock</h1>
+          <h1>{t("Low stock")}</h1>
           {canRecord ? (
-            <Link className="btn" href="/stock/receipt">
-              Record a receipt
-            </Link>
+            <Link className="btn" href="/stock/receipt">{t(" Record a receipt ")}</Link>
           ) : null}
         </div>
 
-        <p className="prose-note">
-          At or below the reorder threshold, worst first. Severity is the shortfall as a share
-          of the threshold — being 2 kg short of 3 kg is more urgent than 2 kg short of 50 kg.
-        </p>
+        <p className="prose-note">{t(" At or below the reorder threshold, worst first. Severity is the shortfall as a share of the threshold — being 2 kg short of 3 kg is more urgent than 2 kg short of 50 kg. ")}</p>
 
         {rows.length === 0 ? (
           <p className="msg msg--ok">
             <span>
-              <span className="msg__title">Nothing to reorder. </span>
-              No ingredient is below its threshold.
-            </span>
+              <span className="msg__title">{t("Nothing to reorder. ")}</span>{t(" No ingredient is below its threshold. ")}</span>
           </p>
         ) : (
           <div className="table-wrap">
             <table className="table">
               <thead>
                 <tr>
-                  <th scope="col">Ingredient</th>
-                  <th scope="col" className="num">
-                    On hand
-                  </th>
-                  <th scope="col" className="num">
-                    Threshold
-                  </th>
-                  <th scope="col" className="num">
-                    Short by
-                  </th>
-                  <th scope="col" className="num col-secondary">
-                    Avg cost
-                  </th>
-                  <th scope="col">Status</th>
+                  <th scope="col">{t("Ingredient")}</th>
+                  <th scope="col" className="num">{t(" On hand ")}</th>
+                  <th scope="col" className="num">{t(" Threshold ")}</th>
+                  <th scope="col" className="num">{t(" Short by ")}</th>
+                  <th scope="col" className="num col-secondary">{t(" Avg cost ")}</th>
+                  <th scope="col">{t("Status")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -81,7 +68,7 @@ export default async function LowStockPage() {
                       <td className={`num whitespace-nowrap ${oversold ? 'text-danger font-semibold' : ''}`}>
                         {milliBaseToPurchaseUnits(r.qtyMilliBase, r.purchaseUnitInBase)} {r.purchaseUnit}
                         <span className="block text-xs muted tabular-nums">
-                          {formatQty(r.qtyMilliBase, r.unitType)}
+                          {t.quantity(r.qtyMilliBase, r.unitType)}
                         </span>
                       </td>
 
@@ -97,7 +84,7 @@ export default async function LowStockPage() {
                       <td className="num col-secondary whitespace-nowrap">
                         {/* Never bought, so never priced. A zero here would read as free. */}
                         {r.weightedAvgCostMillipaisePerBase === null ? (
-                          <span className="muted">Not yet priced</span>
+                          <span className="muted">{t("Not yet priced")}</span>
                         ) : (
                           <>
                             {formatINR(
@@ -106,7 +93,7 @@ export default async function LowStockPage() {
                                 r.purchaseUnitInBase,
                               ),
                             )}
-                            <span className="block text-xs muted">per {r.purchaseUnit}</span>
+                            <span className="block text-xs muted">{t("per ")}{r.purchaseUnit}</span>
                           </>
                         )}
                       </td>

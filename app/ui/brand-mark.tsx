@@ -1,3 +1,7 @@
+'use client';
+
+import { useTranslations } from '../i18n/provider.tsx';
+
 /**
  * The brand's identifying marks, drawn rather than fetched.
  *
@@ -73,13 +77,14 @@ export function Star({ size = 12, className }: { size?: number; className?: stri
  * real Copperplate where the machine has it.
  */
 export function Wordmark({ withDescriptor = true }: { withDescriptor?: boolean }) {
+  const t = useTranslations();
   return (
     <span className="wordmark">
       <span className="wordmark__name">
         No Meat Naan
       </span>
       {withDescriptor ? (
-        <span className="wordmark__descriptor">Coffee shop &middot; Bakery &middot; Pâtisserie</span>
+        <span className="wordmark__descriptor">{t("Coffee shop · Bakery · Pâtisserie")}</span>
       ) : null}
     </span>
   );
