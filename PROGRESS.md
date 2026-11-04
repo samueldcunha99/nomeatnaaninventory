@@ -2375,3 +2375,21 @@ with no page overflow. Localhost port 3000 was restarted with the new production
 and the existing restricted runtime connection. No test business data was added to the
 client Supabase database. The nine previously documented defects remain unresolved.
 Publishing and online verification follow this entry.
+
+## 2026-11-04 - Language switching published and verified online
+
+Pushed application commit a7cdabd98ef98985c781f8d70e014ff92e717374 to inventory/main.
+GitHub CI run 41821049704 completed test and build successfully, including the native
+PostgreSQL suite, no-skips guard and disposable migration/runtime/backup/restore
+rehearsal. Supabase Preview also completed successfully; this feature needs no schema
+change. Netlify now serves the language selector and the translated screens.
+
+Live HTTP verification passed health, owner login/logout, 15 protected page checks
+(Overview, Production, Reports, Recipes and Staff in each of English/Hindi/Marathi),
+and three preference actions with Secure/HttpOnly/SameSite cookies. Browser verification
+passed Hindi sign-in and navigation, Marathi daily reports, and persistence after
+reload. No console errors were recorded. Screenshots remain local under
+files/language-hindi-live-2026-11-04.png and files/language-marathi-live-2026-11-04.png.
+No test business mutation was sent to client Supabase. The temporary QA app/database
+were stopped after verification; the normal compiled localhost app remains on port
+3000 with its existing restricted Supabase runtime connection.

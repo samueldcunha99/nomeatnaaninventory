@@ -7,14 +7,14 @@ order management, and a customer-facing tracking page. Five-month build.
 **Month 1 and Month 2 complete; daily production and reporting screens are built.**
 **Readiness checked 4 November 2026:** the live connection is healthy again, and all
 278 tests pass against isolated native PostgreSQL with no skips, including eight
-language regression checks. Additional
-acceptance probes reproduced nine correctness/retry defects; resolve them before using
+language regression checks. Additional acceptance probes reproduced nine
+correctness/retry defects; resolve them before using
 the app as the cafe's sole inventory record. See the [current QA report](files/qa-2026-11-04.md).
 The user selected **Netlify Free + Supabase without Docker on 10 October 2026**,
 superseding the earlier Render choice. The app is live at
 [nomeatnaaninventory.netlify.app](https://nomeatnaaninventory.netlify.app/), connected to
 the dedicated Supabase database. GitHub CI passed its live database tests, production build
-and disposable backup/restore rehearsal at application commit `80aaa49`. Historical
+and disposable backup/restore rehearsal at application commit `a7cdabd`. Historical
 241-test DB verification and current results are distinguished below.
 
 ---
@@ -31,14 +31,14 @@ repository. Nothing important lives in a chat log.
 | Month 1 — foundations & inventory | ✅ **complete**, steps 1–7, verified against live Postgres |
 | UI styling pass | ✅ complete, all 9 internal screens, Tailwind v4 |
 | Deployment configuration | Netlify Next.js adapter + Supabase PostgreSQL; CI uses native PostgreSQL |
-| Live deployment | Netlify serves the daily production/reporting feature from 80aaa49; owner access, previews and filters verified |
+| Live deployment | Netlify serves application commit a7cdabd, including English/Hindi/Marathi switching; owner access, reports and saved language verified |
 | Month 2 step 1 — recipe / menu schema | ✅ **done**, migration 0002 |
 | Month 2 steps 2–4 — costing engine | ✅ **done**, paper cases P1–P22 |
 | Month 2 step 5 — costing screens and editors | ✅ **done**, recipe list, cost breakdown, what-if, and the recipe / line / menu-item editors |
 | Daily production and reports | Live at `/production` and `/reports`; date, recipe and metric controls verified |
 | Trunk | `main`. Everything is merged; `month-2-costing` is merged and safe to delete. |
 | Tests | 4 November: 278 passed against isolated native PostgreSQL 17.11, 0 skipped; 18 compiled-app workflow checks and 17 language acceptance checks passed. Separate audit probes reproduced nine defects. |
-| Current deployment verification | 4 November: live health, owner sign-in/out and all 16 protected owner pages passed; actual Supabase backup restored locally and runtime reads verified. Application commit remains 80aaa49. |
+| Current deployment verification | 4 November: health, owner access, 15 language-specific protected page checks and all three preference actions passed online. Earlier full-page and Supabase restore checks remain recorded below. Application commit a7cdabd. |
 
 ## Verified against a live database vs merely built
 
@@ -110,6 +110,12 @@ all 17 protected screens in each language, identical form contracts and money va
 translated validation, request isolation and authentication guards. Browser checks
 verified language switching, persistence, preservation of batch inputs and notes, and
 mobile controls at 320 px. These checks do not resolve the nine existing QA defects.
+
+Published at application commit `a7cdabd`; [GitHub CI run 41821049704](https://github.com/samueldcunha99/nomeatnaaninventory/actions/runs/41821049704)
+passed its test and build jobs, including the disposable deployment/restore rehearsal.
+Live checks covered five protected screens in all three languages and Secure/HttpOnly
+preference cookies. The browser verified Hindi login/navigation, Marathi reports and
+the saved choice after reload, with no console errors or test business writes.
 
 ## Daily production and reports
 
