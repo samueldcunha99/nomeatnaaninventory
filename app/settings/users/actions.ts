@@ -8,8 +8,10 @@ import {
   deactivateUser,
   reactivateUser,
   setUserRole,
+  resetUserPassword,
   DuplicateEmailError,
 } from '../../../src/db/users.ts';
+import { ConfirmedPassword, NewPassword } from '../../../src/lib/password.ts';
 
 export type FormState = { error: string | null; ok: string | null };
 
@@ -32,7 +34,7 @@ const NewUser = z.object({
   email: z.string().trim().toLowerCase().email('That does not look like an email address.').max(320),
   // Long rather than complicated: a passphrase staff can remember beats a pattern they
   // write on the till. Argon2 does not care how long it is.
-  password: z.string().min(12, 'Use at least 12 characters.').max(1024),
+  password: NewPassword,
   role: z.enum(ROLES),
 });
 
@@ -92,5 +94,27 @@ export async function changeUserAction(_prev: FormState, formData: FormData): Pr
     return { error: 'Nothing to change.', ok: null };
   } catch (err) {
     return { error: friendly(err), ok: null };
+  }
+}
+
+const ResetPassword = ConfirmedPassword.and(z.object({ userId: z.string().uuid('Choose a staff member.') }));
+
+export async function resetUserPasswordAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const actor = await requirePermission('users.manage');
+  const parsed = ResetPassword.safeParse({ userId: formData.get('userId'),
+    password: formData.get('password'), confirmation: formData.get('confirmation') });
+  if (!parsed.success) return { error: parsed.error.issues[0].message, ok: null };
+
+  try {
+    const target = await resetUserPassword(actor, parsed.data.userId, parsed.data.password);
+    revalidatePath('/settings/users');
+    return { error: null, ok: `Password reset for ${target.name}. Their previous sessions were signed out.` };
+  } catch (error) {
+    if (error instanceof z.ZodError) return { error: error.issues[0].message, ok: null };
+    if (error instanceof RangeError || (error instanceof Error && error.name === 'AuthzError')) {
+      return { error: error.message, ok: null };
+    }
+    // Authentication failures must not serialize driver errors or bound hash values.
+    return { error: 'The password could not be changed. Please try again.', ok: null };
   }
 }

@@ -142,8 +142,10 @@ export async function saveRecipeAction(_prev: FormState, formData: FormData): Pr
 }
 
 const MenuItem = z.object({
+  fulfillmentMode: z.enum(['stocked', 'made_to_order']).nullable(),
   id: z.string().uuid().nullable(),
   recipeId: z.string().uuid('Unknown recipe.'),
+  entryUnitType: z.enum(['weight', 'volume', 'count'], { error: 'The serving unit is missing. Refresh the page and try again.' }),
   name: z.string().trim().min(1, 'A menu item needs a name.').max(120),
   portionQty: z.string().trim().min(1, 'Enter how much of the batch one portion takes.').max(DECIMAL_MAX),
   sellingPrice: z.string().trim().min(1, 'Enter a selling price.').max(DECIMAL_MAX),
@@ -154,8 +156,10 @@ export async function saveMenuItemAction(_prev: FormState, formData: FormData): 
   const actor = await requirePermission('recipes.manage');
 
   const parsed = MenuItem.safeParse({
+    fulfillmentMode: String(formData.get('fulfillmentMode') ?? '') || null,
     id: String(formData.get('id') ?? '') || null,
     recipeId: formData.get('recipeId'),
+    entryUnitType: formData.get('entryUnitType'),
     name: formData.get('name'),
     portionQty: formData.get('portionQty'),
     sellingPrice: formData.get('sellingPrice'),
@@ -168,11 +172,13 @@ export async function saveMenuItemAction(_prev: FormState, formData: FormData): 
     await saveMenuItem(actor, {
       id: parsed.data.id ?? undefined,
       recipeId: parsed.data.recipeId,
+      entryUnitType: parsed.data.entryUnitType,
       name: parsed.data.name,
       // A portion is measured in the recipe's yield unit, and the price is money the
       // customer hands over - whole paise, through the one helper that rounds.
       portionQtyMilliBase: baseUnitsToMilliBase(parsed.data.portionQty),
       sellingPricePaise: rupeesToPaise(parsed.data.sellingPrice),
+      fulfillmentMode: parsed.data.fulfillmentMode,
       isActive: parsed.data.isActive,
     });
   } catch (err) {

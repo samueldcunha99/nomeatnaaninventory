@@ -149,7 +149,7 @@ export default async function HistoryPage({
                       </th>
 
                       <td className="whitespace-nowrap">
-                        {t(TYPE_LABEL[r.movementType] ?? r.movementType)}
+                        {t(r.referenceType === 'opening_stock' ? 'Opening stock / valuation' : TYPE_LABEL[r.movementType] ?? r.movementType)}
                         {grouped ? (
                           <span className="block text-xs muted" title={t("One receipt of {0} lines", { "0": lines })}>
                             {lines}{t("-line receipt ")}</span>

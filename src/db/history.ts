@@ -236,6 +236,7 @@ export async function countDeliveriesSince(actor: Actor, from: Date): Promise<nu
       and(
         eq(stockMovements.tenantId, actor.tenantId),
         eq(stockMovements.movementType, 'purchase'),
+        raw`${stockMovements.referenceType} is distinct from 'opening_stock'`,
         gte(stockMovements.createdAt, from),
       ),
     );

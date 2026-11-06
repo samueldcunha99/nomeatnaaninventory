@@ -1,0 +1,64 @@
+name: Encrypted off-site backup
+
+on:
+  schedule:
+    # 21:30 UTC = 03:00 Asia/Kolkata the following day.
+    - cron: '30 21 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: encrypted-offsite-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    # Prepared only: scheduled runs stay disabled until the client explicitly enables them.
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || vars.BACKUP_ENABLED == 'true')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: production-backups
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Validate configuration without connecting or uploading
+        env: &backup-environment
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          DATABASE_SSL_CA: ${{ secrets.DATABASE_SSL_CA }}
+          BACKUP_GPG_PUBLIC_KEY: ${{ secrets.BACKUP_GPG_PUBLIC_KEY }}
+          BACKUP_GPG_RECIPIENT: ${{ vars.BACKUP_GPG_RECIPIENT }}
+          BACKUP_S3_ENDPOINT: ${{ vars.BACKUP_S3_ENDPOINT }}
+          BACKUP_S3_BUCKET: ${{ vars.BACKUP_S3_BUCKET }}
+          BACKUP_S3_PREFIX: ${{ vars.BACKUP_S3_PREFIX }}
+          AWS_DEFAULT_REGION: ${{ vars.BACKUP_S3_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+        run: node deploy/offsite-backup.ts --check-config
+      - name: Install native PostgreSQL 17 client
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl ca-certificates gnupg
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          test "$(gpg --show-keys --with-colons /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc | awk -F: '$1=="fpr" {print $10; exit}')" = B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
+          printf '%s\n' 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main' | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+          printf '%s\n' /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
+          aws --version
+      - run: npm ci --ignore-scripts
+      - name: Verify, encrypt and upload snapshot
+        env: *backup-environment
+        run: node deploy/offsite-backup.ts
+      - name: Recovery reminder on failure
+        if: failure()
+        run: |
+          printf '%s\n' 'Backup failed. Check the latest successful off-site object and the recovery runbook. No plaintext backup artifact is published.' >> "$GITHUB_STEP_SUMMARY"

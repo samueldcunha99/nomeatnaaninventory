@@ -8,7 +8,8 @@
  */
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { and, eq } from 'drizzle-orm';
+import { readFileSync } from 'node:fs';
+import { and, eq, sql as raw } from 'drizzle-orm';
 import { db } from './client.ts';
 import { dbReachable, closeDb } from './test-db.ts';
 import { tenants, users, ingredients, stockMovements, ingredientStock } from './schema.ts';
@@ -38,6 +39,52 @@ before(async () => {
 });
 
 after(closeDb);
+
+test('unknown-value migration backfills a previously diluted cache and preserves real zero and its watermark', async t => {
+  if (!reachable) return t.skip('no database');
+  const unknown = await makeIngredient('Legacy unknown value');
+  const free = await makeIngredient('Legacy free basis');
+  const priced = await makeIngredient('Legacy known basis');
+  const base = { tenantId, createdByUserId: userId };
+  await recordMovements([{ ...base, ingredientId: unknown, movementType: 'adjustment', quantityMilliBase: 1000000, reason: 'count_correction' }]);
+  await recordMovements([
+    { ...base, ingredientId: unknown, movementType: 'purchase', quantityMilliBase: 1000000, unitCostMillipaisePerBase: 50000, totalCostPaise: 50000 },
+    { ...base, ingredientId: free, movementType: 'purchase', quantityMilliBase: 1000000, unitCostMillipaisePerBase: 0, totalCostPaise: 0 },
+    { ...base, ingredientId: priced, movementType: 'purchase', quantityMilliBase: 1000000, unitCostMillipaisePerBase: 50000, totalCostPaise: 50000 },
+  ]);
+  // Simulate the pre-fix cache without rewriting any movement.
+  await db.update(ingredientStock).set({ weightedAvgCostMillipaisePerBase: 25000 }).where(and(eq(ingredientStock.tenantId, tenantId), eq(ingredientStock.ingredientId, unknown)));
+  const before = await db.select().from(ingredientStock).where(eq(ingredientStock.tenantId, tenantId));
+  const migration = readFileSync('drizzle/0008_curved_legion.sql', 'utf8');
+  const backfill = migration.slice(migration.indexOf('WITH positions AS')).trim().replace(/;$/, '');
+  assert.ok(backfill.startsWith('WITH positions AS'));
+  await db.execute(raw`${raw.raw(backfill)} AND stock.tenant_id = ${tenantId}`);
+  const after = await db.select().from(ingredientStock).where(eq(ingredientStock.tenantId, tenantId));
+  assert.equal(after.find(r => r.ingredientId === unknown)!.weightedAvgCostMillipaisePerBase, null);
+  assert.equal(after.find(r => r.ingredientId === free)!.weightedAvgCostMillipaisePerBase, 0);
+  assert.equal(after.find(r => r.ingredientId === priced)!.weightedAvgCostMillipaisePerBase, 50000);
+  for (const row of after) assert.equal(row.snapshotSeq, before.find(r => r.ingredientId === row.ingredientId)!.snapshotSeq);
+});
+
+test('unknown opening value survives valued inflows and rebuilds without becoming free', async t => {
+  if (!reachable) return t.skip('no database');
+  const ingredientId = await makeIngredient('Unknown opening basis');
+  const base = { tenantId, ingredientId, createdByUserId: userId };
+  await recordMovements([{ ...base, movementType: 'adjustment', quantityMilliBase: 1000000, reason: 'count_correction' }]);
+  await recordMovements([{ ...base, movementType: 'purchase', quantityMilliBase: 1000000,
+    unitCostMillipaisePerBase: 50000, totalCostPaise: 50000 }]);
+  const [cached] = await db.select().from(ingredientStock).where(and(eq(ingredientStock.tenantId, tenantId), eq(ingredientStock.ingredientId, ingredientId)));
+  assert.equal(cached.qtyMilliBase, 2000000); assert.equal(cached.weightedAvgCostMillipaisePerBase, null);
+  const rebuilt = await db.transaction(tx => recalculateStock(tx, tenantId, ingredientId, { rebuild: true }));
+  assert.equal(rebuilt.weightedAvgCostMillipaisePerBase, null);
+  const [after] = await db.select().from(ingredientStock).where(and(eq(ingredientStock.tenantId, tenantId), eq(ingredientStock.ingredientId, ingredientId)));
+  assert.equal(after.snapshotSeq, cached.snapshotSeq);
+  await recordMovements([{ ...base, movementType: 'wastage', quantityMilliBase: -2000000, reason: 'expiry' }]);
+  await recordMovements([{ ...base, movementType: 'purchase', quantityMilliBase: 1000000,
+    unitCostMillipaisePerBase: 0, totalCostPaise: 0 }]);
+  const [free] = await db.select().from(ingredientStock).where(and(eq(ingredientStock.tenantId, tenantId), eq(ingredientStock.ingredientId, ingredientId)));
+  assert.equal(free.weightedAvgCostMillipaisePerBase, 0, 'a free recorded inflow starts a genuine zero basis');
+});
 
 async function makeIngredient(name: string) {
   const [row] = await db
@@ -224,10 +271,10 @@ test('two receipts for one ingredient at the same moment cannot lose a movement'
 
   // 5 kg at 50000 then 3 kg at 60000: 8 kg, and (5x50000 + 3x60000)/8 = 53750.
   assert.equal(BigInt(cached.qtyMilliBase), 8_000_000n, 'a movement was lost from the cache');
-  assert.equal(BigInt(cached.weightedAvgCostMillipaisePerBase), 53_750n);
+  assert.equal(cached.weightedAvgCostMillipaisePerBase === null ? null : BigInt(cached.weightedAvgCostMillipaisePerBase), 53_750n);
   assert.equal(BigInt(cached.qtyMilliBase), truth.qtyMilliBase);
   assert.equal(
-    BigInt(cached.weightedAvgCostMillipaisePerBase),
+    cached.weightedAvgCostMillipaisePerBase === null ? null : BigInt(cached.weightedAvgCostMillipaisePerBase),
     truth.weightedAvgCostMillipaisePerBase,
   );
 });
@@ -252,7 +299,7 @@ test('concurrent receipts across many ingredients still agree with the ledger', 
     const truth = await rebuildOf(ing);
     assert.equal(BigInt(cached.qtyMilliBase), truth.qtyMilliBase);
     assert.equal(
-      BigInt(cached.weightedAvgCostMillipaisePerBase),
+      cached.weightedAvgCostMillipaisePerBase === null ? null : BigInt(cached.weightedAvgCostMillipaisePerBase),
       truth.weightedAvgCostMillipaisePerBase,
     );
   }
@@ -298,7 +345,7 @@ test('the incremental fold and a full rebuild stay identical over many movements
   const truth = await rebuildOf(ing);
   assert.equal(BigInt(cached.qtyMilliBase), truth.qtyMilliBase);
   assert.equal(
-    BigInt(cached.weightedAvgCostMillipaisePerBase),
+    cached.weightedAvgCostMillipaisePerBase === null ? null : BigInt(cached.weightedAvgCostMillipaisePerBase),
     truth.weightedAvgCostMillipaisePerBase,
     'folding since the watermark disagreed with folding the whole ledger',
   );

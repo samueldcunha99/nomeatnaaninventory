@@ -1,5 +1,6 @@
 import { WorkspaceHeader } from "./ui/workspace-header.tsx";
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { requireSession } from '../src/auth/server.ts';
 import { hasPermission } from '../src/lib/auth.ts';
 import { listLowStock, countDeliveriesSince } from '../src/db/history.ts';
@@ -25,6 +26,7 @@ import { getTranslations } from './i18n/server.ts';
  */
 export default async function HomePage() {
   const user = await requireSession();
+  if (user.role === 'kitchen') redirect('/kitchen');
   const t = await getTranslations();
   const canView = hasPermission(user.role, 'ingredients.view');
   const canRecord = hasPermission(user.role, 'stock.record');
@@ -54,10 +56,12 @@ export default async function HomePage() {
    * oversold ingredient is valued by magnitude and subtracted, which is what it means.
    */
   const shelfValuePaise = ingredients.reduce((total, i) => {
+    if (i.weightedAvgCostMillipaisePerBase === null) return total;
     const rate = BigInt(i.weightedAvgCostMillipaisePerBase);
     const qty = BigInt(i.qtyMilliBase);
     return qty < 0n ? total - portionCostPaise(rate, -qty) : total + portionCostPaise(rate, qty);
   }, 0n);
+  const unknownStockValues = ingredients.filter(i => i.qtyMilliBase !== 0 && i.weightedAvgCostMillipaisePerBase === null);
 
   const nothingTracked = canView && ingredients.length === 0;
   const needsYou = low.length > 0 || uncosted.length > 0;
@@ -91,7 +95,7 @@ export default async function HomePage() {
                   <h3>{recipe.name}</h3>
                   <p>{recipe.lineCount}{t(" ingredients & components · Yields ")}{t.quantity(recipe.yieldQtyMilliBase, recipe.yieldUnitType)}</p>
                   <div className="recipe-card__footer">
-                    <span>{recipe.cost.ok ? <><strong>{formatINR(costPerPurchaseUnitPaise(recipe.cost.rateMillipaisePerBase, recipe.yieldUnitType === 'count' ? 1 : 1000))}</strong><small> / {recipe.yieldUnitType === 'count' ? t("unit") : recipe.yieldUnitType === 'weight' ? t("kg") : t("litre")}</small></> : <span className="badge badge--low">{t("Missing ingredient costs")}</span>}</span>
+                    <span>{recipe.cost.ok ? <><strong>{formatINR(costPerPurchaseUnitPaise(recipe.cost.rateMillipaisePerBase, recipe.yieldUnitType === 'count' ? 1 : 1000))}</strong><small> / {recipe.yieldUnitType === 'count' ? t("unit") : recipe.yieldUnitType === 'weight' ? t("kg") : t("litre")}</small>{!recipe.cost.overheadComplete ? <span className="block text-xs muted">{t('Known costs only')}</span> : null}</> : <span className="badge badge--low">{t("Missing ingredient costs")}</span>}</span>
                     <span aria-label={t("View breakdown")}>↗</span>
                   </div>
                 </Link>
@@ -139,7 +143,7 @@ export default async function HomePage() {
                 <span className="stat__label">{t("Ingredients")}</span>
                 <span className="stat__value text-4xl">{ingredients.length}</span>
                 <span className="stat__hint">
-                  {formatINR(shelfValuePaise)}{t(" at recorded quantities ")}</span>
+                  {unknownStockValues.length ? t('Stock value incomplete') : formatINR(shelfValuePaise)}{t(" at recorded quantities ")}</span>
               </Link>
             </li>
 
@@ -218,7 +222,7 @@ export default async function HomePage() {
                               // sentence. Falling through to the list below would read
                               // " have no purchase history" with nothing in front of it.
                               (recipe.cost.problem ? t.message(recipe.cost.problem) :
-                              t('{0} have no purchase history', { '0': recipe.cost.missing.map((m) => m.name).join(', ') }))
+                              t('{0} have no complete recorded cost', { '0': recipe.cost.missing.map((m) => m.name).join(', ') }))
                             : null}
                         </span>
                       </li>

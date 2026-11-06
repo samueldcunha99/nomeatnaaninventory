@@ -360,7 +360,7 @@ async function stockOf(ingredientId: string) {
     .select()
     .from(ingredientStock)
     .where(and(eq(ingredientStock.tenantId, owner.tenantId), eq(ingredientStock.ingredientId, ingredientId)));
-  return row ? { qty: BigInt(row.qtyMilliBase), avg: BigInt(row.weightedAvgCostMillipaisePerBase) } : null;
+  return row ? { qty: BigInt(row.qtyMilliBase), avg: row.weightedAvgCostMillipaisePerBase === null ? null : BigInt(row.weightedAvgCostMillipaisePerBase) } : null;
 }
 
 async function movementsOfRun(runId: string) {

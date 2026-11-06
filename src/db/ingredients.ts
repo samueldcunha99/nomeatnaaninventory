@@ -5,8 +5,9 @@
  */
 import { and, count, eq, ilike, isNull, asc, sql as raw } from 'drizzle-orm';
 import { db } from './client.ts';
-import { ingredients, ingredientStock, auditLog, stockMovements, recipeLines } from './schema.ts';
+import { ingredients, ingredientStock, auditLog, stockMovements, recipeLines, recipes } from './schema.ts';
 import { translating } from './errors.ts';
+import { lockIngredients } from './stock.ts';
 import { assertPermission, type Actor } from '../lib/auth.ts';
 import type { UnitType } from '../lib/units.ts';
 
@@ -46,7 +47,7 @@ export type IngredientRow = {
   lowStockThresholdMilliBase: number;
   isActive: boolean;
   qtyMilliBase: number;
-  weightedAvgCostMillipaisePerBase: number;
+  weightedAvgCostMillipaisePerBase: number | null;
 };
 
 /** One select, shared by the list and the single fetch, so they cannot drift. */
@@ -83,7 +84,7 @@ function toRow(r: Awaited<ReturnType<typeof selectIngredients>>[number]): Ingred
     ...r,
     unitType: r.unitType as UnitType,
     qtyMilliBase: r.qtyMilliBase ?? 0,
-    weightedAvgCostMillipaisePerBase: r.weightedAvgCostMillipaisePerBase ?? 0,
+    weightedAvgCostMillipaisePerBase: r.weightedAvgCostMillipaisePerBase,
   };
 }
 
@@ -156,6 +157,11 @@ export async function updateIngredient(actor: Actor, id: string, input: Ingredie
   assertPermission(actor.role, 'ingredients.manage');
   const run = () =>
     db.transaction(async (tx) => {
+      // Unit dependencies are part of the recipe graph. Take its lock before the stock
+      // lock, matching recipe/production writers, so a new shelf or line cannot appear
+      // after this guard has checked and before the ingredient changes its meaning.
+      await tx.execute(raw`select pg_advisory_xact_lock(hashtextextended(${`recipes:${actor.tenantId}`}, 0))`);
+      await lockIngredients(tx, actor.tenantId, [id]);
       const [before] = await tx
         .select()
         .from(ingredients)
@@ -182,6 +188,15 @@ export async function updateIngredient(actor: Actor, id: string, input: Ingredie
        * to change, which is the case where a typo is actually being corrected.
        */
       if (before.unitType !== input.unitType) {
+        const producingRecipes = await tx.select({ name: recipes.name }).from(recipes).where(and(
+          eq(recipes.tenantId, actor.tenantId), eq(recipes.stockIngredientId, id), isNull(recipes.deletedAt),
+        ));
+        if (producingRecipes.length > 0) {
+          throw new RangeError(
+            `"${before.name}" holds production from ${producingRecipes.map(r => `"${r.name}"`).join(', ')}. ` +
+              `Its measurement type must stay ${before.unitType}. Create a new recipe for a different measurement type.`,
+          );
+        }
         const [[mv], [rl]] = await Promise.all([
           tx
             .select({ n: count() })

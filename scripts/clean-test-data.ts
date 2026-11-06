@@ -33,6 +33,13 @@ const TEST_TENANT = raw`name ~ '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-
  * parents, or every test tenant that touched it becomes undeletable.
  */
 const TABLES = [
+  'order_line_draws',
+  'order_status_events',
+  'payment_events',
+  'order_lines',
+  'orders',
+  'order_counters',
+  'production_reversals',
   'production_runs',
   'recipe_lines',
   'menu_items',

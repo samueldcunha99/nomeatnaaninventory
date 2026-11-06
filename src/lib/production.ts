@@ -114,6 +114,22 @@ export class NotStockedError extends Error {
   }
 }
 
+/** A real stock movement cannot be zero, even when the batch itself has a valid yield. */
+export class ProductionQuantityTooSmallError extends RangeError {
+  readonly recipeName: string;
+  readonly lineNumber: number;
+
+  constructor(recipeName: string, lineNumber: number) {
+    super(
+      `Line ${lineNumber} in "${recipeName}" is too small to record at this batch size. ` +
+        `Increase the batch count or correct the line quantity.`,
+    );
+    this.name = 'ProductionQuantityTooSmallError';
+    this.recipeName = recipeName;
+    this.lineNumber = lineNumber;
+  }
+}
+
 /**
  * A STOCKED batch has an input nobody has priced. Stock must carry a value - the ledger's
  * own check refuses a valued inflow without one - and there is no honest value for dough
@@ -184,8 +200,9 @@ export function planDraws(
 
   const draws: Draw[] = [];
   const unstocked: string[] = [];
-  for (const line of recipe.lines) {
+  for (const [index, line] of recipe.lines.entries()) {
     const issued = issuedMilliBase(line.quantityMilliBase, line.wastageMillipercent, batchesMilli);
+    if (issued <= 0n) throw new ProductionQuantityTooSmallError(recipe.name, index + 1);
     if (line.ingredientId) {
       draws.push({ ingredientId: line.ingredientId, issuedMilliBase: issued, source: { kind: 'ingredient' } });
       continue;
@@ -218,6 +235,42 @@ export function planDraws(
   return { recipe, draws, expectedYieldMilliBase };
 }
 
+export type ValuedDraw = { draw: Draw; rateMillipaisePerBase: bigint | null; costPaise: bigint | null };
+
+/** One material-valuation path for production and sales. Round the complete cost once. */
+export function valueDraws(draws: readonly Draw[], lookup: CostLookup) {
+  let numerator = 0n;
+  const missing: MissingCost[] = [];
+  const valuedDraws: ValuedDraw[] = [];
+  const terms: (bigint | null)[] = [];
+  for (const draw of draws) {
+    if (draw.issuedMilliBase <= 0n) throw new RangeError('Material usage must be greater than zero.');
+    try {
+      const rate = lookup(draw.ingredientId);
+      if (rate < 0n) throw new RangeError('An ingredient cost cannot be negative.');
+      const term = draw.issuedMilliBase * rate;
+      numerator += term; terms.push(term);
+      valuedDraws.push({ draw, rateMillipaisePerBase: rate, costPaise: divRoundHalfUp(term, MILLI * MILLI) });
+    } catch (error) {
+      if (!(error instanceof MissingCostError)) throw error;
+      for (const item of error.missing) if (!missing.some(existing => existing.ingredientId === item.ingredientId)) missing.push(item);
+      terms.push(null); valuedDraws.push({ draw, rateMillipaisePerBase: null, costPaise: null });
+    }
+  }
+  const costPaise = missing.length ? null : divRoundHalfUp(numerator, MILLI * MILLI);
+  if (costPaise != null) {
+    // Allocate the already-rounded money among stored rows; this never feeds the cost chain.
+    const denominator = MILLI * MILLI;
+    let allocated = 0n;
+    const remainders = terms.map((term, index) => {
+      valuedDraws[index].costPaise = term! / denominator; allocated += valuedDraws[index].costPaise!;
+      return { index, remainder: term! % denominator };
+    }).sort((a, b) => a.remainder === b.remainder ? a.index - b.index : a.remainder > b.remainder ? -1 : 1);
+    for (let i = 0n; i < costPaise - allocated; i++) valuedDraws[remainders[Number(i)].index].costPaise! += 1n;
+  }
+  return { costPaise, missing, valuedDraws };
+}
+
 /**
  * The whole run: its draws, what they cost, and what goes back on the shelf.
  *
@@ -236,22 +289,7 @@ export function planProductionRun(
     throw new RangeError('What came out cannot be less than nothing. A burnt batch is zero.');
   }
 
-  // Money, summed exactly in millionths of a paise and rounded once for the batch.
-  // Every input is priced even after one fails, so the operator gets the whole list.
-  let numerator = 0n;
-  const missing: MissingCost[] = [];
-  for (const draw of draws) {
-    try {
-      numerator += draw.issuedMilliBase * lookup(draw.ingredientId);
-    } catch (e) {
-      if (!(e instanceof MissingCostError)) throw e;
-      for (const m of e.missing) {
-        // Butter in the dough and butter in the topping is one missing price, not two.
-        if (!missing.some((x) => x.ingredientId === m.ingredientId)) missing.push(m);
-      }
-    }
-  }
-  const batchCostPaise = missing.length > 0 ? null : divRoundHalfUp(numerator, MILLI * MILLI);
+  const { costPaise: batchCostPaise, missing } = valueDraws(draws, lookup);
 
   // Ordered on purpose: a burnt batch needs no value, so an unpriced input must not stop
   // it being recorded - only a batch that actually goes onto a shelf has to wait.

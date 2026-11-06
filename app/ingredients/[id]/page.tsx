@@ -59,7 +59,7 @@ export default async function EditIngredientPage({ params }: { params: Promise<{
           <div>
             <dt className="text-sm uppercase tracking-wide muted">{t("Weighted avg cost")}</dt>
             <dd className="text-lg font-semibold tabular-nums">
-              {formatINR(
+              {ingredient.weightedAvgCostMillipaisePerBase === null ? t('Unknown') : formatINR(
                 costPerPurchaseUnitPaise(
                   ingredient.weightedAvgCostMillipaisePerBase,
                   ingredient.purchaseUnitInBase,

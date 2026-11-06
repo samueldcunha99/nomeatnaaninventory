@@ -6,12 +6,12 @@
  */
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql as raw } from 'drizzle-orm';
 import { db } from './client.ts';
 import { dbReachable, closeDb } from './test-db.ts';
 import { tenants, users, ingredients, suppliers, stockMovements, ingredientStock, auditLog } from './schema.ts';
 import { recordReceipt, recordCorrection, listSuppliers } from './movements.ts';
-import { recalculateStock } from './stock.ts';
+import { lockIngredients, recalculateStock } from './stock.ts';
 import { AuthzError, type Actor, type Role } from '../lib/auth.ts';
 
 let reachable = false;
@@ -97,6 +97,94 @@ test('a multi-line receipt lands as one reference group and costs out correctly'
     .where(and(eq(stockMovements.tenantId, owner.tenantId), eq(stockMovements.referenceId, referenceId)));
   assert.equal(grouped.length, 2, 'both lines share one reference_id');
   assert.ok(grouped.every((m) => m.supplierId === supplierId && m.referenceType === 'receipt'));
+});
+
+test('retrying the same receipt returns its original group without adding stock or another audit entry', async t => {
+  if (!reachable) return t.skip('no database');
+  const ingredientId = await makeIngredient('Receipt retry');
+  const input = { requestId: crypto.randomUUID(), supplierId, note: 'One delivery',
+    lines: [{ ingredientId, quantityMilliBase: 1000000n, totalCostPaise: 50000n }] };
+  const first = await recordReceipt(owner, input);
+  const before = await stockOf(ingredientId);
+  const retry = await recordReceipt(owner, input);
+  assert.equal(first.referenceId, input.requestId);
+  assert.equal(first.replayed, false);
+  assert.equal(retry.replayed, true);
+  assert.equal(retry.referenceId, first.referenceId);
+  assert.deepEqual(await stockOf(ingredientId), before);
+  assert.equal((await movementsOf(ingredientId)).length, 1);
+  const audit = await db.select().from(auditLog).where(and(eq(auditLog.tenantId, owner.tenantId), eq(auditLog.entityId, input.requestId)));
+  assert.equal(audit.length, 1);
+  await assert.rejects(() => recordReceipt(kitchen, input), AuthzError);
+});
+
+test('a receipt identity cannot be reused with changed lines, supplier or notes', async t => {
+  if (!reachable) return t.skip('no database');
+  const ingredientId = await makeIngredient('Receipt changed retry');
+  const input = { requestId: crypto.randomUUID(), supplierId, note: 'Original',
+    lines: [{ ingredientId, quantityMilliBase: 1000000n, totalCostPaise: 50000n }] };
+  await recordReceipt(owner, input);
+  for (const patch of [
+    { note: 'Different' }, { supplierId: null },
+    { lines: [{ ...input.lines[0], quantityMilliBase: 2000000n }] },
+    { lines: [{ ...input.lines[0], totalCostPaise: 60000n }] },
+  ]) await assert.rejects(() => recordReceipt(owner, { ...input, ...patch }), /already recorded with different details/);
+  assert.equal((await movementsOf(ingredientId)).length, 1);
+  assert.equal((await stockOf(ingredientId)).qtyMilliBase, 1000000);
+});
+
+test('concurrent retries of one receipt create one delivery', async t => {
+  if (!reachable) return t.skip('no database');
+  const ingredientId = await makeIngredient('Concurrent receipt retry');
+  const input = { requestId: crypto.randomUUID(), lines: [{ ingredientId, quantityMilliBase: 1000000n, totalCostPaise: 50000n }] };
+  let release!: () => void, ready!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const locked = new Promise<void>(resolve => { ready = resolve; });
+  const blocker = db.transaction(async tx => {
+    await lockIngredients(tx, owner.tenantId, [ingredientId]); ready(); await gate;
+  });
+  await locked;
+  const attempts = Promise.all([recordReceipt(owner, input), recordReceipt(owner, input)]);
+  let bothWaiting = false;
+  try {
+    // Hold the ingredient until both requests reach a lock. With the receipt guard,
+    // one waits on this ingredient and one on the receipt. Without it, both already
+    // observed an empty group and wait here, so duplicate writes are deterministic.
+    const ingredientKey = `${owner.tenantId}:${ingredientId}`;
+    const receiptKey = `receipt:${owner.tenantId}:${input.requestId}`;
+    for (let i = 0; i < 100; i++) {
+      const [row] = await db.execute<{ waiting: number }>(raw`select count(*)::int as waiting from pg_locks
+        where locktype = 'advisory' and not granted and ((classid::bigint << 32) | objid::bigint)
+        in (hashtextextended(${ingredientKey}, 0), hashtextextended(${receiptKey}, 0))`);
+      if (row.waiting === 2) { bothWaiting = true; break; }
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+  } finally { release(); await blocker; }
+  const results = await attempts;
+  assert.equal(bothWaiting, true, 'both receipt attempts reached the forced interleaving');
+  assert.equal(results.filter(r => !r.replayed).length, 1);
+  assert.equal(new Set(results.map(r => r.referenceId)).size, 1);
+  assert.equal((await movementsOf(ingredientId)).length, 1);
+  assert.equal((await stockOf(ingredientId)).qtyMilliBase, 1000000);
+});
+
+test('receipt identity is tenant scoped and overlarge quantities or prices refuse exact-storage loss', async t => {
+  if (!reachable) return t.skip('no database');
+  const ingredientId = await makeIngredient('Exact receipt');
+  for (const line of [
+    { ingredientId, quantityMilliBase: 9007199254740993n, totalCostPaise: 1n },
+    { ingredientId, quantityMilliBase: 1000n, totalCostPaise: 9007199254740993n },
+    { ingredientId, quantityMilliBase: 1n, totalCostPaise: 9007199254740991n },
+  ]) await assert.rejects(() => recordReceipt(owner, { lines: [line] }), /too large to record exactly/);
+  const [otherTenant] = await db.insert(tenants).values({ name: `Receipt isolation ${crypto.randomUUID()}` }).returning();
+  const other = await makeActor('owner', otherTenant.id);
+  const [otherIngredient] = await db.insert(ingredients).values({ tenantId: otherTenant.id,
+    name: 'Other flour', unitType: 'weight', purchaseUnit: 'kg', purchaseUnitInBase: 1000 }).returning();
+  const requestId = crypto.randomUUID();
+  const first = await recordReceipt(owner, { requestId, lines: [{ ingredientId, quantityMilliBase: 1000n, totalCostPaise: 10n }] });
+  const second = await recordReceipt(other, { requestId, lines: [{ ingredientId: otherIngredient.id, quantityMilliBase: 1000n, totalCostPaise: 20n }] });
+  assert.equal(first.replayed, false); assert.equal(second.replayed, false);
+  assert.equal((await movementsOf(ingredientId)).length, 1);
 });
 
 test('a receipt with one bad line writes nothing at all', async (t) => {
@@ -245,7 +333,7 @@ test('the cache still matches a full ledger rebuild after mixed activity', async
   const cached = await stockOf(ing);
   const rebuilt = await db.transaction((tx) => recalculateStock(tx, owner.tenantId, ing));
   assert.equal(rebuilt.qtyMilliBase, BigInt(cached.qtyMilliBase));
-  assert.equal(rebuilt.weightedAvgCostMillipaisePerBase, BigInt(cached.weightedAvgCostMillipaisePerBase));
+  assert.equal(rebuilt.weightedAvgCostMillipaisePerBase, cached.weightedAvgCostMillipaisePerBase === null ? null : BigInt(cached.weightedAvgCostMillipaisePerBase));
 });
 
 test('kitchen staff cannot record stock movements', async (t) => {

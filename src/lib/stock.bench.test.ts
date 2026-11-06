@@ -46,7 +46,7 @@ test(`replaying ${LEDGER_SIZE} movements stays under ${BUDGET_MS}ms`, () => {
   );
   const elapsed = performance.now() - started;
 
-  assert.ok(state.weightedAvgCostMillipaisePerBase > 0n, 'sanity: the fold actually ran');
+  assert.ok(state.weightedAvgCostMillipaisePerBase !== null && state.weightedAvgCostMillipaisePerBase > 0n, 'sanity: the fold actually ran');
   assert.ok(
     elapsed < BUDGET_MS,
     `replay of ${LEDGER_SIZE} movements took ${elapsed.toFixed(1)}ms, over the ${BUDGET_MS}ms budget. ` +

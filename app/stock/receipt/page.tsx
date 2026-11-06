@@ -22,6 +22,7 @@ export default async function ReceiptPage() {
       <h1>{t("Stock receipt")}</h1>
       <p className="prose-note">{t(" Enter quantities in the unit you buy in, and what was actually paid for that line. The unit cost is worked out for you — check it against the delivery note before saving. ")}</p>
       <ReceiptForm
+        requestId={crypto.randomUUID()}
         ingredients={ingredients.map((i) => ({
           id: i.id,
           name: i.name,

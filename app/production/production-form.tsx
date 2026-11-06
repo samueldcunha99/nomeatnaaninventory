@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useMemo, useState } from 'react';
-import { recordProductionAction, holdRecipeAction, type ProductionState } from './actions.ts';
+import { recordProductionAction, changeRecipeStockAction, type ProductionState } from './actions.ts';
 import { productionGraph, type ProductionRecipeOption } from '../../src/lib/production-form.ts';
 import { planDraws } from '../../src/lib/production.ts';
 import {  parseDecimalToInteger, type UnitType } from '../../src/lib/units.ts';
@@ -16,7 +16,7 @@ export function ProductionForm({ recipes, ingredients, day, today, requestId, in
 }) {
   const t = useTranslations();
   const [state, action, pending] = useActionState<ProductionState, FormData>(recordProductionAction, { error: null });
-  const [holdState, holdAction, holding] = useActionState<ProductionState, FormData>(holdRecipeAction, { error: null });
+  const [holdState, holdAction, holding] = useActionState<ProductionState, FormData>(changeRecipeStockAction, { error: null });
   const [recipeId, setRecipeId] = useState(initialRecipeId);
   const [batches, setBatches] = useState('1');
   const selected = recipes.find(r => r.id === recipeId);
@@ -88,16 +88,19 @@ export function ProductionForm({ recipes, ingredients, day, today, requestId, in
         </> : null}
         <div className="field"><label className="label" htmlFor="note">{t("Batch notes (optional)")}</label>
           <textarea className="input" id="note" name="note" maxLength={2000} rows={2} /></div>
-        <p className="prose-note">{t("Recording deducts these materials from stock. Check the batch count and output before saving. Recorded runs cannot currently be edited or undone.")}</p>
+        <p className="prose-note">{t('Recording deducts these materials from stock. Check the batch count and output before saving. Corrections add a reversal and retain the original record.')}</p>
         <button className="btn" type="submit" disabled={pending || holding || !preview || Boolean(unitError)}>{pending ? t("Recording…") : t("Record production")}</button>
       </section>
     </form>
-    {selected && !selected.stockIngredientId ? <form action={holdAction} className="form-section max-w-4xl mt-4">
+    {selected ? <form action={holdAction} className="form-section max-w-4xl mt-4">
       <input type="hidden" name="recipeId" value={selected.id} />
-      <h2>{t("Keep this item in stock")}</h2>
-      <p className="prose-note">{t("Use this for dough, sauces or other items stored before use. Future batches will go into stock, and their ingredients need recorded purchase prices. Previously logged batches are not added. This setting cannot currently be reversed.")}</p>
+      <input type="hidden" name="enabled" value={selected.stockIngredientId ? 'off' : 'on'} />
+      <h2>{t(selected.stockIngredientId ? 'Future batches go into stock' : 'Keep this item in stock')}</h2>
+      <p className="prose-note">{t(selected.stockIngredientId
+        ? 'Stop shelf output only after its stock is zero and no other recipe uses this preparation. The historical shelf is kept and reused if enabled again.'
+        : 'Use this for dough, sauces or other items stored before use. Future batches go into stock and need recorded input prices. Previously logged batches are not added.')}</p>
       {holdState.error ? <p className="msg msg--error" role="alert">{t.message(holdState.error)}</p> : null}
-      <button className="btn btn--secondary" type="submit" disabled={holding || pending}>{holding ? t("Updating…") : t("Hold {0} in stock", { "0": selected.name })}</button>
+      <button className="btn btn--secondary" type="submit" disabled={holding || pending}>{holding ? t("Updating…") : selected.stockIngredientId ? t('Stop future shelf output') : t("Hold {0} in stock", { "0": selected.name })}</button>
     </form> : null}
   </>;
 }

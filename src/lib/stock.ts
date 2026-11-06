@@ -38,10 +38,10 @@ export type Movement = {
 
 export type StockState = {
   qtyMilliBase: bigint;
-  weightedAvgCostMillipaisePerBase: bigint;
+  weightedAvgCostMillipaisePerBase: bigint | null;
 };
 
-export const EMPTY_STOCK: StockState = { qtyMilliBase: 0n, weightedAvgCostMillipaisePerBase: 0n };
+export const EMPTY_STOCK: StockState = { qtyMilliBase: 0n, weightedAvgCostMillipaisePerBase: null };
 
 /**
  * new_avg = (old_qty * old_avg + in_qty * in_price) / (old_qty + in_qty)
@@ -71,6 +71,12 @@ export function applyMovement(state: StockState, m: Movement): StockState {
 
   if (state.qtyMilliBase <= 0n) {
     return { qtyMilliBase, weightedAvgCostMillipaisePerBase: inPrice };
+  }
+
+  // Unknown opening stock cannot be valued as if it were free. It stays unknown
+  // until a valued inflow starts from an empty/negative balance.
+  if (state.weightedAvgCostMillipaisePerBase === null) {
+    return { qtyMilliBase, weightedAvgCostMillipaisePerBase: null };
   }
 
   const numerator =

@@ -7,10 +7,11 @@
  * to any of them is how the cache starts disagreeing with the ledger.
  */
 import { randomUUID } from 'node:crypto';
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, sql as raw } from 'drizzle-orm';
+import { z } from 'zod';
 import { db } from './client.ts';
-import { suppliers } from './schema.ts';
-import { recordMovements, type MovementInput } from './stock.ts';
+import { suppliers, stockMovements } from './schema.ts';
+import { lockIngredients, recalculateStock, recordMovements, type MovementInput } from './stock.ts';
 import { unitCostMillipaisePerBase } from '../lib/units.ts';
 import { assertPermission, AuthzError, type Actor } from '../lib/auth.ts';
 
@@ -33,10 +34,18 @@ export type ReceiptLine = {
 };
 
 export type ReceiptInput = {
+  /** Stable for one rendered receipt, including retries after a lost response. */
+  requestId?: string;
   supplierId?: string | null;
   note?: string | null;
   lines: ReceiptLine[];
 };
+
+function storedInteger(value: bigint, label: string): number {
+  const result = Number(value);
+  if (!Number.isSafeInteger(result)) throw new RangeError(`${label} is too large to record exactly.`);
+  return result;
+}
 
 /**
  * A multi-line delivery. All lines share one reference_id so the receipt can be seen
@@ -45,9 +54,22 @@ export type ReceiptInput = {
  */
 export async function recordReceipt(actor: Actor, input: ReceiptInput) {
   assertPermission(actor.role, 'stock.record');
-  if (input.lines.length === 0) throw new AuthzError('A receipt needs at least one line.');
+  return recordValuedInflow(actor, input, 'receipt');
+}
 
-  const referenceId = randomUUID();
+/** An opening valuation is a priced inflow, distinguished from a new purchase in all reports. */
+export async function recordOpeningStock(actor: Actor, input: ReceiptInput) {
+  assertPermission(actor.role, 'ingredients.manage');
+  return recordValuedInflow(actor, input, 'opening_stock');
+}
+
+async function recordValuedInflow(actor: Actor, input: ReceiptInput, referenceType: 'receipt' | 'opening_stock') {
+  if (input.lines.length === 0) throw new AuthzError('A receipt needs at least one line.');
+  if (referenceType === 'opening_stock' && new Set(input.lines.map(line => line.ingredientId)).size !== input.lines.length) {
+    throw new RangeError('Enter each ingredient once when recording opening stock.');
+  }
+
+  const referenceId = z.uuid().parse(input.requestId ?? randomUUID());
   const lines: MovementInput[] = input.lines.map((line) => {
     if (line.quantityMilliBase <= 0n) throw new RangeError('Received quantity must be more than zero.');
     if (line.totalCostPaise < 0n) throw new RangeError('Cost paid cannot be negative.');
@@ -55,22 +77,67 @@ export async function recordReceipt(actor: Actor, input: ReceiptInput) {
       tenantId: actor.tenantId,
       ingredientId: line.ingredientId,
       movementType: 'purchase',
-      quantityMilliBase: Number(line.quantityMilliBase),
+      quantityMilliBase: storedInteger(line.quantityMilliBase, 'Received quantity'),
       // The one rounding in this path, via the shared helper.
-      unitCostMillipaisePerBase: Number(
-        unitCostMillipaisePerBase(line.totalCostPaise, line.quantityMilliBase),
+      unitCostMillipaisePerBase: storedInteger(
+        unitCostMillipaisePerBase(line.totalCostPaise, line.quantityMilliBase), 'Unit cost',
       ),
-      totalCostPaise: Number(line.totalCostPaise),
-      supplierId: input.supplierId || null,
-      referenceType: 'receipt',
+      totalCostPaise: storedInteger(line.totalCostPaise, 'Cost paid'),
+      supplierId: referenceType === 'receipt' ? input.supplierId || null : null,
+      referenceType,
       referenceId,
-      note: input.note || null,
+      note: input.note?.trim() || null,
       createdByUserId: actor.id,
     };
   });
 
-  await recordMovements(lines);
-  return { referenceId, lineCount: lines.length };
+  return db.transaction(async tx => {
+    // Lock the submission before looking for it. Concurrent retries then see the first
+    // transaction's committed group. Ingredient locks still belong to recordMovements.
+    await tx.execute(raw`select pg_advisory_xact_lock(hashtextextended(${`receipt:${actor.tenantId}:${referenceId}`}, 0))`);
+    const previous = await tx.select().from(stockMovements).where(and(
+      eq(stockMovements.tenantId, actor.tenantId), inArray(stockMovements.referenceType, ['receipt', 'opening_stock']),
+      eq(stockMovements.referenceId, referenceId),
+    )).orderBy(asc(stockMovements.seq));
+    if (previous.length) {
+      const inflows = previous.filter(row => row.movementType === 'purchase');
+      const identical = previous.every(row => row.referenceType === referenceType) && inflows.length === lines.length && inflows.every((saved, i) => {
+        const line = lines[i];
+        return saved.movementType === 'purchase' && saved.ingredientId === line.ingredientId &&
+          saved.quantityMilliBase === line.quantityMilliBase && saved.totalCostPaise === line.totalCostPaise &&
+          saved.unitCostMillipaisePerBase === line.unitCostMillipaisePerBase &&
+          saved.supplierId === line.supplierId && saved.note === line.note;
+      });
+      if (!identical) throw new RangeError('This receipt was already recorded with different details. Open a new receipt for another delivery.');
+      return { referenceId, lineCount: inflows.length, replayed: true };
+    }
+    const resets: MovementInput[] = [];
+    if (referenceType === 'opening_stock') {
+      await lockIngredients(tx, actor.tenantId, lines.map(line => line.ingredientId));
+      for (const line of lines) {
+        const current = await recalculateStock(tx, actor.tenantId, line.ingredientId, { rebuild: true });
+        if (current.weightedAvgCostMillipaisePerBase !== null) {
+          throw new RangeError('This ingredient already has a recorded cost. Use receipts for new purchases instead of replacing its opening value.');
+        }
+        const [history] = await tx.select({ id: stockMovements.id }).from(stockMovements).where(and(
+          eq(stockMovements.tenantId, actor.tenantId), eq(stockMovements.ingredientId, line.ingredientId),
+        )).limit(1);
+        if (history) {
+          if (current.qtyMilliBase <= 0n || current.qtyMilliBase !== BigInt(line.quantityMilliBase)) {
+            throw new RangeError('To value existing unknown stock, enter its current positive quantity exactly. Record any physical count correction first.');
+          }
+          // Quantity-neutral valuation of an UNKNOWN balance. Both entries stay in
+          // history; this does not rewrite a purchase or claim another delivery arrived.
+          resets.push({ tenantId: actor.tenantId, ingredientId: line.ingredientId,
+            movementType: 'adjustment', quantityMilliBase: -line.quantityMilliBase,
+            referenceType, referenceId, reason: 'count_correction',
+            note: 'Opening stock valuation: clear unknown value before establishing the recorded basis.', createdByUserId: actor.id });
+        }
+      }
+    }
+    await recordMovements([...resets, ...lines], tx);
+    return { referenceId, lineCount: lines.length, replayed: false };
+  });
 }
 
 export type CorrectionInput = {

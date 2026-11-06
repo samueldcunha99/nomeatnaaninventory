@@ -54,6 +54,7 @@ export default async function MenuItemsPage({ params }: { params: Promise<{ id: 
                   // Paise back to rupees, exactly — the same round trip a quantity makes.
                   sellingPrice: paiseToRupees(item.sellingPricePaise),
                   isActive: item.isActive,
+                  fulfillmentMode: item.fulfillmentMode,
                 }}
               />
             </section>

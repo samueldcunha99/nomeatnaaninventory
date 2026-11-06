@@ -39,10 +39,22 @@ try {
     if (row.count !== table.count) throw new Error(`Restore count mismatch for ${table.schema}.${table.name}: expected ${table.count}, got ${row.count}.`);
     console.log(`${table.schema}.${table.name}: ${row.count} rows, matches backup snapshot`);
   }
-  for (const trigger of ['stock_movements_no_update', 'production_runs_no_update']) {
+  const guards: Record<string, string[]> = {
+    stock_movements: ['stock_movements_no_update', 'stock_movements_no_delete'],
+    production_runs: ['production_runs_no_update', 'production_runs_no_delete'],
+    production_reversals: ['production_reversals_no_update', 'production_reversals_no_delete', 'production_reversals_complete'],
+    order_lines: ['order_lines_append_only'], order_line_draws: ['order_line_draws_append_only', 'order_line_draws_validate'],
+    orders: ['orders_preserve_snapshot'], order_status_events: ['order_status_events_append_only'], payment_events: ['payment_events_append_only'],
+  };
+  // Older snapshots legitimately lack newer tables. Every restored business table must
+  // retain the guards its version used; the manifest is the source of table presence.
+  for (const [table, triggers] of Object.entries(guards)) {
+    if (!manifest.tables.some(entry => entry.schema === 'public' && entry.name === table)) continue;
+    for (const trigger of triggers) {
     const [row] = await sql`select count(*)::text as count from pg_trigger t join pg_class c on c.oid = t.tgrelid
-      join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and t.tgname = ${trigger} and t.tgenabled <> 'D'`;
+      join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relname = ${table} and t.tgname = ${trigger} and t.tgenabled <> 'D'`;
     if (row.count !== '1') throw new Error(`Restored append-only trigger missing/disabled: ${trigger}`);
+    }
   }
   console.log('RESTORE OK. The test database remains available for inspection; do not point production at it.');
 } finally {

@@ -12,6 +12,7 @@ export type MenuItemFormValues = {
   portionQty: string;
   sellingPrice: string;
   isActive: boolean;
+  fulfillmentMode?: 'stocked' | 'made_to_order' | null;
 };
 
 const ALERT =
@@ -45,6 +46,7 @@ export function MenuItemForm({
   return (
     <form action={formAction} className="form-section">
       <input type="hidden" name="recipeId" value={recipeId} />
+      <input type="hidden" name="entryUnitType" value={yieldUnitType} />
       {initial?.id ? <input type="hidden" name="id" value={initial.id} /> : null}
 
       {state.error ? (
@@ -101,6 +103,16 @@ export function MenuItemForm({
             required
           />
         </div>
+      </div>
+
+      <div className="field mt-4 max-w-xl">
+        <label className="label" htmlFor={`fulfillmentMode-${id}`}>{t('Order stock policy')}</label>
+        <select className="select" id={`fulfillmentMode-${id}`} name="fulfillmentMode" defaultValue={initial?.fulfillmentMode ?? ''}>
+          <option value="">{t('Not configured for sales')}</option>
+          <option value="stocked">{t('Prepared item: take from finished stock')}</option>
+          <option value="made_to_order">{t('Made when ordered: take recipe materials')}</option>
+        </select>
+        <p className="prose-note">{t('Prepared items must be held in stock and produced first. Made-to-order items use materials when the order is recorded and cannot also be logged as manual production.')}</p>
       </div>
 
       <label className="checkfield mt-3">

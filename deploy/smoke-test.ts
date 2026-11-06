@@ -5,6 +5,7 @@ import { mkdtemp, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import postgres from 'postgres';
+import type { Actor } from '../src/lib/auth.ts';
 import { databaseConfig } from '../src/lib/database-config.ts';
 
 if (process.env.CI !== 'true') throw new Error('Deployment rehearsal is CI-only. Use disposable databases.');
@@ -43,6 +44,40 @@ try {
     assert.equal(row.name, 'Runtime write verified');
   });
   console.log('Runtime role reads/writes app data and cannot create or alter tables.');
+  // Exercise every new business table using the restricted role and the real writers.
+  // These are explicitly disposable CI databases, never the client database.
+  const [{ createIngredient }, { recordOpeningStock }, { saveRecipe, saveMenuItem }, production, sales, client] = await Promise.all([
+    import('../src/db/ingredients.ts'), import('../src/db/movements.ts'), import('../src/db/recipes.ts'),
+    import('../src/db/production.ts'), import('../src/db/orders.ts'), import('../src/db/client.ts'),
+  ]);
+  try {
+    const [ownerRow] = await sql`select id, tenant_id from public.users where role = 'owner'`;
+    const actor: Actor = { id: ownerRow.id, tenantId: ownerRow.tenant_id, role: 'owner' };
+    const flour = await createIngredient(actor, { name: 'Rehearsal flour', unitType: 'weight', purchaseUnit: 'kg', purchaseUnitInBase: 1000, lowStockThresholdMilliBase: 0 });
+    await recordOpeningStock(actor, { requestId: crypto.randomUUID(), lines: [{ ingredientId: flour.id, quantityMilliBase: 1000000n, totalCostPaise: 10000n }] });
+    const recipeId = await saveRecipe(actor, { name: 'Rehearsal brownies', yieldUnitType: 'count', yieldQtyMilliBase: 10000n,
+      lines: [{ ingredientId: flour.id, quantityMilliBase: 100000n, entryUnitType: 'weight' }] });
+    await production.stockRecipe(actor, recipeId);
+    const runInput = { recipeId, producedOn: '2020-01-01', batchesMilli: 1000n, actualYieldMilliBase: 10000n };
+    const first = await production.recordProductionRun(actor, { ...runInput, requestId: crypto.randomUUID() });
+    await production.reverseProductionRun(actor, { requestId: crypto.randomUUID(), productionRunId: first.runId, reason: 'Disposable correction rehearsal' });
+    await production.recordProductionRun(actor, { ...runInput, requestId: crypto.randomUUID() });
+    const menuItemId = await saveMenuItem(actor, { recipeId, entryUnitType: 'count', name: 'Rehearsal brownie', portionQtyMilliBase: 1000n,
+      sellingPricePaise: 1000n, isActive: true, fulfillmentMode: 'stocked' });
+    await sales.saveSalesSettings(actor, { taxMode: 'none', taxRateMillipercent: 0n });
+    const made = await sales.createOrder(actor, { requestId: crypto.randomUUID(), orderType: 'takeaway', paymentMethod: 'cash', lines: [{ menuItemId, quantity: 2 }] });
+    await sales.changeOrderStatus(actor, { orderId: made.orderId, toStatus: 'ready' });
+    await sales.changeOrderStatus(actor, { orderId: made.orderId, toStatus: 'completed' });
+    const order = await sales.getOrder(actor, made.orderId); assert.ok(order);
+    assert.equal(order.paidPaise, 2000n); assert.equal(order.lines[0].costSnapshotPaise, 200n);
+    for (const table of ['stock_movements', 'production_runs', 'production_reversals', 'order_lines', 'order_line_draws', 'order_status_events', 'payment_events', 'orders']) {
+      await assert.rejects(sql.begin(async tx => {
+        await tx`set local app.ledger_maintenance = 'on'`;
+        await tx`delete from ${sql(`public.${table}`)}`;
+      }), { code: '23001' }, `Runtime maintenance bypass allowed deletion from ${table}`);
+    }
+    console.log('Restricted runtime wrote valued stock, production/correction, order, usage, status and payments. Every append-only guard rejected a runtime maintenance bypass.');
+  } finally { await client.sql.end({ timeout: 5 }); }
 } finally {
   await sql.end({ timeout: 5 });
 }

@@ -1,5 +1,9 @@
 /** English source keys, with Hindi and Marathi interface translations. */
 export const messages = {
+  "Kitchen board and preparation updates. No prices or costs.": [
+    "रसोई बोर्ड और तैयारी की स्थिति बदलना। कीमत या लागत नहीं दिखती।",
+    "स्वयंपाकघर फलक आणि तयारीची स्थिती बदलणे. किमती किंवा खर्च दिसत नाहीत."
+  ],
   "% wastage": [
     "% बर्बादी",
     "% वाया जाणे"
@@ -2435,5 +2439,1477 @@ export const messages = {
   "No such {noun}": [
     "ऐसी {noun} नहीं मिली",
     "असे {noun} सापडले नाही"
+  ],
+  "Cost incomplete.": [
+    "लागत अभी पूरी नहीं है।",
+    "खर्चाची माहिती अपूर्ण आहे."
+  ],
+  "Both hourly rates are required before labour and kitchen overhead can be included. Blank rates remain unknown.": [
+    "श्रम और रसोई का खर्च जोड़ने के लिए प्रति घंटे की दोनों दरें ज़रूरी हैं। खाली दर का मतलब अज्ञात है।",
+    "मजुरी आणि स्वयंपाकघराचा खर्च समाविष्ट करण्यासाठी तासाचे दोन्ही दर आवश्यक आहेत. रिकामा दर म्हणजे अज्ञात दर."
+  ],
+  "Batch preparation time is missing for:": [
+    "इनकी एक बैच की तैयारी का समय दर्ज नहीं है:",
+    "यांच्या एका बॅचच्या तयारीचा वेळ नोंदवलेला नाही:"
+  ],
+  "The amounts below include known costs only. Margins are provisional until the missing rates and preparation times are entered.": [
+    "नीचे की रकम में केवल ज्ञात खर्च शामिल हैं। बाकी दरें और तैयारी का समय दर्ज होने तक मार्जिन अस्थायी हैं।",
+    "खालील रकमांमध्ये फक्त ज्ञात खर्च आहेत. उर्वरित दर आणि तयारीचे वेळ नोंदवेपर्यंत मार्जिन तात्पुरते आहेत."
+  ],
+  "Known batch cost": [
+    "बैच की ज्ञात लागत",
+    "बॅचचा ज्ञात खर्च"
+  ],
+  "Known unit cost": [
+    "प्रति इकाई ज्ञात लागत",
+    "प्रति एकक ज्ञात खर्च"
+  ],
+  "Known portion cost": [
+    "सर्विंग की ज्ञात लागत",
+    "सर्व्हिंगचा ज्ञात खर्च"
+  ],
+  "Minimum loss per portion": [
+    "प्रति सर्विंग कम से कम नुकसान",
+    "प्रति सर्व्हिंग किमान तोटा"
+  ],
+  "Provisional margin": [
+    "अस्थायी मार्जिन",
+    "तात्पुरते मार्जिन"
+  ],
+  "Known cost": [
+    "ज्ञात लागत",
+    "ज्ञात खर्च"
+  ],
+  "Known costs only": [
+    "केवल ज्ञात लागत",
+    "फक्त ज्ञात खर्च"
+  ],
+  "Reload the receipt page before recording this delivery.": [
+    "यह खरीद दर्ज करने से पहले रसीद का पेज फिर खोलें।",
+    "ही खरेदी नोंदवण्यापूर्वी पावतीचे पान पुन्हा उघडा."
+  ],
+  "This receipt was already recorded. Stock has not been added again.": [
+    "यह रसीद पहले दर्ज हो चुकी है। स्टॉक दोबारा नहीं जोड़ा गया।",
+    "ही पावती आधीच नोंदवली आहे. साठा पुन्हा वाढवलेला नाही."
+  ],
+  "This receipt was already recorded with different details. Open a new receipt for another delivery.": [
+    "इस रसीद के दूसरे विवरण पहले दर्ज हो चुके हैं। दूसरी खरीद के लिए नई रसीद खोलें।",
+    "या पावतीची वेगळी माहिती आधीच नोंदवली आहे. दुसऱ्या खरेदीसाठी नवीन पावती उघडा."
+  ],
+  "Received quantity is too large to record exactly.": [
+    "प्राप्त मात्रा सटीक दर्ज करने की सीमा से अधिक है।",
+    "मिळालेले प्रमाण अचूक नोंदवण्याच्या मर्यादेपेक्षा जास्त आहे."
+  ],
+  "Cost paid is too large to record exactly.": [
+    "भुगतान सटीक दर्ज करने की सीमा से अधिक है।",
+    "दिलेली रक्कम अचूक नोंदवण्याच्या मर्यादेपेक्षा जास्त आहे."
+  ],
+  "Unit cost is too large to record exactly.": [
+    "प्रति इकाई लागत सटीक दर्ज करने की सीमा से अधिक है।",
+    "प्रति एकक खर्च अचूक नोंदवण्याच्या मर्यादेपेक्षा जास्त आहे."
+  ],
+  "Stock value incomplete": [
+    "स्टॉक का मूल्य अधूरा है",
+    "साठ्याचे मूल्य अपूर्ण आहे"
+  ],
+  "{0} have no complete recorded cost": [
+    "{0} की पूरी लागत दर्ज नहीं है",
+    "{0} यांचा पूर्ण खर्च नोंदवलेला नाही"
+  ],
+  "no complete recorded cost:": [
+    "की पूरी लागत दर्ज नहीं है:",
+    "यांचा पूर्ण खर्च नोंदवलेला नाही:"
+  ],
+  "Review purchase prices": [
+    "खरीद कीमतें जांचें",
+    "खरेदी किमती तपासा"
+  ],
+  "and resolve unknown opening stock values before costing again.": [
+    "और लागत फिर निकालने से पहले शुरुआती स्टॉक के अज्ञात मूल्य ठीक करें।",
+    "आणि खर्च पुन्हा काढण्यापूर्वी सुरुवातीच्या साठ्याची अज्ञात मूल्ये निश्चित करा."
+  ],
+  "{count} {_grammar} no complete recorded cost, so nothing here can be costed: {names}. Review purchase prices and opening stock values, then cost this again.": [
+    "इन {count} सामग्रियों की पूरी लागत दर्ज नहीं है: {names}। खरीद कीमतें और शुरुआती स्टॉक के मूल्य जांचकर फिर लागत निकालें।",
+    "या {count} घटकांचा पूर्ण खर्च नोंदवलेला नाही: {names}. खरेदी किमती आणि सुरुवातीच्या साठ्याची मूल्ये तपासून पुन्हा खर्च काढा."
+  ],
+  "The serving quantity or price is too large to record exactly.": [
+    "सर्विंग की मात्रा या कीमत सटीक दर्ज करने की सीमा से अधिक है।",
+    "सर्व्हिंगचे प्रमाण किंवा किंमत अचूक नोंदवण्याच्या मर्यादेपेक्षा जास्त आहे."
+  ],
+  "Choose a valid order stock policy.": [
+    "ऑर्डर के लिए स्टॉक इस्तेमाल करने का सही तरीका चुनें।",
+    "ऑर्डरसाठी साठा वापरण्याची योग्य पद्धत निवडा."
+  ],
+  "Hold this recipe in stock before selling prepared items from its shelf.": [
+    "तैयार आइटम स्टॉक से बेचने से पहले इस रेसिपी को स्टॉक में रखें।",
+    "तयार पदार्थ साठ्यातून विकण्यापूर्वी ही पाककृती साठ्यात ठेवा."
+  ],
+  "This recipe is held in stock. Sell its prepared stock instead of deducting raw materials again.": [
+    "यह रेसिपी स्टॉक में रखी जाती है। कच्ची सामग्री दोबारा घटाने के बजाय तैयार स्टॉक बेचें।",
+    "ही पाककृती साठ्यात ठेवली जाते. कच्चे घटक पुन्हा कमी करण्याऐवजी तयार साठा विका."
+  ],
+  "This recipe has manually recorded output without shelf stock. Use a new recipe for made-to-order sales to avoid counting its materials twice.": [
+    "इस रेसिपी का उत्पादन बिना तैयार स्टॉक के पहले दर्ज है। सामग्री दोबारा न घटे, इसलिए ऑर्डर पर बनाने के लिए नई रेसिपी इस्तेमाल करें।",
+    "या पाककृतीचे उत्पादन तयार साठ्याशिवाय आधी नोंदवलेले आहे. घटक दोनदा कमी होऊ नयेत म्हणून ऑर्डरनुसार बनवण्यासाठी नवीन पाककृती वापरा."
+  ],
+  "Order stock policy": [
+    "ऑर्डर में स्टॉक का उपयोग",
+    "ऑर्डरसाठी साठा वापरण्याची पद्धत"
+  ],
+  "Not configured for sales": [
+    "बिक्री के लिए सेट नहीं है",
+    "विक्रीसाठी ठरवलेले नाही"
+  ],
+  "Prepared item: take from finished stock": [
+    "तैयार आइटम: तैयार स्टॉक से लें",
+    "तयार पदार्थ: तयार साठ्यातून घ्या"
+  ],
+  "Made when ordered: take recipe materials": [
+    "ऑर्डर पर बनाएं: रेसिपी की सामग्री लें",
+    "ऑर्डरनुसार बनवा: पाककृतीचे घटक घ्या"
+  ],
+  "Prepared items must be held in stock and produced first. Made-to-order items use materials when the order is recorded and cannot also be logged as manual production.": [
+    "तैयार आइटम पहले बनाकर स्टॉक में रखने होंगे। ऑर्डर पर बनने वाले आइटम की सामग्री ऑर्डर दर्ज करते समय घटेगी; उनका उत्पादन अलग से दर्ज नहीं कर सकते।",
+    "तयार पदार्थ आधी बनवून साठ्यात ठेवावेत. ऑर्डरनुसार बनणाऱ्या पदार्थांचे घटक ऑर्डर नोंदवताना कमी होतील; त्यांचे उत्पादन वेगळे नोंदवता येणार नाही."
+  ],
+  "Use at most 1024 characters.": [
+    "अधिकतम 1024 अक्षर इस्तेमाल करें।",
+    "जास्तीत जास्त 1024 अक्षरे वापरा."
+  ],
+  "Enter your current password.": [
+    "अपना मौजूदा पासवर्ड दर्ज करें।",
+    "तुमचा सध्याचा पासवर्ड नोंदवा."
+  ],
+  "The new passwords do not match.": [
+    "दोनों नए पासवर्ड एक जैसे नहीं हैं।",
+    "दोन्ही नवीन पासवर्ड जुळत नाहीत."
+  ],
+  "Choose a staff member.": [
+    "किसी कर्मचारी को चुनें।",
+    "एक कर्मचारी निवडा."
+  ],
+  "Your current password is incorrect.": [
+    "आपका मौजूदा पासवर्ड गलत है।",
+    "तुमचा सध्याचा पासवर्ड चुकीचा आहे."
+  ],
+  "That staff account is unavailable.": [
+    "वह कर्मचारी खाता उपलब्ध नहीं है।",
+    "ते कर्मचारी खाते उपलब्ध नाही."
+  ],
+  "Your account is unavailable. Sign in again.": [
+    "आपका खाता उपलब्ध नहीं है। दोबारा साइन इन करें।",
+    "तुमचे खाते उपलब्ध नाही. पुन्हा साइन इन करा."
+  ],
+  "The password could not be changed. Please try again.": [
+    "पासवर्ड बदला नहीं जा सका। फिर कोशिश करें।",
+    "पासवर्ड बदलता आला नाही. पुन्हा प्रयत्न करा."
+  ],
+  "Password reset for {name}. Their previous sessions were signed out.": [
+    "{name} का पासवर्ड बदल दिया गया। उनके पुराने सत्र साइन आउट कर दिए गए हैं।",
+    "{name} यांचा पासवर्ड बदलला. त्यांची मागील सत्रे साइन आउट केली आहेत."
+  ],
+  "There are no other staff accounts you can reset.": [
+    "ऐसा कोई दूसरा कर्मचारी खाता नहीं है जिसका पासवर्ड आप बदल सकते हैं।",
+    "तुम्ही पासवर्ड बदलू शकाल असे दुसरे कर्मचारी खाते नाही."
+  ],
+  "Change your own password": [
+    "अपना पासवर्ड बदलें",
+    "स्वतःचा पासवर्ड बदला"
+  ],
+  "Choose another staff member and enter a new password twice. All their existing sessions will be signed out. Their role and active status stay the same.": [
+    "दूसरे कर्मचारी को चुनें और नया पासवर्ड दो बार दर्ज करें। उनके सभी मौजूदा सत्र साइन आउट हो जाएंगे। उनकी भूमिका और सक्रिय स्थिति वही रहेगी।",
+    "दुसरा कर्मचारी निवडा आणि नवीन पासवर्ड दोनदा नोंदवा. त्यांची सर्व चालू सत्रे साइन आउट होतील. त्यांची भूमिका आणि सक्रिय स्थिती तशीच राहील."
+  ],
+  "Staff member": [
+    "कर्मचारी",
+    "कर्मचारी"
+  ],
+  "Choose a staff member": [
+    "कर्मचारी चुनें",
+    "कर्मचारी निवडा"
+  ],
+  "New password": [
+    "नया पासवर्ड",
+    "नवीन पासवर्ड"
+  ],
+  "Confirm new password": [
+    "नए पासवर्ड की पुष्टि करें",
+    "नवीन पासवर्ड पुन्हा नोंदवा"
+  ],
+  "Use at least 12 characters. Tell the staff member their new password privately. No password is emailed or saved in the activity history.": [
+    "कम से कम 12 अक्षर इस्तेमाल करें। कर्मचारी को उनका नया पासवर्ड निजी तौर पर बताएं। पासवर्ड ईमेल नहीं किया जाता और गतिविधि के इतिहास में सहेजा नहीं जाता।",
+    "किमान 12 अक्षरे वापरा. कर्मचाऱ्याला नवीन पासवर्ड खाजगीत सांगा. पासवर्ड ईमेल केला जात नाही किंवा कृतींच्या इतिहासात जतन केला जात नाही."
+  ],
+  "Changing password…": [
+    "पासवर्ड बदला जा रहा है…",
+    "पासवर्ड बदलत आहे…"
+  ],
+  "Reset staff password": [
+    "कर्मचारी का पासवर्ड बदलें",
+    "कर्मचाऱ्याचा पासवर्ड बदला"
+  ],
+  "Reset a staff password": [
+    "कर्मचारी का पासवर्ड बदलें",
+    "कर्मचाऱ्याचा पासवर्ड बदला"
+  ],
+  "Current password": [
+    "मौजूदा पासवर्ड",
+    "सध्याचा पासवर्ड"
+  ],
+  "Use at least 12 characters. After changing your password, every device will be signed out. Sign in again with the new password.": [
+    "कम से कम 12 अक्षर इस्तेमाल करें। पासवर्ड बदलने के बाद सभी डिवाइस साइन आउट हो जाएंगे। नए पासवर्ड से दोबारा साइन इन करें।",
+    "किमान 12 अक्षरे वापरा. पासवर्ड बदलल्यानंतर सर्व उपकरणांवरील सत्रे साइन आउट होतील. नवीन पासवर्डने पुन्हा साइन इन करा."
+  ],
+  "Change password": [
+    "पासवर्ड बदलें",
+    "पासवर्ड बदला"
+  ],
+  "My password": [
+    "मेरा पासवर्ड",
+    "माझा पासवर्ड"
+  ],
+  "Change your password": [
+    "अपना पासवर्ड बदलें",
+    "तुमचा पासवर्ड बदला"
+  ],
+  "Enter your current password, then choose and confirm a new one. Only your own account is changed.": [
+    "अपना मौजूदा पासवर्ड दर्ज करें, फिर नया पासवर्ड चुनकर उसकी पुष्टि करें। केवल आपका अपना खाता बदलेगा।",
+    "सध्याचा पासवर्ड नोंदवा, नंतर नवीन पासवर्ड निवडून पुन्हा नोंदवा. फक्त तुमचे स्वतःचे खाते बदलेल."
+  ],
+  "you cannot reset the password of your own account": [
+    "अपना पासवर्ड बदलने के लिए “मेरा पासवर्ड” खोलें।",
+    "स्वतःचा पासवर्ड बदलण्यासाठी “माझा पासवर्ड” उघडा."
+  ],
+  "only an owner may reset the password of another owner": [
+    "केवल मालिक ही दूसरे मालिक का पासवर्ड बदल सकते हैं।",
+    "फक्त मालकच दुसऱ्या मालकाचा पासवर्ड बदलू शकतात."
+  ],
+  "The serving unit is missing. Refresh the page and try again.": [
+    "सर्विंग की इकाई नहीं मिली। पेज दोबारा खोलकर फिर कोशिश करें।",
+    "सर्व्हिंगचे एकक मिळाले नाही. पान पुन्हा उघडून प्रयत्न करा."
+  ],
+  "That menu item belongs to a different recipe. Refresh and try again.": [
+    "यह मेनू आइटम दूसरी रेसिपी का है। पेज दोबारा खोलकर कोशिश करें।",
+    "हा मेनूमधील पदार्थ दुसऱ्या पाककृतीचा आहे. पान पुन्हा उघडून प्रयत्न करा."
+  ],
+  "\"{name}\" has saved serving portions: {portions}. Changing its yield unit would change what those portions mean. Create a new recipe for the new unit.": [
+    "\"{name}\" की ये सर्विंग मात्रा सहेजी गई हैं: {portions}। उत्पादन की इकाई बदलने से इन मात्राओं का अर्थ बदल जाएगा। नई इकाई के लिए नई रेसिपी बनाएं।",
+    "\"{name}\" साठी या सर्व्हिंग मात्रा जतन केल्या आहेत: {portions}. उत्पादनाचे एकक बदलल्यास या मात्रांचा अर्थ बदलेल. नव्या एककासाठी नवी पाककृती तयार करा."
+  ],
+  "\"{name}\" holds production from {recipes}. Its measurement type must stay {from}. Create a new recipe for a different measurement type.": [
+    "\"{name}\" में {recipes} का तैयार उत्पादन रखा जाता है। इसका माप {from} ही रहना चाहिए। अलग माप के लिए नई रेसिपी बनाएं।",
+    "\"{name}\" मध्ये {recipes} चे तयार उत्पादन साठवले जाते. त्याचे मापन {from} राहिले पाहिजे. वेगळ्या मापनासाठी नवी पाककृती तयार करा."
+  ],
+  "Line {line} in \"{name}\" is too small to record at this batch size. Increase the batch count or correct the line quantity.": [
+    "इस बैच आकार में \"{name}\" की पंक्ति {line} की मात्रा दर्ज करने के लिए बहुत कम है। बैचों की संख्या बढ़ाएं या उस पंक्ति की मात्रा सुधारें।",
+    "या बॅचच्या आकारात \"{name}\" मधील ओळ {line} ची मात्रा नोंदवण्यासाठी खूप कमी आहे. बॅचची संख्या वाढवा किंवा त्या ओळीची मात्रा दुरुस्त करा."
+  ],
+  "Download CSV": [
+    "CSV डाउनलोड करें",
+    "CSV डाउनलोड करा"
+  ],
+  "Record type": [
+    "रिकॉर्ड का प्रकार",
+    "नोंदीचा प्रकार"
+  ],
+  "Recipe filter": [
+    "रेसिपी का फ़िल्टर",
+    "पाककृतीचा फिल्टर"
+  ],
+  "Unit": [
+    "इकाई",
+    "एकक"
+  ],
+  "Recorded runs": [
+    "दर्ज बैच प्रविष्टियां",
+    "नोंदवलेल्या बॅच नोंदी"
+  ],
+  "Notes": [
+    "टिप्पणियां",
+    "टिपा"
+  ],
+  "That recipe is unavailable. Refresh the report and try again.": [
+    "वह रेसिपी उपलब्ध नहीं है। रिपोर्ट दोबारा खोलकर कोशिश करें।",
+    "ती पाककृती उपलब्ध नाही. अहवाल पुन्हा उघडून प्रयत्न करा."
+  ],
+  "Reversal reason": [
+    "पूर्ववत करने का कारण",
+    "पूर्ववत करण्याचे कारण"
+  ],
+  "Reversed by": [
+    "पूर्ववत करने वाले",
+    "पूर्ववत करणारे"
+  ],
+  "Reversed at": [
+    "पूर्ववत करने का समय",
+    "पूर्ववत केल्याची वेळ"
+  ],
+  "Reversed": [
+    "पूर्ववत किया गया",
+    "पूर्ववत केलेले"
+  ],
+  "Recorded": [
+    "दर्ज किया गया",
+    "नोंदवलेले"
+  ],
+  "Correction": [
+    "सुधार",
+    "दुरुस्ती"
+  ],
+  "Correct this batch": [
+    "इस बैच की प्रविष्टि सुधारें",
+    "या बॅचची नोंद दुरुस्त करा"
+  ],
+  "Correction reason": [
+    "सुधार का कारण",
+    "दुरुस्तीचे कारण"
+  ],
+  "Reversing…": [
+    "पूर्ववत हो रहा है…",
+    "पूर्ववत करत आहे…"
+  ],
+  "Reverse batch": [
+    "बैच की प्रविष्टि पूर्ववत करें",
+    "बॅचची नोंद पूर्ववत करा"
+  ],
+  "Reversing restores its stock movements and keeps the original record. It is allowed only when no later stock activity touches the same ingredients.": [
+    "पूर्ववत करने से इस प्रविष्टि का स्टॉक वापस समायोजित होता है और मूल रिकॉर्ड बना रहता है। उन्हीं सामग्रियों पर बाद में कोई स्टॉक गतिविधि न होने पर ही यह किया जा सकता है।",
+    "पूर्ववत केल्यावर या नोंदीतील साठ्याचे बदल मागे घेतले जातात आणि मूळ नोंद कायम राहते. त्याच घटकांवर नंतर साठ्याची कोणतीही हालचाल झालेली नसल्यासच हे करता येते."
+  ],
+  "Use this only to correct an incorrect entry, not a batch that was actually made and lost.": [
+    "इसका उपयोग केवल गलत प्रविष्टि सुधारने के लिए करें। वास्तव में बनाए गए और खराब हुए बैच के लिए इसका उपयोग न करें।",
+    "हे फक्त चुकीची नोंद दुरुस्त करण्यासाठी वापरा. प्रत्यक्ष तयार झालेल्या आणि वाया गेलेल्या बॅचसाठी वापरू नका."
+  ],
+  "Recording deducts these materials from stock. Check the batch count and output before saving. Corrections add a reversal and retain the original record.": [
+    "दर्ज करने पर ये सामग्री स्टॉक से घटेगी। सहेजने से पहले बैचों की संख्या और उत्पादन जांचें। सुधार में पूर्ववत करने की नई प्रविष्टि जुड़ती है और मूल रिकॉर्ड बना रहता है।",
+    "नोंदवल्यावर हे घटक साठ्यातून कमी होतील. जतन करण्यापूर्वी बॅचची संख्या आणि उत्पादन तपासा. दुरुस्तीत पूर्ववत करण्याची नवीन नोंद जोडली जाते आणि मूळ नोंद कायम राहते."
+  ],
+  "Future batches go into stock": [
+    "आगे के बैच स्टॉक में जुड़ेंगे",
+    "पुढील बॅच साठ्यात जोडल्या जातील"
+  ],
+  "Stop shelf output only after its stock is zero and no other recipe uses this preparation. The historical shelf is kept and reused if enabled again.": [
+    "स्टॉक शून्य होने और किसी दूसरी रेसिपी में यह तैयारी इस्तेमाल न होने पर ही स्टॉक में जोड़ना बंद करें। पुराना स्टॉक रिकॉर्ड रखा जाएगा और दोबारा चालू करने पर वही इस्तेमाल होगा।",
+    "साठा शून्य असेल आणि इतर कोणतीही पाककृती ही तयारी वापरत नसेल तेव्हाच साठ्यात उत्पादन जोडणे बंद करा. जुना साठा संबंध कायम राहील आणि पुन्हा सुरू केल्यास तोच वापरला जाईल."
+  ],
+  "Use this for dough, sauces or other items stored before use. Future batches go into stock and need recorded input prices. Previously logged batches are not added.": [
+    "आटा, सॉस या उपयोग से पहले रखे जाने वाले आइटम के लिए चुनें। आगे के बैच स्टॉक में जुड़ेंगे और उनकी सामग्री की कीमतें दर्ज होना जरूरी है। पहले दर्ज किए गए बैच नहीं जुड़ेंगे।",
+    "पीठ, सॉस किंवा वापरापूर्वी साठवलेल्या पदार्थांसाठी निवडा. पुढील बॅच साठ्यात जोडल्या जातील आणि त्यांच्या घटकांच्या किमती नोंदलेल्या असणे आवश्यक आहे. आधी नोंदवलेल्या बॅच जोडल्या जाणार नाहीत."
+  ],
+  "Stop future shelf output": [
+    "आगे का उत्पादन स्टॉक में जोड़ना बंद करें",
+    "पुढील उत्पादन साठ्यात जोडणे बंद करा"
+  ],
+  "Batch reversed. Stock and effective daily totals have been updated; its original entry remains in history.": [
+    "बैच की प्रविष्टि पूर्ववत हुई। स्टॉक और दिन के प्रभावी कुल अपडेट हो गए हैं। मूल प्रविष्टि इतिहास में बनी रहेगी।",
+    "बॅचची नोंद पूर्ववत झाली. साठा आणि दिवसाची प्रभावी बेरीज अद्ययावत झाली आहे. मूळ नोंद इतिहासात कायम राहील."
+  ],
+  "Reversed batches stay in history and are excluded from effective production and material usage totals.": [
+    "पूर्ववत किए गए बैच इतिहास में रहते हैं और प्रभावी उत्पादन तथा सामग्री उपयोग के कुल में शामिल नहीं होते।",
+    "पूर्ववत केलेल्या बॅच इतिहासात राहतात आणि प्रभावी उत्पादन व घटकांच्या वापराच्या एकूण रकमेत धरल्या जात नाहीत."
+  ],
+  "Enter why this batch needs correcting.": [
+    "इस बैच की प्रविष्टि सुधारने का कारण दर्ज करें।",
+    "या बॅचची नोंद दुरुस्त करण्याचे कारण नोंदवा."
+  ],
+  "Keep the correction reason within 1000 characters.": [
+    "सुधार का कारण 1000 अक्षरों के अंदर रखें।",
+    "दुरुस्तीचे कारण 1000 अक्षरांच्या आत ठेवा."
+  ],
+  "Enter a correction reason between 1 and 1000 characters.": [
+    "सुधार का कारण 1 से 1000 अक्षरों में दर्ज करें।",
+    "दुरुस्तीचे कारण 1 ते 1000 अक्षरांत नोंदवा."
+  ],
+  "This correction form was already used for different details. Refresh and try again.": [
+    "यह सुधार फ़ॉर्म अलग जानकारी के लिए पहले इस्तेमाल हो चुका है। पेज दोबारा खोलकर कोशिश करें।",
+    "हा दुरुस्ती फॉर्म वेगळ्या माहितीसाठी आधी वापरला आहे. पान पुन्हा उघडून प्रयत्न करा."
+  ],
+  "That production record no longer exists.": [
+    "वह उत्पादन रिकॉर्ड उपलब्ध नहीं है।",
+    "ती उत्पादन नोंद उपलब्ध नाही."
+  ],
+  "That batch has already been reversed. Its original record remains in history.": [
+    "वह बैच पहले ही पूर्ववत किया जा चुका है। उसका मूल रिकॉर्ड इतिहास में मौजूद है।",
+    "ती बॅच आधीच पूर्ववत केली आहे. तिची मूळ नोंद इतिहासात कायम आहे."
+  ],
+  "That batch has no stock movements and cannot be reversed automatically.": [
+    "उस बैच के लिए स्टॉक गतिविधियां नहीं हैं, इसलिए उसे अपने आप पूर्ववत नहीं किया जा सकता।",
+    "त्या बॅचसाठी साठ्याच्या हालचाली नाहीत, म्हणून ती आपोआप पूर्ववत करता येत नाही."
+  ],
+  "This batch cannot be reversed because later stock activity uses \"{name}\". Review that activity before correcting the stock.": [
+    "इस बैच को पूर्ववत नहीं किया जा सकता, क्योंकि बाद की स्टॉक गतिविधि में \"{name}\" इस्तेमाल हुआ है। स्टॉक सुधारने से पहले वह गतिविधि जांचें।",
+    "ही बॅच पूर्ववत करता येत नाही कारण नंतरच्या साठ्याच्या हालचालीत \"{name}\" वापरले आहे. साठा दुरुस्त करण्यापूर्वी ती हालचाल तपासा."
+  ],
+  "\"{name}\" is still used by {parents}. Remove those recipe references before stopping shelf output.": [
+    "\"{name}\" अभी भी {parents} में इस्तेमाल होता है। स्टॉक में उत्पादन जोड़ना बंद करने से पहले उन रेसिपी से इसका उपयोग हटाएं।",
+    "\"{name}\" अजूनही {parents} मध्ये वापरले जाते. उत्पादन साठ्यात जोडणे बंद करण्यापूर्वी त्या पाककृतींमधील हे संदर्भ काढा."
+  ],
+  "This recipe has no stock shelf.": [
+    "इस रेसिपी का स्टॉक रिकॉर्ड नहीं है।",
+    "या पाककृतीचा साठा संबंध नाही."
+  ],
+  "\"{name}\" still has stock on its shelf. Use or correctly adjust that stock to zero before stopping shelf output.": [
+    "\"{name}\" का स्टॉक अभी बाकी है। आगे का उत्पादन स्टॉक में जोड़ना बंद करने से पहले उसे उपयोग करें या सही समायोजन करके शून्य करें।",
+    "\"{name}\" चा साठा अजून शिल्लक आहे. पुढील उत्पादन साठ्यात जोडणे बंद करण्यापूर्वी तो वापरा किंवा योग्य दुरुस्तीने शून्य करा."
+  ],
+  "This recipe is made when ordered. Record it through Orders instead of deducting its ingredients again in production.": [
+    "यह रेसिपी ऑर्डर मिलने पर बनाई जाती है। इसकी सामग्री उत्पादन में दोबारा घटाने के बजाय ऑर्डर के माध्यम से दर्ज करें।",
+    "ही पाककृती ऑर्डर आल्यावर बनवली जाते. उत्पादनात तिचे घटक पुन्हा वजा करण्याऐवजी ऑर्डरमधून नोंदवा."
+  ],
+  "Opening stock / valuation": [
+    "शुरुआती स्टॉक / मूल्यांकन",
+    "सुरुवातीचा साठा / मूल्यांकन"
+  ],
+  "Kitchen board": [
+    "रसोई बोर्ड",
+    "स्वयंपाकघर फलक"
+  ],
+  "Active orders, oldest first. Updating preparation status does not deduct stock again.": [
+    "चालू ऑर्डर, पुराने पहले। तैयारी की स्थिति बदलने पर स्टॉक दोबारा नहीं घटता।",
+    "चालू ऑर्डर, जुने आधी. तयारीची स्थिती बदलल्याने साठा पुन्हा कमी होत नाही."
+  ],
+  "Order #{number}": [
+    "ऑर्डर #{number}",
+    "ऑर्डर #{number}"
+  ],
+  "{minutes} min since order": [
+    "ऑर्डर को {minutes} मिनट हुए",
+    "ऑर्डरनंतर {minutes} मिनिटे"
+  ],
+  "Open order": [
+    "ऑर्डर खोलें",
+    "ऑर्डर उघडा"
+  ],
+  "No active kitchen orders": [
+    "रसोई में कोई चालू ऑर्डर नहीं",
+    "स्वयंपाकघरात चालू ऑर्डर नाहीत"
+  ],
+  "New confirmed orders will appear here.": [
+    "नए पक्के ऑर्डर यहां दिखेंगे।",
+    "नवीन निश्चित ऑर्डर येथे दिसतील."
+  ],
+  "Refresh now": [
+    "अभी अपडेट करें",
+    "आता अद्ययावत करा"
+  ],
+  "Refreshes every 15 seconds while this page is visible.": [
+    "यह पेज खुला रहने पर हर 15 सेकंड में अपडेट होता है।",
+    "हे पान दिसत असताना दर 15 सेकंदांनी अद्ययावत होते."
+  ],
+  "New order": [
+    "नया ऑर्डर",
+    "नवीन ऑर्डर"
+  ],
+  "← Orders": [
+    "← ऑर्डर",
+    "← ऑर्डर"
+  ],
+  "Choose the items and quantities. Each confirmed order keeps its own prices, tax and material-cost snapshot.": [
+    "आइटम और मात्रा चुनें। हर पक्के ऑर्डर की कीमत, कर और सामग्री लागत उसी समय सुरक्षित होती है।",
+    "पदार्थ आणि प्रमाण निवडा. प्रत्येक निश्चित ऑर्डरच्या किमती, कर आणि घटकांचा खर्च त्यावेळी जतन होतो."
+  ],
+  "Sales tax settings need an explicit choice before an order can be confirmed.": [
+    "ऑर्डर पक्का करने से पहले बिक्री कर की सेटिंग चुनना जरूरी है।",
+    "ऑर्डर निश्चित करण्यापूर्वी विक्री कराची सेटिंग निवडणे आवश्यक आहे."
+  ],
+  "Set sales settings": [
+    "बिक्री सेटिंग भरें",
+    "विक्री सेटिंग भरा"
+  ],
+  "Ask an owner or manager to configure sales settings.": [
+    "मालिक या प्रबंधक से बिक्री सेटिंग भरने को कहें।",
+    "मालक किंवा व्यवस्थापकाला विक्री सेटिंग भरण्यास सांगा."
+  ],
+  "No menu items are ready for orders. Set a serving size, selling price and inventory method on a recipe first.": [
+    "कोई मेनू आइटम बिक्री के लिए तैयार नहीं है। पहले रेसिपी में परोसने की मात्रा, बिक्री मूल्य और स्टॉक का तरीका तय करें।",
+    "मेनूतील कोणताही पदार्थ ऑर्डरसाठी तयार नाही. आधी पाककृतीत वाढपाचे प्रमाण, विक्री किंमत आणि साठ्याची पद्धत ठरवा."
+  ],
+  "Open recipes": [
+    "रेसिपी खोलें",
+    "पाककृती उघडा"
+  ],
+  "Ask an owner or manager to finish the menu setup.": [
+    "मालिक या प्रबंधक से मेनू सेटअप पूरा करने को कहें।",
+    "मालक किंवा व्यवस्थापकाला मेनूची मांडणी पूर्ण करण्यास सांगा."
+  ],
+  "Move to {status}": [
+    "स्थिति करें: {status}",
+    "स्थिती बदला: {status}"
+  ],
+  "Other status changes": [
+    "अन्य स्थिति बदलाव",
+    "इतर स्थिती बदल"
+  ],
+  "New status": [
+    "नई स्थिति",
+    "नवीन स्थिती"
+  ],
+  "Reason or note": [
+    "कारण या टिप्पणी",
+    "कारण किंवा नोंद"
+  ],
+  "Backward changes need a reason. Every change is kept in the order history.": [
+    "पिछली स्थिति पर लौटने के लिए कारण जरूरी है। हर बदलाव ऑर्डर के इतिहास में रहता है।",
+    "मागील स्थितीवर जाण्यासाठी कारण आवश्यक आहे. प्रत्येक बदल ऑर्डरच्या इतिहासात राहतो."
+  ],
+  "Update status": [
+    "स्थिति बदलें",
+    "स्थिती बदला"
+  ],
+  "Cancel this order": [
+    "यह ऑर्डर रद्द करें",
+    "ही ऑर्डर रद्द करा"
+  ],
+  "Cancellation before preparation restores the reserved stock. Once preparation has started, materials stay used and the cancellation is recorded as a loss. Payments are not automatically refunded.": [
+    "तैयारी शुरू होने से पहले रद्द करने पर, जहां इतिहास अनुमति देता है, स्टॉक वापस होता है। तैयारी शुरू हो चुकी हो तो सामग्री इस्तेमाल हुई रहती है और नुकसान दर्ज होता है। भुगतान अपने आप वापस नहीं होता।",
+    "तयारीपूर्वी रद्द केल्यास, इतिहास परवानगी देत असेल तर साठा परत होतो. तयारी सुरू झाली असल्यास घटक वापरलेलेच राहतात आणि नुकसान नोंदते. पैसे आपोआप परत होत नाहीत."
+  ],
+  "Cancellation reason": [
+    "रद्द करने का कारण",
+    "रद्द करण्याचे कारण"
+  ],
+  "Cancelling…": [
+    "रद्द हो रहा है…",
+    "रद्द होत आहे…"
+  ],
+  "Confirm cancellation": [
+    "रद्द करना पक्का करें",
+    "रद्द करण्याची खात्री करा"
+  ],
+  "Record a refund already made": [
+    "पहले लौटाए गए पैसे दर्ज करें",
+    "आधी दिलेला परतावा नोंदवा"
+  ],
+  "Record a payment already received": [
+    "पहले मिले पैसे दर्ज करें",
+    "आधी मिळालेले पैसे नोंदवा"
+  ],
+  "Amount, ₹": [
+    "राशि, ₹",
+    "रक्कम, ₹"
+  ],
+  "Method": [
+    "तरीका",
+    "पद्धत"
+  ],
+  "Cash": [
+    "नकद",
+    "रोख"
+  ],
+  "External payment": [
+    "बाहर मिला भुगतान",
+    "बाहेर मिळालेले पैसे"
+  ],
+  "Payment reference": [
+    "भुगतान संदर्भ",
+    "पैसे मिळाल्याचा संदर्भ"
+  ],
+  "Record only a payment or refund completed outside this screen. No money is transferred by this action. External transactions need a reference.": [
+    "केवल बाहर हो चुके भुगतान या धनवापसी दर्ज करें। इस क्रिया से पैसे नहीं भेजे जाते। बाहरी लेनदेन का संदर्भ जरूरी है।",
+    "फक्त या पडद्याबाहेर झालेले पैसे किंवा परतावे नोंदवा. या कृतीतून पैसे पाठवले जात नाहीत. बाहेरील व्यवहाराचा संदर्भ आवश्यक आहे."
+  ],
+  "Record refund": [
+    "धनवापसी दर्ज करें",
+    "परतावा नोंदवा"
+  ],
+  "Record payment": [
+    "भुगतान दर्ज करें",
+    "पैसे मिळाल्याची नोंद करा"
+  ],
+  "Print bill": [
+    "बिल प्रिंट करें",
+    "बिल छापा"
+  ],
+  "Open customer tracking": [
+    "ग्राहक की ट्रैकिंग खोलें",
+    "ग्राहकाचे ऑर्डर पान उघडा"
+  ],
+  "Tracking link copied": [
+    "ट्रैकिंग लिंक कॉपी हुई",
+    "ऑर्डरची लिंक कॉपी झाली"
+  ],
+  "Copy tracking link": [
+    "ट्रैकिंग लिंक कॉपी करें",
+    "ऑर्डरची लिंक कॉपी करा"
+  ],
+  "The link could not be copied. Open customer tracking and copy the address.": [
+    "लिंक कॉपी नहीं हुई। ग्राहक की ट्रैकिंग खोलकर पता कॉपी करें।",
+    "लिंक कॉपी झाली नाही. ग्राहकाचे ऑर्डर पान उघडून पत्ता कॉपी करा."
+  ],
+  "Customer tracking:": [
+    "ग्राहक की ट्रैकिंग:",
+    "ग्राहकाचे ऑर्डर पान:"
+  ],
+  "Order details": [
+    "ऑर्डर विवरण",
+    "ऑर्डरचा तपशील"
+  ],
+  "Order type": [
+    "ऑर्डर प्रकार",
+    "ऑर्डरचा प्रकार"
+  ],
+  "Dine in": [
+    "यहीं खाना",
+    "येथे खाणे"
+  ],
+  "Takeaway": [
+    "साथ ले जाना",
+    "सोबत नेणे"
+  ],
+  "Delivery": [
+    "डिलीवरी",
+    "घरपोच"
+  ],
+  "Customer name (optional)": [
+    "ग्राहक का नाम (वैकल्पिक)",
+    "ग्राहकाचे नाव (ऐच्छिक)"
+  ],
+  "Customer contact": [
+    "ग्राहक संपर्क",
+    "ग्राहकाचा संपर्क"
+  ],
+  "Delivery address": [
+    "डिलीवरी का पता",
+    "घरपोच पत्ता"
+  ],
+  "Order notes (optional)": [
+    "ऑर्डर टिप्पणी (वैकल्पिक)",
+    "ऑर्डरची नोंद (ऐच्छिक)"
+  ],
+  "Items to prepare": [
+    "तैयार करने के आइटम",
+    "तयार करायचे पदार्थ"
+  ],
+  "Item {0}": [
+    "आइटम {0}",
+    "पदार्थ {0}"
+  ],
+  "Choose a menu item": [
+    "मेनू आइटम चुनें",
+    "मेनूतील पदार्थ निवडा"
+  ],
+  "Needs inventory setup": [
+    "स्टॉक सेटअप जरूरी है",
+    "साठ्याची मांडणी आवश्यक आहे"
+  ],
+  "Uses finished stock already made.": [
+    "पहले बना तैयार स्टॉक इस्तेमाल होगा।",
+    "आधी बनवलेला तयार साठा वापरला जाईल."
+  ],
+  "Deducts recipe ingredients when the order is confirmed.": [
+    "ऑर्डर पक्का होने पर रेसिपी की सामग्री घटेगी।",
+    "ऑर्डर निश्चित झाल्यावर पाककृतीचे घटक कमी होतील."
+  ],
+  "Ask the owner to choose how this item uses stock.": [
+    "मालिक से इस आइटम के स्टॉक का तरीका चुनने को कहें।",
+    "मालकाला या पदार्थासाठी साठ्याची पद्धत निवडण्यास सांगा."
+  ],
+  "Line total": [
+    "लाइन का कुल",
+    "ओळीची एकूण रक्कम"
+  ],
+  "Remove item {0}": [
+    "आइटम {0} हटाएं",
+    "पदार्थ {0} काढा"
+  ],
+  "+ Add item": [
+    "+ आइटम जोड़ें",
+    "+ पदार्थ जोडा"
+  ],
+  "Payment and confirmation": [
+    "भुगतान और पुष्टि",
+    "पैसे आणि खात्री"
+  ],
+  "Payment received": [
+    "भुगतान मिला",
+    "पैसे मिळाले"
+  ],
+  "Not received — leave unpaid": [
+    "नहीं मिला — बकाया रखें",
+    "मिळाले नाहीत — बाकी ठेवा"
+  ],
+  "Full amount received in cash": [
+    "पूरी राशि नकद मिली",
+    "संपूर्ण रक्कम रोख मिळाली"
+  ],
+  "Full amount received externally": [
+    "पूरी राशि बाहर मिली",
+    "संपूर्ण रक्कम बाहेर मिळाली"
+  ],
+  "Only record money already received. This screen does not charge the customer or transfer funds.": [
+    "केवल पहले मिल चुके पैसे दर्ज करें। यह स्क्रीन ग्राहक से पैसे नहीं काटती और पैसे भेजती नहीं है।",
+    "फक्त आधी मिळालेले पैसे नोंदवा. या पडद्यावर ग्राहकाकडून पैसे आकारले किंवा पाठवले जात नाहीत."
+  ],
+  "Subtotal before included tax": [
+    "शामिल कर से पहले कुल",
+    "समाविष्ट करापूर्वीची रक्कम"
+  ],
+  "Subtotal": [
+    "उप-योग",
+    "उपएकूण"
+  ],
+  "Tax": [
+    "कर",
+    "कर"
+  ],
+  "Total": [
+    "कुल",
+    "एकूण"
+  ],
+  "Confirming creates the order and records its stock deductions. Check the items, quantities and payment before saving.": [
+    "पुष्टि करने पर ऑर्डर और स्टॉक की कटौती दर्ज होगी। सहेजने से पहले आइटम, मात्रा और भुगतान जांच लें।",
+    "खात्री केल्यावर ऑर्डर आणि साठ्यातील घट नोंदेल. जतन करण्यापूर्वी पदार्थ, प्रमाण आणि पैसे तपासा."
+  ],
+  "Confirming order…": [
+    "ऑर्डर पक्का हो रहा है…",
+    "ऑर्डर निश्चित होत आहे…"
+  ],
+  "Confirm order": [
+    "ऑर्डर पक्का करें",
+    "ऑर्डर निश्चित करा"
+  ],
+  "Orders": [
+    "ऑर्डर",
+    "ऑर्डर"
+  ],
+  "+ New order": [
+    "+ नया ऑर्डर",
+    "+ नवीन ऑर्डर"
+  ],
+  "Find orders by their creation date in Asia/Kolkata. Prices and material costs are saved when an order is confirmed.": [
+    "भारत के समय के अनुसार ऑर्डर दर्ज होने की तारीख से खोजें। पुष्टि के समय कीमत और सामग्री लागत सुरक्षित होती है।",
+    "भारतीय वेळेनुसार ऑर्डर नोंदवण्याच्या तारखेने शोधा. खात्रीच्या वेळी किमती आणि घटकांचा खर्च जतन होतो."
+  ],
+  "Choose a valid order status. Showing all statuses.": [
+    "सही ऑर्डर स्थिति चुनें। सभी स्थितियां दिखाई जा रही हैं।",
+    "योग्य ऑर्डर स्थिती निवडा. सर्व स्थिती दाखवत आहोत."
+  ],
+  "Order date": [
+    "ऑर्डर की तारीख",
+    "ऑर्डरची तारीख"
+  ],
+  "All statuses": [
+    "सभी स्थितियां",
+    "सर्व स्थिती"
+  ],
+  "Search orders": [
+    "ऑर्डर खोजें",
+    "ऑर्डर शोधा"
+  ],
+  "Order number or customer name": [
+    "ऑर्डर नंबर या ग्राहक का नाम",
+    "ऑर्डर क्रमांक किंवा ग्राहकाचे नाव"
+  ],
+  "Show orders": [
+    "ऑर्डर दिखाएं",
+    "ऑर्डर दाखवा"
+  ],
+  "Order": [
+    "ऑर्डर",
+    "ऑर्डर"
+  ],
+  "Created": [
+    "दर्ज हुआ",
+    "नोंदवले"
+  ],
+  "Customer": [
+    "ग्राहक",
+    "ग्राहक"
+  ],
+  "Payment": [
+    "भुगतान",
+    "पैसे"
+  ],
+  "No orders match these filters": [
+    "इस चयन से कोई ऑर्डर नहीं मिला",
+    "या निवडीप्रमाणे ऑर्डर सापडल्या नाहीत"
+  ],
+  "Choose another date or create the first order.": [
+    "दूसरी तारीख चुनें या पहला ऑर्डर बनाएं।",
+    "दुसरी तारीख निवडा किंवा पहिली ऑर्डर तयार करा."
+  ],
+  "This order was cancelled before preparation. Its reserved stock was restored.": [
+    "यह ऑर्डर तैयारी से पहले रद्द हुआ। इसका स्टॉक वापस किया गया।",
+    "ही ऑर्डर तयारीपूर्वी रद्द झाली. तिचा साठा परत केला."
+  ],
+  "This order was cancelled after preparation started. Materials remain used and are recorded as a cancellation loss.": [
+    "यह ऑर्डर तैयारी शुरू होने के बाद रद्द हुआ। सामग्री इस्तेमाल हुई रहती है और रद्दीकरण का नुकसान दर्ज है।",
+    "ही ऑर्डर तयारी सुरू झाल्यावर रद्द झाली. घटक वापरलेलेच राहतात आणि रद्द झाल्याचे नुकसान नोंदले आहे."
+  ],
+  "Order bill": [
+    "ऑर्डर बिल",
+    "ऑर्डरचे बिल"
+  ],
+  "Customer:": [
+    "ग्राहक:",
+    "ग्राहक:"
+  ],
+  "Contact:": [
+    "संपर्क:",
+    "संपर्क:"
+  ],
+  "Delivery address:": [
+    "डिलीवरी का पता:",
+    "घरपोच पत्ता:"
+  ],
+  "Item": [
+    "आइटम",
+    "पदार्थ"
+  ],
+  "Unit price": [
+    "इकाई मूल्य",
+    "प्रति नग किंमत"
+  ],
+  "Amount": [
+    "राशि",
+    "रक्कम"
+  ],
+  "Net received": [
+    "शुद्ध प्राप्त राशि",
+    "निव्वळ मिळालेले पैसे"
+  ],
+  "Order cancelled — no balance due": [
+    "ऑर्डर रद्द — कोई बकाया नहीं",
+    "ऑर्डर रद्द — बाकी देय नाही"
+  ],
+  "Payment status:": [
+    "भुगतान स्थिति:",
+    "पैशांची स्थिती:"
+  ],
+  "Notes:": [
+    "टिप्पणियां:",
+    "नोंदी:"
+  ],
+  "Preparation status": [
+    "तैयारी की स्थिति",
+    "तयारीची स्थिती"
+  ],
+  "Saved material costs": [
+    "सुरक्षित सामग्री लागत",
+    "जतन केलेला घटकांचा खर्च"
+  ],
+  "These are the material costs saved at confirmation, not a recalculation from today’s prices. Labour and kitchen overhead are separate.": [
+    "ये पुष्टि के समय सुरक्षित सामग्री लागत हैं। आज की कीमतों से दोबारा गणना नहीं होती। श्रम और रसोई खर्च अलग हैं।",
+    "हा खात्रीच्या वेळी जतन केलेला घटकांचा खर्च आहे. आजच्या किमतींवरून पुन्हा गणना होत नाही. मजुरी आणि स्वयंपाकघर खर्च वेगळे आहेत."
+  ],
+  "Material cost": [
+    "सामग्री लागत",
+    "घटकांचा खर्च"
+  ],
+  "Order history": [
+    "ऑर्डर इतिहास",
+    "ऑर्डरचा इतिहास"
+  ],
+  "Status change": [
+    "स्थिति बदलाव",
+    "स्थिती बदल"
+  ],
+  "Payments and refunds": [
+    "भुगतान और धनवापसी",
+    "मिळालेले पैसे आणि परतावे"
+  ],
+  "Reference": [
+    "संदर्भ",
+    "संदर्भ"
+  ],
+  "No payments have been recorded.": [
+    "कोई भुगतान दर्ज नहीं हुआ।",
+    "पैसे मिळाल्याची नोंद नाही."
+  ],
+  "Sales reports": [
+    "बिक्री रिपोर्ट",
+    "विक्री अहवाल"
+  ],
+  "Completed orders are grouped by their creation date in India. Sales exclude tax and are shown before refunds. Material margins exclude labour, overhead and other expenses.": [
+    "पूरे हुए ऑर्डर भारत में दर्ज होने की तारीख से जोड़े जाते हैं। बिक्री में कर शामिल नहीं है और राशि धनवापसी से पहले की है। सामग्री मार्जिन में श्रम, रसोई और अन्य खर्च शामिल नहीं हैं।",
+    "पूर्ण ऑर्डर भारतीय नोंदणी तारखेनुसार गटबद्ध होतात. विक्रीत कर नाही आणि रक्कम परताव्यापूर्वीची आहे. घटकांच्या मार्जिनमध्ये मजुरी, स्वयंपाकघर आणि इतर खर्च नाहीत."
+  ],
+  "Choose a valid date range of at most 366 days.": [
+    "अधिकतम 366 दिनों की सही तारीख सीमा चुनें।",
+    "जास्तीत जास्त 366 दिवसांचा योग्य कालावधी निवडा."
+  ],
+  "Last 7 days": [
+    "पिछले 7 दिन",
+    "मागील 7 दिवस"
+  ],
+  "This month": [
+    "यह महीना",
+    "हा महिना"
+  ],
+  "Completed orders": [
+    "पूरे हुए ऑर्डर",
+    "पूर्ण ऑर्डर"
+  ],
+  "Revenue excluding tax (₹)": [
+    "कर के बिना बिक्री (₹)",
+    "कर वगळून विक्री (₹)"
+  ],
+  "Recorded material cost (₹)": [
+    "दर्ज सामग्री लागत (₹)",
+    "नोंदवलेला घटकांचा खर्च (₹)"
+  ],
+  "Material margin before refunds (₹)": [
+    "धनवापसी से पहले सामग्री मार्जिन (₹)",
+    "परताव्यापूर्वीचे घटकांचे मार्जिन (₹)"
+  ],
+  "Some orders had unknown material costs when sold. Their margin remains unknown; later purchases do not change saved sale costs.": [
+    "कुछ ऑर्डर बिकते समय सामग्री लागत अज्ञात थी। उनका मार्जिन अज्ञात रहेगा; बाद की खरीद सुरक्षित बिक्री लागत नहीं बदलती।",
+    "काही ऑर्डर विकताना घटकांचा खर्च माहीत नव्हता. त्यांचे मार्जिन अज्ञात राहील; नंतरच्या खरेदीमुळे जतन केलेला विक्री खर्च बदलत नाही."
+  ],
+  "Item sales": [
+    "आइटम की बिक्री",
+    "पदार्थांची विक्री"
+  ],
+  "Most servings: {name}": [
+    "सबसे अधिक परोसा: {name}",
+    "सर्वाधिक वाढपे: {name}"
+  ],
+  "Fewest servings: {name}": [
+    "सबसे कम परोसा: {name}",
+    "सर्वात कमी वाढपे: {name}"
+  ],
+  "Highest material margin: {name}": [
+    "सबसे अधिक सामग्री मार्जिन: {name}",
+    "सर्वाधिक घटक मार्जिन: {name}"
+  ],
+  "Lowest material margin: {name}": [
+    "सबसे कम सामग्री मार्जिन: {name}",
+    "सर्वात कमी घटक मार्जिन: {name}"
+  ],
+  "Servings sold": [
+    "बिकी सर्विंग",
+    "विकलेली वाढपे"
+  ],
+  "No completed sales in this period.": [
+    "इस अवधि में पूरी हुई बिक्री नहीं है।",
+    "या कालावधीत पूर्ण विक्री नाही."
+  ],
+  "Payments and cancellations": [
+    "भुगतान और रद्दीकरण",
+    "पैसे आणि रद्द झालेल्या ऑर्डर"
+  ],
+  "Payment figures use the date the payment or refund was recorded, including payments for orders created outside this period. No payment gateway transfer is made here.": [
+    "भुगतान आंकड़े पैसे या धनवापसी दर्ज होने की तारीख के हैं। इनमें इस अवधि के बाहर बने ऑर्डर के पैसे भी हैं। यहां भुगतान गेटवे से पैसे नहीं भेजे जाते।",
+    "पैशांचे आकडे पैसे किंवा परतावा नोंदवलेल्या तारखेचे आहेत. या कालावधीबाहेर नोंदलेल्या ऑर्डरचे पैसेही समाविष्ट आहेत. येथे पेमेंट गेटवेमधून पैसे पाठवले जात नाहीत."
+  ],
+  "Payments recorded": [
+    "दर्ज भुगतान",
+    "नोंदवलेले मिळालेले पैसे"
+  ],
+  "Refunds recorded": [
+    "दर्ज धनवापसी",
+    "नोंदवलेले परतावे"
+  ],
+  "Net payments recorded": [
+    "दर्ज शुद्ध भुगतान",
+    "नोंदवलेले निव्वळ पैसे"
+  ],
+  "Open orders": [
+    "चालू ऑर्डर",
+    "चालू ऑर्डर"
+  ],
+  "Cancelled orders": [
+    "रद्द ऑर्डर",
+    "रद्द ऑर्डर"
+  ],
+  "Cancelled preparation material cost": [
+    "रद्द तैयारी की सामग्री लागत",
+    "रद्द तयारीच्या घटकांचा खर्च"
+  ],
+  "Tax rate is too long.": [
+    "कर दर बहुत लंबी है।",
+    "कराचा दर खूप लांब आहे."
+  ],
+  "Sales settings": [
+    "बिक्री सेटिंग",
+    "विक्री सेटिंग"
+  ],
+  "Choose how tax applies before the counter confirms its first order. Confirm the correct treatment and rate for your cafe before saving.": [
+    "काउंटर का पहला ऑर्डर पक्का करने से पहले कर का तरीका चुनें। सहेजने से पहले अपने कैफे का सही तरीका और दर सुनिश्चित करें।",
+    "काउंटरची पहिली ऑर्डर निश्चित करण्यापूर्वी कराची पद्धत निवडा. जतन करण्यापूर्वी आपल्या कॅफेची योग्य पद्धत आणि दर तपासा."
+  ],
+  "Tax treatment": [
+    "कर का तरीका",
+    "कराची पद्धत"
+  ],
+  "Choose tax treatment": [
+    "कर का तरीका चुनें",
+    "कराची पद्धत निवडा"
+  ],
+  "No tax — explicit 0%": [
+    "कर नहीं — स्पष्ट 0%",
+    "कर नाही — स्पष्ट 0%"
+  ],
+  "Add tax to the menu prices": [
+    "मेनू की कीमत में कर जोड़ें",
+    "मेनू किमतीत कर जोडा"
+  ],
+  "Menu prices already include tax": [
+    "मेनू की कीमत में कर शामिल है",
+    "मेनू किमतीत कर समाविष्ट आहे"
+  ],
+  "Tax rate, %": [
+    "कर दर, %",
+    "कराचा दर, %"
+  ],
+  "Enter the rate that applies to your business. No rate is assumed. Choosing no tax explicitly stores zero.": [
+    "अपने व्यवसाय पर लागू दर भरें। कोई दर मानकर नहीं भरी जाती। कर नहीं चुनने पर स्पष्ट शून्य सहेजा जाता है।",
+    "आपल्या व्यवसायाला लागू दर भरा. कोणताही दर गृहित धरलेला नाही. कर नाही निवडल्यास स्पष्ट शून्य जतन होते."
+  ],
+  "Changes apply to new orders. Existing bills keep their original tax and price snapshots.": [
+    "बदलाव नए ऑर्डर पर लागू होंगे। पुराने बिल में मूल कर और कीमत सुरक्षित रहेंगे।",
+    "बदल नवीन ऑर्डरला लागू होतात. जुन्या बिलातील मूळ कर आणि किमती जतन राहतात."
+  ],
+  "Save sales settings": [
+    "बिक्री सेटिंग सहेजें",
+    "विक्री सेटिंग जतन करा"
+  ],
+  "Enter verified starting quantities and their total inventory value. These entries establish a cost basis and are excluded from new purchases and money paid today.": [
+    "जांची गई शुरुआती मात्रा और उसका कुल स्टॉक मूल्य भरें। ये नोंद लागत का आधार बनाती हैं और आज की नई खरीद या भुगतान में नहीं गिनी जातीं।",
+    "तपासलेले सुरुवातीचे प्रमाण आणि त्याचे एकूण साठामूल्य भरा. या नोंदी खर्चाचा आधार ठरतात आणि आजची नवीन खरेदी किंवा पैसे यात मोजल्या जात नाहीत."
+  ],
+  "For existing stock with an unknown value, enter its current positive quantity exactly. Its quantity stays the same while the supplied value is recorded. Make physical count corrections separately. Known purchase costs cannot be replaced here.": [
+    "अज्ञात मूल्य वाले मौजूदा स्टॉक की वर्तमान धनात्मक मात्रा बिल्कुल सही भरें। दिए गए मूल्य को दर्ज करने पर मात्रा नहीं बदलेगी। गिनती में सुधार अलग से करें। ज्ञात खरीद लागत यहां बदली नहीं जा सकती।",
+    "मूल्य माहीत नसलेल्या साठ्याचे सध्याचे धन प्रमाण तंतोतंत भरा. दिलेले मूल्य नोंदवताना प्रमाण बदलत नाही. प्रत्यक्ष मोजणीतील दुरुस्ती वेगळी करा. माहीत असलेला खरेदी खर्च येथे बदलता येत नाही."
+  ],
+  "Stock value (₹)": [
+    "स्टॉक मूल्य (₹)",
+    "साठ्याचे मूल्य (₹)"
+  ],
+  "Record opening stock": [
+    "शुरुआती स्टॉक दर्ज करें",
+    "सुरुवातीचा साठा नोंदवा"
+  ],
+  "Track your order": [
+    "अपना ऑर्डर देखें",
+    "आपली ऑर्डर पाहा"
+  ],
+  "Your order status updates here as the cafe prepares it. Keep this private link to check again.": [
+    "कैफे की तैयारी के अनुसार ऑर्डर की स्थिति यहां बदलेगी। फिर देखने के लिए यह निजी लिंक सुरक्षित रखें।",
+    "कॅफे तयारी करताना आपल्या ऑर्डरची स्थिती येथे बदलेल. पुन्हा पाहण्यासाठी ही खासगी लिंक जपून ठेवा."
+  ],
+  "Your items": [
+    "आपके आइटम",
+    "आपले पदार्थ"
+  ],
+  "Order progress": [
+    "ऑर्डर की प्रगति",
+    "ऑर्डरची प्रगती"
+  ],
+  "Metric": [
+    "माप",
+    "मोजमाप"
+  ],
+  "Value": [
+    "मूल्य",
+    "मूल्य"
+  ],
+  "Summary": [
+    "सारांश",
+    "सारांश"
+  ],
+  "orders": [
+    "ऑर्डर",
+    "ऑर्डर"
+  ],
+  "ordered": [
+    "ऑर्डर मिला",
+    "ऑर्डर मिळाली"
+  ],
+  "in_kitchen": [
+    "रसोई में",
+    "स्वयंपाकघरात"
+  ],
+  "baking": [
+    "बेक हो रहा है",
+    "भाजत आहे"
+  ],
+  "out_of_oven": [
+    "ओवन से बाहर",
+    "ओव्हनमधून बाहेर"
+  ],
+  "ready": [
+    "तैयार",
+    "तयार"
+  ],
+  "out_for_delivery": [
+    "डिलीवरी के लिए निकला",
+    "घरपोचसाठी निघाली"
+  ],
+  "completed": [
+    "पूरा हुआ",
+    "पूर्ण"
+  ],
+  "cancelled": [
+    "रद्द",
+    "रद्द"
+  ],
+  "dine_in": [
+    "यहीं खाना",
+    "येथे खाणे"
+  ],
+  "takeaway": [
+    "साथ ले जाना",
+    "सोबत नेणे"
+  ],
+  "delivery": [
+    "डिलीवरी",
+    "घरपोच"
+  ],
+  "unpaid": [
+    "बकाया",
+    "बाकी"
+  ],
+  "part_paid": [
+    "आंशिक भुगतान",
+    "अंशतः पैसे मिळाले"
+  ],
+  "paid": [
+    "भुगतान पूरा",
+    "पैसे पूर्ण मिळाले"
+  ],
+  "part_refunded": [
+    "आंशिक धनवापसी",
+    "अंशतः परतावा"
+  ],
+  "refunded": [
+    "धनवापसी पूरी",
+    "पूर्ण परतावा"
+  ],
+  "payment": [
+    "भुगतान",
+    "पैसे मिळाले"
+  ],
+  "refund": [
+    "धनवापसी",
+    "परतावा"
+  ],
+  "cash": [
+    "नकद",
+    "रोख"
+  ],
+  "external": [
+    "बाहरी भुगतान",
+    "बाहेर मिळालेले पैसे"
+  ],
+  "Order status updated.": [
+    "ऑर्डर की स्थिति बदली।",
+    "ऑर्डरची स्थिती बदलली."
+  ],
+  "Refund recorded.": [
+    "धनवापसी दर्ज हुई।",
+    "परतावा नोंदवला."
+  ],
+  "Payment recorded.": [
+    "भुगतान दर्ज हुआ।",
+    "पैसे मिळाल्याची नोंद झाली."
+  ],
+  "Sales settings saved.": [
+    "बिक्री सेटिंग सहेजी गई।",
+    "विक्री सेटिंग जतन झाली."
+  ],
+  "Enter the tax rate, or explicitly choose no tax.": [
+    "कर दर भरें या स्पष्ट रूप से कर नहीं चुनें।",
+    "कराचा दर भरा किंवा स्पष्टपणे कर नाही निवडा."
+  ],
+  "Enter a whole number of items.": [
+    "आइटम की पूरी संख्या भरें।",
+    "पदार्थांची पूर्ण संख्या भरा."
+  ],
+  "Enter at most 1000 of an item.": [
+    "एक आइटम अधिकतम 1000 भरें।",
+    "एका पदार्थाची जास्तीत जास्त 1000 संख्या भरा."
+  ],
+  "Enter between 1 and 1000 of each item.": [
+    "हर आइटम 1 से 1000 के बीच भरें।",
+    "प्रत्येक पदार्थाची संख्या 1 ते 1000 भरा."
+  ],
+  "Refresh the page before creating another order.": [
+    "दूसरा ऑर्डर बनाने से पहले पेज फिर खोलें।",
+    "दुसरी ऑर्डर करण्यापूर्वी पान पुन्हा उघडा."
+  ],
+  "Customer name is too long.": [
+    "ग्राहक का नाम बहुत लंबा है।",
+    "ग्राहकाचे नाव खूप लांब आहे."
+  ],
+  "Customer contact is too long.": [
+    "ग्राहक संपर्क बहुत लंबा है।",
+    "ग्राहकाचा संपर्क खूप लांब आहे."
+  ],
+  "Delivery address is too long.": [
+    "डिलीवरी का पता बहुत लंबा है।",
+    "घरपोच पत्ता खूप लांब आहे."
+  ],
+  "Order notes are too long.": [
+    "ऑर्डर टिप्पणी बहुत लंबी है।",
+    "ऑर्डरची नोंद खूप लांब आहे."
+  ],
+  "Payment reference is too long.": [
+    "भुगतान संदर्भ बहुत लंबा है।",
+    "पैशांचा संदर्भ खूप लांब आहे."
+  ],
+  "Refresh the sales settings before confirming.": [
+    "पुष्टि से पहले बिक्री सेटिंग फिर खोलें।",
+    "खात्रीपूर्वी विक्री सेटिंग पुन्हा उघडा."
+  ],
+  "Choose a menu item on every filled line.": [
+    "हर भरी लाइन पर मेनू आइटम चुनें।",
+    "प्रत्येक भरलेल्या ओळीत मेनूतील पदार्थ निवडा."
+  ],
+  "Refresh the menu before confirming.": [
+    "पुष्टि से पहले मेनू फिर खोलें।",
+    "खात्रीपूर्वी मेनू पुन्हा उघडा."
+  ],
+  "Add at least one menu item.": [
+    "कम से कम एक मेनू आइटम जोड़ें।",
+    "मेनूतील किमान एक पदार्थ जोडा."
+  ],
+  "An order can have at most 100 lines.": [
+    "एक ऑर्डर में अधिकतम 100 लाइन हो सकती हैं।",
+    "एका ऑर्डरमध्ये जास्तीत जास्त 100 ओळी असू शकतात."
+  ],
+  "Delivery orders need a contact number and delivery address.": [
+    "डिलीवरी ऑर्डर में संपर्क नंबर और पता जरूरी है।",
+    "घरपोच ऑर्डरला संपर्क क्रमांक आणि पत्ता आवश्यक आहे."
+  ],
+  "Enter the reference for the payment already received.": [
+    "पहले मिले भुगतान का संदर्भ भरें।",
+    "आधी मिळालेल्या पैशांचा संदर्भ भरा."
+  ],
+  "Choose a valid order.": [
+    "सही ऑर्डर चुनें।",
+    "योग्य ऑर्डर निवडा."
+  ],
+  "Enter a reason before cancelling an order.": [
+    "ऑर्डर रद्द करने का कारण भरें।",
+    "ऑर्डर रद्द करण्याचे कारण भरा."
+  ],
+  "Refresh the page before recording another payment.": [
+    "दूसरा भुगतान दर्ज करने से पहले पेज फिर खोलें।",
+    "आणखी पैसे नोंदवण्यापूर्वी पान पुन्हा उघडा."
+  ],
+  "Enter the amount received or refunded.": [
+    "मिली या वापस की गई राशि भरें।",
+    "मिळालेली किंवा परत केलेली रक्कम भरा."
+  ],
+  "Payment amount is too long.": [
+    "भुगतान राशि बहुत लंबी है।",
+    "पैशांची रक्कम खूप लांब आहे."
+  ],
+  "Enter the reference for the external payment or refund.": [
+    "बाहरी भुगतान या धनवापसी का संदर्भ भरें।",
+    "बाहेर मिळालेले पैसे किंवा परताव्याचा संदर्भ भरा."
+  ],
+  "Check the item and quantity on every line.": [
+    "हर लाइन में आइटम और मात्रा जांचें।",
+    "प्रत्येक ओळीतील पदार्थ आणि प्रमाण तपासा."
+  ],
+  "Check the order before confirming.": [
+    "पुष्टि करने से पहले ऑर्डर जांचें।",
+    "खात्रीपूर्वी ऑर्डर तपासा."
+  ],
+  "\"{name}\" is sold made to order. Disable that menu item before enabling prepared stock.": [
+    "\"{name}\" ऑर्डर पर बनता है। तैयार स्टॉक शुरू करने से पहले उस मेनू आइटम को बंद करें।",
+    "\"{name}\" ऑर्डरनुसार बनतो. तयार साठा सुरू करण्यापूर्वी मेनूतील तो पदार्थ निष्क्रिय करा."
+  ],
+  "\"{name}\" is held in prepared stock. Change its menu stock policy before taking orders.": [
+    "\"{name}\" तैयार स्टॉक में रखा है। ऑर्डर लेने से पहले मेनू में उसके स्टॉक का तरीका बदलें।",
+    "\"{name}\" तयार साठ्यात आहे. ऑर्डर घेण्यापूर्वी मेनूतील साठ्याची पद्धत बदला."
+  ],
+  "This recipe is sold from stock. Change or deactivate its stocked menu items before stopping shelf output.": [
+    "यह रेसिपी तैयार स्टॉक से बेची जाती है। आगे का उत्पादन स्टॉक में जोड़ना बंद करने से पहले उसके स्टॉक वाले मेनू आइटम बदलें या निष्क्रिय करें।",
+    "ही पाककृती तयार साठ्यातून विकली जाते. पुढील उत्पादन साठ्यात जोडणे बंद करण्यापूर्वी तिचे साठ्यातील मेनू पदार्थ बदला किंवा निष्क्रिय करा."
+  ],
+  "Enter each ingredient once when recording opening stock.": [
+    "शुरुआती स्टॉक में हर सामग्री एक बार भरें।",
+    "सुरुवातीच्या साठ्यात प्रत्येक घटक एकदाच भरा."
+  ],
+  "This ingredient already has a recorded cost. Use receipts for new purchases instead of replacing its opening value.": [
+    "इस सामग्री की लागत पहले दर्ज है। शुरुआती मूल्य बदलने के बजाय नई खरीद की रसीद दर्ज करें।",
+    "या घटकाचा खर्च आधी नोंदवलेला आहे. सुरुवातीचे मूल्य बदलण्याऐवजी नवीन खरेदीची पावती नोंदवा."
+  ],
+  "To value existing unknown stock, enter its current positive quantity exactly. Record any physical count correction first.": [
+    "मौजूदा अज्ञात स्टॉक का मूल्य भरने के लिए वर्तमान धनात्मक मात्रा सही भरें। गिनती का सुधार पहले दर्ज करें।",
+    "मूल्य माहीत नसलेल्या साठ्याचे सध्याचे धन प्रमाण अचूक भरा. मोजणीची दुरुस्ती आधी नोंदवा."
+  ],
+  "Configure sales tax before taking orders.": [
+    "ऑर्डर लेने से पहले बिक्री कर सेट करें।",
+    "ऑर्डर घेण्यापूर्वी विक्री कर ठरवा."
+  ],
+  "The order amount is too large or negative.": [
+    "ऑर्डर की राशि बहुत बड़ी या ऋणात्मक है।",
+    "ऑर्डरची रक्कम खूप मोठी किंवा ऋण आहे."
+  ],
+  "Choose a valid sales tax mode and rate.": [
+    "सही बिक्री कर का तरीका और दर चुनें।",
+    "विक्री कराची योग्य पद्धत आणि दर निवडा."
+  ],
+  "That order status change is not allowed. Refresh the order and choose an available action.": [
+    "स्थिति का यह बदलाव मान्य नहीं है। ऑर्डर फिर खोलकर उपलब्ध क्रिया चुनें।",
+    "स्थितीचा हा बदल मान्य नाही. ऑर्डर पुन्हा उघडून उपलब्ध कृती निवडा."
+  ],
+  "Enter a reason for cancelling or moving an order backwards.": [
+    "ऑर्डर रद्द करने या पिछली स्थिति में ले जाने का कारण भरें।",
+    "ऑर्डर रद्द करण्याचे किंवा मागील स्थितीवर नेण्याचे कारण भरा."
+  ],
+  "Enter a whole item quantity between 1 and 1000.": [
+    "आइटम की पूरी संख्या 1 से 1000 के बीच भरें।",
+    "पदार्थांची पूर्ण संख्या 1 ते 1000 भरा."
+  ],
+  "\"{name}\" needs a positive serving quantity.": [
+    "\"{name}\" की परोसने की मात्रा शून्य से अधिक होनी चाहिए।",
+    "\"{name}\" चे वाढपाचे प्रमाण शून्यापेक्षा अधिक हवे."
+  ],
+  "\"{name}\" has an invalid selling price.": [
+    "\"{name}\" का बिक्री मूल्य गलत है।",
+    "\"{name}\" ची विक्री किंमत चुकीची आहे."
+  ],
+  "\"{name}\" uses an unavailable recipe. Choose another item.": [
+    "\"{name}\" की रेसिपी उपलब्ध नहीं है। दूसरा आइटम चुनें।",
+    "\"{name}\" ची पाककृती उपलब्ध नाही. दुसरा पदार्थ निवडा."
+  ],
+  "\"{name}\" must have prepared stock configured before it can be sold from stock.": [
+    "\"{name}\" को स्टॉक से बेचने से पहले तैयार स्टॉक सेट करना जरूरी है।",
+    "\"{name}\" साठ्यातून विकण्यापूर्वी तयार साठ्याची मांडणी आवश्यक आहे."
+  ],
+  "\"{name}\" has no ingredient lines. Complete its recipe before taking orders.": [
+    "\"{name}\" में सामग्री की लाइनें नहीं हैं। ऑर्डर से पहले रेसिपी पूरी करें।",
+    "\"{name}\" मध्ये घटकांच्या ओळी नाहीत. ऑर्डर घेण्यापूर्वी पाककृती पूर्ण करा."
+  ],
+  "\"{name}\" must be held in stock and its batches recorded before taking this order.": [
+    "यह ऑर्डर लेने से पहले \"{name}\" को स्टॉक में रखें और उसके बैच दर्ज करें।",
+    "ही ऑर्डर घेण्यापूर्वी \"{name}\" साठ्यात ठेवा आणि त्याच्या तुकड्या नोंदवा."
+  ],
+  "Choose whether \"{name}\" is sold from prepared stock or made to order before taking orders.": [
+    "ऑर्डर से पहले चुनें कि \"{name}\" तैयार स्टॉक से बिकता है या ऑर्डर पर बनता है।",
+    "ऑर्डर घेण्यापूर्वी \"{name}\" तयार साठ्यातून विकायचा की ऑर्डरनुसार बनवायचा हे निवडा."
+  ],
+  "A recorded payment or refund must have a positive amount.": [
+    "भुगतान या धनवापसी की राशि शून्य से अधिक होनी चाहिए।",
+    "पैसे किंवा परताव्याची रक्कम शून्यापेक्षा अधिक हवी."
+  ],
+  "Choose a payment or refund event.": [
+    "भुगतान या धनवापसी चुनें।",
+    "पैसे मिळाले किंवा परतावा निवडा."
+  ],
+  "Recorded payments do not match the order balance. Ask the owner to review them.": [
+    "दर्ज भुगतान ऑर्डर के बकाये से मेल नहीं खाते। मालिक से जांच करवाएं।",
+    "नोंदवलेले पैसे ऑर्डरच्या बाकीशी जुळत नाहीत. मालकाला तपासण्यास सांगा."
+  ],
+  "This order contains a quantity or amount too large to record exactly.": [
+    "ऑर्डर में मात्रा या राशि इतनी बड़ी है कि सही दर्ज नहीं हो सकती।",
+    "ऑर्डरमधील प्रमाण किंवा रक्कम अचूक नोंदवण्यासाठी खूप मोठी आहे."
+  ],
+  "The cafe sales settings are unavailable.": [
+    "कैफे की बिक्री सेटिंग उपलब्ध नहीं हैं।",
+    "कॅफेची विक्री सेटिंग उपलब्ध नाही."
+  ],
+  "Enter the reference for the payment already received outside this app.": [
+    "इस ऐप के बाहर पहले मिले भुगतान का संदर्भ भरें।",
+    "या अॅपबाहेर आधी मिळालेल्या पैशांचा संदर्भ भरा."
+  ],
+  "Delivery orders need a customer phone number and delivery address.": [
+    "डिलीवरी ऑर्डर के लिए ग्राहक का फोन नंबर और पता जरूरी है।",
+    "घरपोच ऑर्डरसाठी ग्राहकाचा फोन क्रमांक आणि पत्ता आवश्यक आहे."
+  ],
+  "This order form was already used for different details. Reload before creating another order.": [
+    "इस ऑर्डर फॉर्म का अलग विवरण के साथ उपयोग हो चुका है। दूसरा ऑर्डर बनाने से पहले फिर खोलें।",
+    "हा ऑर्डर फॉर्म वेगळ्या तपशीलासाठी आधी वापरला आहे. दुसरी ऑर्डर करण्यापूर्वी पुन्हा उघडा."
+  ],
+  "Sales tax settings changed since this form was opened. Reload and check the total before taking payment.": [
+    "फॉर्म खुलने के बाद बिक्री कर बदला है। भुगतान लेने से पहले फिर खोलें और कुल जांचें।",
+    "फॉर्म उघडल्यानंतर विक्री कर बदलला आहे. पैसे घेण्यापूर्वी पुन्हा उघडून एकूण रक्कम तपासा."
+  ],
+  "An item is no longer available. Reload the menu before taking this order.": [
+    "एक आइटम अब उपलब्ध नहीं है। ऑर्डर से पहले मेनू फिर खोलें।",
+    "एक पदार्थ आता उपलब्ध नाही. ऑर्डर घेण्यापूर्वी मेनू पुन्हा उघडा."
+  ],
+  "\"{name}\" changed since this form was opened. Reload and check its price and serving quantity.": [
+    "फॉर्म खुलने के बाद \"{name}\" बदला है। फिर खोलें और कीमत तथा परोसने की मात्रा जांचें।",
+    "फॉर्म उघडल्यानंतर \"{name}\" बदलला आहे. पुन्हा उघडून किंमत आणि वाढपाचे प्रमाण तपासा."
+  ],
+  "Choose a valid order date.": [
+    "सही ऑर्डर तारीख चुनें।",
+    "योग्य ऑर्डर तारीख निवडा."
+  ],
+  "That order is unavailable.": [
+    "यह ऑर्डर उपलब्ध नहीं है।",
+    "ही ऑर्डर उपलब्ध नाही."
+  ],
+  "This order changed while the page was open. Refresh before changing its status.": [
+    "पेज खुला रहते हुए यह ऑर्डर बदला है। स्थिति बदलने से पहले फिर खोलें।",
+    "पान उघडे असताना ऑर्डर बदलली आहे. स्थिती बदलण्यापूर्वी पुन्हा उघडा."
+  ],
+  "This order has no recorded stock movements. Ask the owner to review its stock history.": [
+    "इस ऑर्डर की स्टॉक गतिविधि दर्ज नहीं है। मालिक से स्टॉक इतिहास जांचने को कहें।",
+    "या ऑर्डरची साठा हालचाल नोंदलेली नाही. मालकाला साठ्याचा इतिहास तपासण्यास सांगा."
+  ],
+  "This order cannot restore stock because later activity uses \"{name}\". Ask the owner to review it before cancellation.": [
+    "बाद की गतिविधि \"{name}\" इस्तेमाल करती है, इसलिए इस ऑर्डर का स्टॉक वापस नहीं हो सकता। रद्द करने से पहले मालिक से जांच करवाएं।",
+    "नंतरच्या हालचालीत \"{name}\" वापरला आहे म्हणून या ऑर्डरचा साठा परत करता येत नाही. रद्द करण्यापूर्वी मालकाला तपासण्यास सांगा."
+  ],
+  "This payment form was already used for different details. Refresh before recording another payment.": [
+    "भुगतान फॉर्म का अलग विवरण के साथ उपयोग हो चुका है। दूसरा भुगतान दर्ज करने से पहले फिर खोलें।",
+    "पैशांचा हा फॉर्म वेगळ्या तपशीलासाठी आधी वापरला आहे. आणखी पैसे नोंदवण्यापूर्वी पुन्हा उघडा."
+  ],
+  "A cancelled order can only have a refund recorded.": [
+    "रद्द ऑर्डर में केवल धनवापसी दर्ज हो सकती है।",
+    "रद्द ऑर्डरमध्ये फक्त परतावा नोंदवता येतो."
+  ],
+  "The payment or refund amount exceeds the available order balance.": [
+    "भुगतान या धनवापसी की राशि उपलब्ध ऑर्डर बकाये से अधिक है।",
+    "पैसे किंवा परताव्याची रक्कम उपलब्ध ऑर्डर शिल्लकेपेक्षा जास्त आहे."
+  ],
+  "Order received": [
+    "ऑर्डर मिला",
+    "ऑर्डर मिळाली"
+  ],
+  "In kitchen": [
+    "रसोई में",
+    "स्वयंपाकघरात"
+  ],
+  "Baking": [
+    "बेक हो रहा है",
+    "भाजत आहे"
+  ],
+  "Out of oven": [
+    "ओवन से बाहर",
+    "ओव्हनमधून बाहेर"
+  ],
+  "Ready": [
+    "तैयार",
+    "तयार"
+  ],
+  "Out for delivery": [
+    "डिलीवरी के लिए निकला",
+    "घरपोचसाठी निघाली"
+  ],
+  "Completed": [
+    "पूरा हुआ",
+    "पूर्ण"
+  ],
+  "Cancelled": [
+    "रद्द",
+    "रद्द"
+  ],
+  "Unpaid": [
+    "बकाया",
+    "बाकी"
+  ],
+  "Partially paid": [
+    "आंशिक भुगतान",
+    "अंशतः पैसे मिळाले"
+  ],
+  "Partially refunded": [
+    "आंशिक धनवापसी",
+    "अंशतः परतावा"
+  ],
+  "Refunded": [
+    "धनवापसी पूरी",
+    "पूर्ण परतावा"
+  ],
+  "Refund": [
+    "धनवापसी",
+    "परतावा"
   ]
 } as const satisfies Record<string, readonly [string, string]>;

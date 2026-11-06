@@ -5,12 +5,14 @@ deployment decisions. Netlify runs the Next.js app through its managed OpenNext 
 Supabase hosts PostgreSQL. Drizzle migrations, cookie authentication, tenant filtering,
 integer costing and the stock ledger stay in place. No Supabase browser client is needed.
 
-**Rechecked 4 November 2026:** the project and live health are healthy again; the twelve
-app tables and eight Drizzle migrations are present. An actual Supabase dump was restored
-into an isolated local database with matching table counts, and the restricted runtime
-role could read it after its grants were reapplied. Nightly scheduling/off-site copies
-remain open. See [the QA report](../files/qa-2026-11-04.md) for the nine reproduced
-correctness/retry defects; a healthy deployment does not make these figures safe to trust.
+**Upgraded 6 November 2026:** approved stages A-C applied through 0012: 19 public app
+tables and 13 Drizzle migrations. A fresh actual Supabase snapshot was restored locally
+and the upgrade rehearsed on that copy before live changes. The nine earlier audit
+defects are fixed; 369 isolated PostgreSQL tests, the production build, 17 compiled
+workflow groups and a populated runtime/backup/restore rehearsal pass. See the
+[current completion report](../files/completion-2026-11-06.md).
+Encrypted nightly backup automation is prepared but disabled pending the client's
+public encryption key, private storage credentials and real recovery rehearsal.
 
 **Deployed and checked on 10 October 2026.** The app is available at
 [nomeatnaaninventory.netlify.app](https://nomeatnaaninventory.netlify.app/). Netlify deploy
@@ -230,6 +232,13 @@ this does not schedule backups or prove restoration into a second Supabase proje
 See [Supabase migration guidance](https://supabase.com/docs/guides/platform/migrating-to-supabase/postgres).
 
 ## Handover acceptance
+
+An opt-in **encrypted off-site backup workflow** is prepared separately in
+[ENCRYPTED-BACKUPS.md](ENCRYPTED-BACKUPS.md). It is disabled until the client supplies a
+public encryption recipient, private bucket, restricted credentials and enables the
+repository variable. No scheduled backup or cloud upload is active merely because the
+workflow and its safety tests exist. Its runbook includes failure notifications and a
+download/decrypt/restore rehearsal; never publish plaintext dumps as Actions artifacts.
 
 Keep the deployed commit, service URL, database region/version, billing owners,
 credential locations, recovery contact and backup/restore evidence in the client's

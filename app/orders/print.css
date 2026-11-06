@@ -1,0 +1,11 @@
+@media print {
+  .workspace-sidebar, .workspace-header, .workspace-menu, .skip-link, .no-print { display: none !important; }
+  body { background: var(--color-surface); }
+  .workspace-header ~ .order-page { margin: 0; padding: 0; width: auto; max-width: none; }
+  .order-bill { border: 0; padding: 0; margin: 0; }
+  .order-bill .table-wrap { border: 0; overflow: visible; }
+  .order-bill .table { min-width: 0; }
+  .order-bill tr { break-inside: avoid; }
+  .order-tracking-address { overflow-wrap: anywhere; }
+  @page { margin: 14mm; }
+}

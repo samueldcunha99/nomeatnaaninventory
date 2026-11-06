@@ -279,7 +279,7 @@ export default async function CostBreakdownPage({
             <span>
               <span className="msg__title">{t(" This cannot be costed yet.")}{' '}
               </span>
-              {view.missing.length} {view.missing.length === 1 ? t("ingredient has") : t("ingredients have")}{' '}{t(" no purchase history, so there is no price to work from:")}{' '}
+              {view.missing.length} {view.missing.length === 1 ? t("ingredient has") : t("ingredients have")}{' '}{t(' no complete recorded cost:')}{' '}
               {view.missing.map((m, i) => (
                 <span key={m.ingredientId + ':' + i}>
                   {i > 0 ? ', ' : ''}
@@ -287,7 +287,7 @@ export default async function CostBreakdownPage({
                   {m.path?.length ? <span className="muted">{t(" (in ")}{m.path.join(' → ')})</span> : null}
                 </span>
               ))}
-              . <Link href="/stock/receipt">{t("Record a delivery")}</Link>{t(" for each and the cost appears on its own. ")}</span>
+              . <Link href="/stock/receipt">{t('Review purchase prices')}</Link>{t(' and resolve unknown opening stock values before costing again. ')}</span>
           </div>
         ) : null}
 
@@ -303,9 +303,28 @@ export default async function CostBreakdownPage({
 
         {view.explanation && view.explanation.lines.length > 0 ? (
           <>
+            {!view.explanation.overheadComplete ? (
+              <div className="msg msg--warn" role="status">
+                <svg className="msg__icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d={ALERT} /></svg>
+                <div>
+                  <strong>{t('Cost incomplete.')}</strong>
+                  {!view.rates || view.rates.labourPaisePerHour == null || view.rates.kitchenPaisePerHour == null ? (
+                    <p className="prose-note">{t('Both hourly rates are required before labour and kitchen overhead can be included. Blank rates remain unknown.')} {' '}
+                      {canManage ? <Link href="/settings/costing">{t('Set them')}</Link> : t('Ask the owner to set them')}</p>
+                  ) : null}
+                  {view.explanation.untimedRecipes.length ? <>
+                    <p className="prose-note">{t('Batch preparation time is missing for:')}</p>
+                    <ul>{view.explanation.untimedRecipes.map(recipe => <li key={recipe.recipeId}>
+                      {canManage ? <Link href={`/recipes/${recipe.recipeId}/edit`}>{recipe.name}</Link> : recipe.name}
+                    </li>)}</ul>
+                  </> : null}
+                  <p className="prose-note">{t('The amounts below include known costs only. Margins are provisional until the missing rates and preparation times are entered.')}</p>
+                </div>
+              </div>
+            ) : null}
             <ul className="statgrid">
               <li className="stat">
-                <span className="stat__label">{t(" Calculated batch cost ")}</span>
+                <span className="stat__label">{view.explanation.overheadComplete ? t('Calculated batch cost') : t('Known batch cost')}</span>
                 <span className="stat__value">
                   {formatINR(view.explanation.totalBatchPaise)}
                 </span>
@@ -313,7 +332,7 @@ export default async function CostBreakdownPage({
                 </span>
               </li>
               <li className="stat">
-                <span className="stat__label">{t("Unit cost")}</span>
+                <span className="stat__label">{view.explanation.overheadComplete ? t('Unit cost') : t('Known unit cost')}</span>
                 <span className="stat__value">
                   {formatINR(
                     costPerPurchaseUnitPaise(view.explanation.rateMillipaisePerBase, unit.inBase),
@@ -328,24 +347,6 @@ export default async function CostBreakdownPage({
               <Lines explanation={view.explanation} sources={view.sources} />
             </div>
             <p className="prose-note mt-2">{t(" The cost column adds up to the batch total exactly. A sub-recipe contributes at its own rounded rate, which is what keeps these figures consistent with the ones inside it. ")}</p>
-
-            {/*
-             * Two different silences, and they need different sentences. No rates set is a
-             * settings problem; rates set but this batch untimed is a recipe problem. Both
-             * are stated rather than absorbed into a total that looks complete.
-             */}
-            {!view.rates ? (
-              <p className="prose-note mt-2">
-                <strong>{t("Ingredients only.")}</strong>{t(" Labour and kitchen overhead are not in these figures because no hourly rates are set.")}{' '}
-                {canManage ? <Link href="/settings/costing">{t("Set them")}</Link> : t("Ask the owner to set them")}{' '}{t(" and every recipe recosts itself. ")}</p>
-            ) : !view.explanation.overhead.applied ? (
-              <p className="prose-note mt-2">
-                <strong>{t("Ingredients only.")}</strong>{t(" This recipe has no batch time, so there is nothing to charge labour or kitchen overhead against.")}{' '}
-                {canManage ? (
-                  <Link href={`/recipes/${id}/edit`}>{t("Add how long a batch takes")}</Link>
-                ) : null}
-              </p>
-            ) : null}
 
             {/* ---- What it sells for ------------------------------------- */}
             {view.menuItems.length > 0 ? (
@@ -376,7 +377,7 @@ export default async function CostBreakdownPage({
                       </h3>
                       <ul className="statgrid">
                         <li className="stat">
-                          <span className="stat__label">{t("Portion cost")}</span>
+                          <span className="stat__label">{view.explanation!.overheadComplete ? t('Portion cost') : t('Known portion cost')}</span>
                           <span className="stat__value">{formatINR(m.costPaise)}</span>
                         </li>
                         <li className="stat">
@@ -385,7 +386,9 @@ export default async function CostBreakdownPage({
                         </li>
                         <li className={`stat ${belowCost ? 'stat--bad' : 'stat--headline'}`}>
                           <span className="stat__label">
-                            {belowCost ? t("Loss per portion") : t("Gross margin")}
+                            {belowCost
+                              ? (view.explanation!.overheadComplete ? t('Loss per portion') : t('Minimum loss per portion'))
+                              : (view.explanation!.overheadComplete ? t('Gross margin') : t('Provisional margin'))}
                           </span>
                           <span className="stat__value">
                             {formatINR(belowCost ? -m.marginPaise : m.marginPaise)}
@@ -403,7 +406,7 @@ export default async function CostBreakdownPage({
                         </li>
                         <li className="stat">
                           <span className="stat__label">
-                            {view.explanation!.overhead.applied ? t("Total cost") : t("Food cost")}
+                            {view.explanation!.overheadComplete ? t('Total cost') : t('Known cost')}
                           </span>
                           <span className="stat__value">
                             {Number.isFinite(m.foodCostPercent) ? `${m.foodCostPercent.toFixed(1)}%` : '—'}

@@ -23,6 +23,7 @@ import {
   planProductionRun,
   NotStockedError,
   UncostedStockError,
+  ProductionQuantityTooSmallError,
 } from './production.ts';
 import { MissingCostError, MissingSubRecipeError, type CostLookup, type Recipe } from './costing.ts';
 
@@ -298,4 +299,26 @@ test('M10 - a batch is costed on what the LEDGER says left the store, not the ex
   const plan = planProductionRun('v', graph, lookupFrom({ vanilla: 900_000n }), 500n, 5_000n);
   assert.equal(plan.draws[0].issuedMilliBase, 1n);
   assert.equal(plan.batchCostPaise, 1n);
+});
+
+test('a batch with a sub-resolution ingredient draw refuses by recipe and line before reaching the ledger', () => {
+  const graph = new Map<string, Recipe>([
+    ['tiny', { id: 'tiny', name: 'Vanilla paste', yieldUnitType: 'weight', yieldQtyMilliBase: 10_000n,
+      lines: [ing('flour', 1000n), ing('vanilla', 1n)] }],
+  ]);
+  assert.throws(() => planDraws('tiny', graph, 250n), (error: unknown) => {
+    assert.ok(error instanceof ProductionQuantityTooSmallError);
+    assert.equal(error.recipeName, 'Vanilla paste');
+    assert.equal(error.lineNumber, 2);
+    assert.match(error.message, /Increase the batch count/);
+    return true;
+  });
+  // The half-up tie remains recordable and still issues exactly one milli-base unit.
+  assert.equal(planDraws('tiny', graph, 500n).draws[1].issuedMilliBase, 1n);
+});
+
+test('a sub-resolution prepared-component draw is refused instead of silently skipped', () => {
+  const graph = fixture();
+  graph.get('rolls')!.lines = [sub('dough', 1n)];
+  assert.throws(() => planDraws('rolls', graph, 250n), ProductionQuantityTooSmallError);
 });

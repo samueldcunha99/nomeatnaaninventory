@@ -6,11 +6,11 @@
  * Design: files/production-tracking-2026-09.md.
  */
 import { randomUUID } from 'node:crypto';
-import { and, eq, isNull, sql as raw } from 'drizzle-orm';
+import { and, asc, eq, gt, isNull, or, sql as raw } from 'drizzle-orm';
 import { db } from './client.ts';
-import { recipes, productionRuns, auditLog } from './schema.ts';
+import { recipes, productionRuns, productionReversals, stockMovements, ingredients, menuItems, auditLog } from './schema.ts';
 import { loadRecipeGraphForTenant, loadCostLookupForTenant } from './recipes.ts';
-import { recordMovements, lockIngredients, type MovementInput } from './stock.ts';
+import { recordMovements, lockIngredients, recalculateStock, type MovementInput } from './stock.ts';
 import { createIngredient, DuplicateIngredientError } from './ingredients.ts';
 import { planDraws, planProductionRun } from '../lib/production.ts';
 import { istDayStart, istToday } from '../lib/time.ts';
@@ -46,9 +46,7 @@ const SHELF_UNIT: Record<UnitType, { purchaseUnit: string; purchaseUnitInBase: n
  * entry and the same name rules as anything bought; a link to a row that failed to
  * commit, or a row with no link, are both impossible.
  *
- * There is no "unstock" yet, on purpose. Unlinking a recipe whose parents draw on it
- * strands their production, and re-stocking it later must find the same row rather than
- * collide with its name - both need rules nobody has asked for. Add it when someone does.
+ * The historical shelf association is permanent. Re-enabling future stocking reuses it.
  */
 export async function stockRecipe(actor: Actor, recipeId: string): Promise<string> {
   assertPermission(actor.role, 'recipes.manage');
@@ -62,11 +60,26 @@ export async function stockRecipe(actor: Actor, recipeId: string): Promise<strin
         name: recipes.name,
         yieldUnitType: recipes.yieldUnitType,
         stockIngredientId: recipes.stockIngredientId,
+        stockOutputEnabled: recipes.stockOutputEnabled,
       })
       .from(recipes)
       .where(and(eq(recipes.tenantId, actor.tenantId), eq(recipes.id, recipeId), isNull(recipes.deletedAt)));
     if (!recipe) throw new RangeError('That recipe no longer exists.');
-    if (recipe.stockIngredientId) return recipe.stockIngredientId;
+    const [madeToOrder] = await tx.select({ name: menuItems.name }).from(menuItems).where(and(
+      eq(menuItems.tenantId, actor.tenantId), eq(menuItems.recipeId, recipeId), eq(menuItems.isActive, true),
+      isNull(menuItems.deletedAt), eq(menuItems.fulfillmentMode, 'made_to_order'),
+    )).limit(1);
+    if (madeToOrder) throw new RangeError(`"${madeToOrder.name}" is sold made to order. Disable that menu item before enabling prepared stock.`);
+    if (recipe.stockIngredientId) {
+      if (!recipe.stockOutputEnabled) {
+        await tx.update(recipes).set({ stockOutputEnabled: true, updatedAt: new Date() })
+          .where(and(eq(recipes.tenantId, actor.tenantId), eq(recipes.id, recipeId)));
+        await tx.insert(auditLog).values({ tenantId: actor.tenantId, userId: actor.id,
+          action: 'recipe.stock', entityType: 'recipe', entityId: recipeId,
+          beforeJson: { stockOutputEnabled: false }, afterJson: { stockOutputEnabled: true, stockIngredientId: recipe.stockIngredientId } });
+      }
+      return recipe.stockIngredientId;
+    }
 
     let shelf;
     try {
@@ -96,7 +109,7 @@ export async function stockRecipe(actor: Actor, recipeId: string): Promise<strin
 
     await tx
       .update(recipes)
-      .set({ stockIngredientId: shelf.id, updatedAt: new Date() })
+      .set({ stockIngredientId: shelf.id, stockOutputEnabled: true, updatedAt: new Date() })
       .where(and(eq(recipes.tenantId, actor.tenantId), eq(recipes.id, recipeId)));
     await tx.insert(auditLog).values({
       tenantId: actor.tenantId,
@@ -104,10 +117,101 @@ export async function stockRecipe(actor: Actor, recipeId: string): Promise<strin
       action: 'recipe.stock',
       entityType: 'recipe',
       entityId: recipeId,
-      beforeJson: { stockIngredientId: null },
-      afterJson: { stockIngredientId: shelf.id },
+      beforeJson: { stockIngredientId: null, stockOutputEnabled: false },
+      afterJson: { stockIngredientId: shelf.id, stockOutputEnabled: true },
     });
     return shelf.id;
+  });
+}
+
+/** Disable future shelf output only after every existing quantity and dependency is clear. */
+export async function disableRecipeStockOutput(actor: Actor, recipeId: string): Promise<void> {
+  assertPermission(actor.role, 'recipes.manage');
+  await db.transaction(async tx => {
+    await tx.execute(raw`select pg_advisory_xact_lock(hashtextextended(${`recipes:${actor.tenantId}`}, 0))`);
+    const [recipe] = await tx.select().from(recipes).where(and(
+      eq(recipes.tenantId, actor.tenantId), eq(recipes.id, recipeId), isNull(recipes.deletedAt),
+    ));
+    if (!recipe) throw new RangeError('That recipe no longer exists.');
+    if (!recipe.stockOutputEnabled) return;
+    const graph = await loadRecipeGraphForTenant(actor.tenantId, tx);
+    const parents = [...graph.values()].filter(parent => parent.lines.some(line =>
+      line.subRecipeId === recipeId || (recipe.stockIngredientId !== null && line.ingredientId === recipe.stockIngredientId),
+    ));
+    if (parents.length) throw new RangeError(
+      `"${recipe.name}" is still used by ${parents.map(parent => `"${parent.name}"`).join(', ')}. Remove those recipe references before stopping shelf output.`,
+    );
+    if (!recipe.stockIngredientId) throw new RangeError('This recipe has no stock shelf.');
+    const [stockedMenu] = await tx.select({ id: menuItems.id }).from(menuItems).where(and(
+      eq(menuItems.tenantId, actor.tenantId), eq(menuItems.recipeId, recipeId), eq(menuItems.isActive, true),
+      isNull(menuItems.deletedAt), eq(menuItems.fulfillmentMode, 'stocked'),
+    )).limit(1);
+    if (stockedMenu) throw new RangeError('This recipe is sold from stock. Change or deactivate its stocked menu items before stopping shelf output.');
+    await lockIngredients(tx, actor.tenantId, [recipe.stockIngredientId]);
+    const stock = await recalculateStock(tx, actor.tenantId, recipe.stockIngredientId, { rebuild: true });
+    if (stock.qtyMilliBase !== 0n) throw new RangeError(
+      `"${recipe.name}" still has stock on its shelf. Use or correctly adjust that stock to zero before stopping shelf output.`,
+    );
+    await tx.update(recipes).set({ stockOutputEnabled: false, updatedAt: new Date() })
+      .where(and(eq(recipes.tenantId, actor.tenantId), eq(recipes.id, recipeId)));
+    await tx.insert(auditLog).values({ tenantId: actor.tenantId, userId: actor.id,
+      action: 'recipe.unstock', entityType: 'recipe', entityId: recipeId,
+      beforeJson: { stockOutputEnabled: true }, afterJson: { stockOutputEnabled: false, stockIngredientId: recipe.stockIngredientId } });
+  });
+}
+
+export type ProductionReversalInput = { requestId: string; productionRunId: string; reason: string };
+
+/** Latest-only corrections preserve history and restore both quantity and valuation. */
+export async function reverseProductionRun(actor: Actor, input: ProductionReversalInput) {
+  assertPermission(actor.role, 'production.record');
+  const reason = input.reason.trim();
+  if (!reason || reason.length > 1000) throw new RangeError('Enter a correction reason between 1 and 1000 characters.');
+  return db.transaction(async tx => {
+    // Same global ordering as recipe edits, stock-mode changes and new production.
+    await tx.execute(raw`select pg_advisory_xact_lock(hashtextextended(${`recipes:${actor.tenantId}`}, 0))`);
+    const [request] = await tx.select().from(productionReversals).where(and(
+      eq(productionReversals.tenantId, actor.tenantId), eq(productionReversals.id, input.requestId),
+    ));
+    if (request) {
+      if (request.productionRunId !== input.productionRunId || request.reason !== reason) {
+        throw new RangeError('This correction form was already used for different details. Refresh and try again.');
+      }
+      return { reversalId: request.id, productionRunId: request.productionRunId, alreadyReversed: true };
+    }
+    const [run] = await tx.select().from(productionRuns).where(and(
+      eq(productionRuns.tenantId, actor.tenantId), eq(productionRuns.id, input.productionRunId),
+    ));
+    if (!run) throw new RangeError('That production record no longer exists.');
+    const [existing] = await tx.select({ id: productionReversals.id }).from(productionReversals).where(and(
+      eq(productionReversals.tenantId, actor.tenantId), eq(productionReversals.productionRunId, run.id),
+    ));
+    if (existing) throw new RangeError('That batch has already been reversed. Its original record remains in history.');
+    const originals = await tx.select().from(stockMovements).where(and(
+      eq(stockMovements.tenantId, actor.tenantId), eq(stockMovements.referenceType, 'production'), eq(stockMovements.referenceId, run.id),
+    )).orderBy(asc(stockMovements.seq));
+    if (!originals.length) throw new RangeError('That batch has no stock movements and cannot be reversed automatically.');
+    const cutoffs = new Map<string, number>();
+    for (const movement of originals) cutoffs.set(movement.ingredientId, movement.seq);
+    await lockIngredients(tx, actor.tenantId, cutoffs.keys());
+    const [later] = await tx.select({ ingredientName: ingredients.name }).from(stockMovements)
+      .innerJoin(ingredients, and(eq(ingredients.tenantId, stockMovements.tenantId), eq(ingredients.id, stockMovements.ingredientId)))
+      .where(and(eq(stockMovements.tenantId, actor.tenantId), or(...[...cutoffs].map(([id, seq]) => and(
+        eq(stockMovements.ingredientId, id), gt(stockMovements.seq, seq),
+      ))))).orderBy(asc(stockMovements.seq)).limit(1);
+    if (later) throw new RangeError(
+      `This batch cannot be reversed because later stock activity uses "${later.ingredientName}". Review that activity before correcting the stock.`,
+    );
+    await tx.insert(productionReversals).values({ id: input.requestId, tenantId: actor.tenantId,
+      productionRunId: run.id, reason, createdByUserId: actor.id });
+    await recordMovements(originals.map(movement => ({ tenantId: actor.tenantId, ingredientId: movement.ingredientId,
+      movementType: 'reversal' as const, quantityMilliBase: storedInteger(-BigInt(movement.quantityMilliBase), 'Reversed quantity'),
+      reversesMovementId: movement.id, referenceType: 'production_reversal', referenceId: input.requestId,
+      note: reason, createdByUserId: actor.id })), tx);
+    await tx.insert(auditLog).values({ tenantId: actor.tenantId, userId: actor.id,
+      action: 'production.reverse', entityType: 'production_run', entityId: run.id,
+      afterJson: { reversalId: input.requestId, reason, movements: originals.length } });
+    return { reversalId: input.requestId, productionRunId: run.id, alreadyReversed: false };
   });
 }
 
@@ -188,6 +292,7 @@ export async function recordProductionRun(
 
   const runId = input.requestId ?? randomUUID();
   return db.transaction(async (tx) => {
+    await tx.execute(raw`select pg_advisory_xact_lock(hashtextextended(${`recipes:${actor.tenantId}`}, 0))`);
     if (input.requestId) {
       await tx.execute(raw`select pg_advisory_xact_lock(hashtextextended(${`production-request:${actor.tenantId}:${runId}`}, 0))`);
       const [existing] = await tx.select({ id: productionRuns.id }).from(productionRuns)
@@ -197,6 +302,11 @@ export async function recordProductionRun(
     const graph = await loadRecipeGraphForTenant(actor.tenantId, tx);
     if (!graph.has(input.recipeId)) throw new RangeError('That recipe no longer exists.');
     const current = graph.get(input.recipeId)!;
+    const [madeWhenOrdered] = await tx.select({ id: menuItems.id }).from(menuItems).where(and(
+      eq(menuItems.tenantId, actor.tenantId), eq(menuItems.recipeId, input.recipeId),
+      eq(menuItems.isActive, true), isNull(menuItems.deletedAt), eq(menuItems.fulfillmentMode, 'made_to_order'),
+    )).limit(1);
+    if (madeWhenOrdered) throw new RangeError('This recipe is made when ordered. Record it through Orders instead of deducting its ingredients again in production.');
     if (input.yieldUnitType) assertLineUnitCompatible(input.yieldUnitType, current.yieldUnitType, current.name);
     if (input.recipeUpdatedAt && current.updatedAt.toISOString() !== input.recipeUpdatedAt) {
       throw new RangeError('This recipe changed while the form was open. Refresh and review the batch again.');

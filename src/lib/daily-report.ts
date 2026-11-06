@@ -5,6 +5,7 @@ export type RecordedRun = {
   batchesMilli: bigint; expectedYieldMilliBase: bigint; actualYieldMilliBase: bigint;
   yieldUnitType: UnitType; batchCostPaise: bigint | null;
   note: string | null; userName: string | null; createdAt: Date;
+  reversal?: { id: string; reason: string; userName: string | null; createdAt: Date } | null;
 };
 
 export type RecordedMovement = {
@@ -22,6 +23,7 @@ export function summarizeRuns(runs: readonly RecordedRun[]) {
     costPaise: bigint | null; uncostedRuns: number;
   }>();
   for (const run of runs) {
+    if (run.reversal) continue;
     // A recipe can change yield type when unused. Historical grams must not be
     // added to its later millilitres just because the recipe ID stayed the same.
     const key = `${run.recipeId}:${run.yieldUnitType}`;

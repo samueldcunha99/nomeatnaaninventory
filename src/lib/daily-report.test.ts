@@ -42,3 +42,15 @@ test('yield variance formats short, excess and zero-output batches without float
   assert.equal(formatYieldVariance(0n, 10000n), '-100%');
   assert.equal(formatYieldVariance(10000n, 10000n), '0%');
 });
+
+test('effective production summaries exclude reversed batches without losing their recorded history', () => {
+  const reversed = run({ batchCostPaise: null, reversal: { id: 'correction', reason: 'Wrong batch', userName: 'Manager', createdAt: new Date() } });
+  const original = run();
+  const history = [original, reversed];
+  const [group] = summarizeRuns(history);
+  assert.equal(group.runs, 1);
+  assert.equal(group.batchesMilli, 1000n);
+  assert.equal(group.costPaise, 500n, 'a reversed unknown value does not make the active total unknown');
+  assert.equal(history.length, 2);
+  assert.deepEqual(summarizeRuns([reversed]), []);
+});

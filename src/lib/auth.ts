@@ -37,6 +37,13 @@ export const PERMISSIONS = {
   // figure is the screen's permission question, not this one. Kitchen joins this list
   // when it has a screen to log from (production step 4) - not before.
   'production.record': ['owner', 'manager'],
+  'orders.view': ['owner', 'manager', 'counter'],
+  'orders.record': ['owner', 'manager', 'counter'],
+  'orders.status': ['owner', 'manager', 'counter', 'kitchen'],
+  'orders.cancel': ['owner', 'manager', 'counter'],
+  'sales.manage': ['owner', 'manager'],
+  'sales.view': ['owner', 'manager'],
+  'kitchen.view': ['owner', 'manager', 'counter', 'kitchen'],
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Permission = keyof typeof PERMISSIONS;

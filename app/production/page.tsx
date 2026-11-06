@@ -3,13 +3,14 @@ import { requirePermission } from '../../src/auth/server.ts';
 import { loadRecipeGraph } from '../../src/db/recipes.ts';
 import { listIngredients } from '../../src/db/ingredients.ts';
 import { listProductionRuns } from '../../src/db/daily-report.ts';
-import { istDayStart, istToday } from '../../src/lib/time.ts';
+import { istDayStart, istToday, TIMEZONE } from '../../src/lib/time.ts';
 import {  integerToDecimal } from '../../src/lib/units.ts';
 import { ProductionForm } from './production-form.tsx';
 import { WorkspaceHeader } from '../ui/workspace-header.tsx';
 import { getTranslations } from '../i18n/server.ts';
+import { ReversalForm } from './reversal-form.tsx';
 
-export default async function ProductionPage({ searchParams }: { searchParams: Promise<{ day?: string; recipeId?: string; recorded?: string }> }) {
+export default async function ProductionPage({ searchParams }: { searchParams: Promise<{ day?: string; recipeId?: string; recorded?: string; reversed?: string }> }) {
   const actor = await requirePermission('production.record');
   const t = await getTranslations();
   const params = await searchParams;
@@ -17,6 +18,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
   const [graph, ingredients, runs] = await Promise.all([loadRecipeGraph(actor), listIngredients(actor, { activeOnly: false }), listProductionRuns(actor, day)]);
   const options = [...graph.values()].map(r => ({ id: r.id, name: r.name, yieldUnitType: r.yieldUnitType,
     yieldQtyMilliBase: String(r.yieldQtyMilliBase), stockIngredientId: r.stockIngredientId ?? null,
+    stockOutputEnabled: Boolean(r.stockIngredientId),
     updatedAt: r.updatedAt.toISOString(), lines: r.lines.map(l => ({ ...l,
       quantityMilliBase: String(l.quantityMilliBase), wastageMillipercent: String(l.wastageMillipercent) })) }));
   return <>
@@ -26,6 +28,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
       <p className="prose-note">{t("Record batches made, their measured yield and the materials used. Dates follow Asia/Kolkata.")}</p>
       {params.day && !istDayStart(params.day) ? <p className="msg msg--error" role="alert">{t("Choose a valid date. Showing today.")}</p> : null}
       {runs.some(r => r.id === params.recorded) ? <p className="msg" role="status"><strong>{t("Production recorded.")}</strong>{t(" Material usage and the daily report have been updated.")}</p> : null}
+      {params.reversed && runs.some(run => run.reversal?.id === params.reversed) ? <p className="msg" role="status">{t('Batch reversed. Stock and effective daily totals have been updated; its original entry remains in history.')}</p> : null}
       <form method="get" className="toolbar"><div className="field"><label className="label" htmlFor="day">{t("View production date")}</label>
         <input className="input" id="day" name="day" type="date" defaultValue={day} required /></div><button className="btn btn--secondary">{t("Show day")}</button></form>
       {options.length ? <ProductionForm key={`${day}:${params.recorded ?? ''}:${params.recipeId ?? ''}`} recipes={options}
@@ -34,10 +37,14 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
         initialRecipeId={options.some(r => r.id === params.recipeId) ? params.recipeId : undefined} />
         : <p className="prose-note">{t("Create a recipe with its ingredients and batch yield before recording production. ")}<Link href="/recipes/new">{t("Create a recipe")}</Link>.</p>}
       <h2 className="mt-8">{t("Recorded batches for ")}{day}</h2>
-      {runs.length ? <div className="table-wrap"><table className="table"><thead><tr><th>{t("Recipe")}</th><th className="num">{t("Batches")}</th><th className="num">{t("Expected")}</th><th className="num">{t("Made")}</th><th>{t("Recorded by / notes")}</th></tr></thead>
+      <p className="prose-note">{t('Reversed batches stay in history and are excluded from effective production and material usage totals.')}</p>
+      {runs.length ? <div className="table-wrap"><table className="table"><thead><tr><th>{t("Recipe")}</th><th className="num">{t("Batches")}</th><th className="num">{t("Expected")}</th><th className="num">{t("Made")}</th><th>{t("Recorded by / notes")}</th><th>{t('Correction')}</th></tr></thead>
         <tbody>{runs.map(r => <tr key={r.id}><td>{r.recipeName}</td><td className="num">{integerToDecimal(r.batchesMilli, 1000n)}</td>
           <td className="num">{t.quantity(r.expectedYieldMilliBase, r.yieldUnitType)}</td><td className="num">{t.quantity(r.actualYieldMilliBase, r.yieldUnitType)}</td>
-          <td>{r.userName}{r.note ? <span className="block muted">{r.note}</span> : null}</td></tr>)}</tbody></table></div> : <p className="prose-note">{t("No batches recorded for this date.")}</p>}
+          <td>{r.userName}{r.note ? <span className="block muted">{r.note}</span> : null}</td>
+          <td>{r.reversal ? <><strong>{t('Reversed')}</strong><span className="block muted">{r.reversal.reason}</span>
+            <span className="block muted">{r.reversal.userName} · {r.reversal.createdAt.toLocaleString(t.intlLocale, { timeZone: TIMEZONE })}</span></>
+            : <ReversalForm productionRunId={r.id} requestId={crypto.randomUUID()} day={day} />}</td></tr>)}</tbody></table></div> : <p className="prose-note">{t("No batches recorded for this date.")}</p>}
     </main>
   </>;
 }

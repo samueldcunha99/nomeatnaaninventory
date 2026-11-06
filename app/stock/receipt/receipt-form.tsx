@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useEffect, useState } from 'react';
-import { recordReceiptAction, type FormState } from '../actions.ts';
+import { recordReceiptAction, recordOpeningStockAction, type FormState } from '../actions.ts';
 import { IngredientCombobox } from '../../ui/ingredient-combobox.tsx';
 import {
   unitCostMillipaisePerBase,
@@ -49,33 +49,32 @@ function preview(row: Row, ingredients: IngredientOption[]): string {
 export function ReceiptForm({
   ingredients,
   suppliers,
+  requestId: initialRequestId,
+  opening = false,
 }: {
   ingredients: IngredientOption[];
   suppliers: Array<{ id: string; name: string }>;
+  requestId: string;
+  opening?: boolean;
 }) {
   const t = useTranslations();
-  const [state, formAction, pending] = useActionState<FormState, FormData>(recordReceiptAction, {
+  const [state, formAction, pending] = useActionState<FormState, FormData>(opening ? recordOpeningStockAction : recordReceiptAction, {
     error: null,
     ok: null,
   });
   const [rows, setRows] = useState<Row[]>([blank(), blank(), blank()]);
+  const [requestId, setRequestId] = useState(initialRequestId);
 
   /*
-   * A saved receipt leaves the lines on screen, the button re-enabled and no new-receipt
-   * step, and recordReceipt mints a fresh reference every call - so a second click, or a
-   * retry after a lost response, writes the delivery twice. The ledger is append-only, so
-   * undoing that means a counter-movement rather than a delete. Clearing on success is
-   * the cheap half of the fix.
-   *
-   * useActionState hands back a new state object per submission, so this fires on every
-   * success, including two identical ones in a row.
-   *
-   * ponytail: no idempotency key. Two rapid clicks on the SAME render can still both land
-   * before this runs. A submission token checked server-side is the real fix, and Month 3
-   * needs one anyway for orders - do both there.
+   * Keep the same submission identity until a confirmed success. A lost response can
+   * therefore be retried safely; the server returns the original receipt. A fresh ID
+   * and blank lines are presented together for the next delivery.
    */
   useEffect(() => {
-    if (state.ok) setRows([blank(), blank(), blank()]);
+    if (state.ok && state.nextRequestId) {
+      setRows([blank(), blank(), blank()]);
+      setRequestId(state.nextRequestId);
+    }
   }, [state]);
 
   const set = (i: number, patch: Partial<Row>) =>
@@ -83,6 +82,7 @@ export function ReceiptForm({
 
   return (
     <form action={formAction}>
+      <input type="hidden" name="requestId" value={requestId} />
       {state.error ? (
         <div className="msg msg--error" role="alert">
           <svg className="msg__icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -106,7 +106,7 @@ export function ReceiptForm({
         </div>
       ) : null}
 
-      <div className="field max-w-sm">
+      {!opening ? <div className="field max-w-sm">
         <label className="label" htmlFor="supplierId">{t(" Supplier ")}<span className="font-normal muted">{t("(optional)")}</span>
         </label>
         <select className="select" id="supplierId" name="supplierId">
@@ -117,7 +117,7 @@ export function ReceiptForm({
             </option>
           ))}
         </select>
-      </div>
+      </div> : null}
 
       <div className="table-wrap max-w-3xl">
         <table className="table">
@@ -125,7 +125,7 @@ export function ReceiptForm({
             <tr>
               <th scope="col" className="w-56">{t("Ingredient")}</th>
               <th scope="col" className="w-40">{t("Quantity")}</th>
-              <th scope="col" className="w-36">{t("Total paid (₹)")}</th>
+              <th scope="col" className="w-36">{opening ? t('Stock value (₹)') : t("Total paid (₹)")}</th>
               <th scope="col" className="num whitespace-nowrap">{t(" Works out at ")}</th>
             </tr>
           </thead>
@@ -214,7 +214,7 @@ export function ReceiptForm({
       </div>
 
       <button className="btn" type="submit" disabled={pending}>
-        {pending ? t("Saving…") : t("Record receipt")}
+        {pending ? t("Saving…") : opening ? t('Record opening stock') : t("Record receipt")}
       </button>
     </form>
   );

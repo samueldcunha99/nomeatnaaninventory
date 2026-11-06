@@ -22,7 +22,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   return <>
     <WorkspaceHeader actor={actor} title={t("Daily report")} />
     <main className="page" id="main-content" tabIndex={-1}>
-      <div className="page-heading"><h1>{t("Daily report")}</h1><Link className="btn" href={{ pathname: '/production', query: { day } }}>{t("Record production")}</Link></div>
+      <div className="page-heading"><h1>{t("Daily report")}</h1><div className="flex flex-wrap gap-2">
+        <a className="btn btn--secondary" href={`/reports/export?${new URLSearchParams({ day, ...(recipeId ? { recipeId } : {}) })}`}>{t('Download CSV')}</a>
+        <Link className="btn" href={{ pathname: '/production', query: { day } }}>{t("Record production")}</Link></div></div>
       <p className="prose-note">{t("Purchases, batches made and material usage for a selected date. Asia/Kolkata.")}</p>
       {params.day && !istDayStart(params.day) ? <p className="msg msg--error" role="alert">{t("Choose a valid date. Showing today.")}</p> : null}
       {params.recipeId && !recipeId ? <p className="msg msg--error" role="alert">{t("That recipe is unavailable. Showing all recipes.")}</p> : null}
@@ -66,9 +68,12 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <p className="prose-note">{t("These are separate stock losses entered on ")}{day}{t(". A lower batch yield is already shown above and must not be deducted again.")}</p>
       </section>
       <details className="mt-6"><summary>{t("Individual production records")}</summary>
-        {report.runs.length ? <div className="table-wrap"><table className="table"><thead><tr><th>{t("Recipe")}</th><th className="num">{t("Batches")}</th><th>{t("Recorded at")}</th><th>{t("Recorded by / notes")}</th></tr></thead>
+        <p className="prose-note">{t('Reversed batches stay in history and are excluded from effective production and material usage totals.')}</p>
+        {report.runs.length ? <div className="table-wrap"><table className="table"><thead><tr><th>{t("Recipe")}</th><th className="num">{t("Batches")}</th><th>{t("Recorded at")}</th><th>{t("Recorded by / notes")}</th><th>{t('Status')}</th></tr></thead>
           <tbody>{report.runs.map(r => <tr key={r.id}><td>{r.recipeName}</td><td className="num">{integerToDecimal(r.batchesMilli, 1000n)}</td>
-            <td>{r.createdAt.toLocaleString(t.intlLocale, { timeZone: TIMEZONE })}</td><td>{r.userName}{r.note ? <span className="block muted">{r.note}</span> : null}</td></tr>)}</tbody></table></div> : <p className="prose-note">{t("No production records.")}</p>}
+            <td>{r.createdAt.toLocaleString(t.intlLocale, { timeZone: TIMEZONE })}</td><td>{r.userName}{r.note ? <span className="block muted">{r.note}</span> : null}</td>
+            <td>{r.reversal ? <><strong>{t('Reversed')}</strong><span className="block muted">{r.reversal.reason}</span>
+              <span className="block muted">{r.reversal.userName} · {r.reversal.createdAt.toLocaleString(t.intlLocale, { timeZone: TIMEZONE })}</span></> : t('Recorded')}</td></tr>)}</tbody></table></div> : <p className="prose-note">{t("No production records.")}</p>}
       </details>
     </main>
   </>;

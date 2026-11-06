@@ -4,12 +4,16 @@ Internal management system for a single-outlet cafe and bakery in Chhatrapati
 Sambhajinagar, Maharashtra. Ingredient-level cost visibility, self-maintaining inventory,
 order management, and a customer-facing tracking page. Five-month build.
 
-**Month 1 and Month 2 complete; daily production and reporting screens are built.**
-**Readiness checked 4 November 2026:** the live connection is healthy again, and all
-278 tests pass against isolated native PostgreSQL with no skips, including eight
-language regression checks. Additional acceptance probes reproduced nine
-correctness/retry defects; resolve them before using
-the app as the cafe's sole inventory record. See the [current QA report](files/qa-2026-11-04.md).
+**Current completion work - 6 November 2026:** the nine inventory/costing/retry defects
+from the earlier audit are fixed. Opening-stock valuation, append-only batch correction,
+safe stock-mode changes, password administration, internal orders/POS, manual payments,
+printable bills, kitchen status, private customer tracking and sales reports are built.
+All **369 tests pass against isolated native PostgreSQL, zero skipped**; production
+build/typecheck, 17 compiled-app workflow groups and populated backup/restore passed.
+The user approved schema stages A-C; the live Supabase upgrade through migration 0012
+has been applied after a verified backup and restored-copy rehearsal. Frontend release
+verification follows publication. See the [current verification report](files/completion-2026-11-06.md)
+and [operator guide](files/OPERATOR-GUIDE.md).
 The user selected **Netlify Free + Supabase without Docker on 10 October 2026**,
 superseding the earlier Render choice. The app is live at
 [nomeatnaaninventory.netlify.app](https://nomeatnaaninventory.netlify.app/), connected to
@@ -31,19 +35,28 @@ repository. Nothing important lives in a chat log.
 | Month 1 — foundations & inventory | ✅ **complete**, steps 1–7, verified against live Postgres |
 | UI styling pass | ✅ complete, all 9 internal screens, Tailwind v4 |
 | Deployment configuration | Netlify Next.js adapter + Supabase PostgreSQL; CI uses native PostgreSQL |
-| Live deployment | Netlify serves application commit a7cdabd, including English/Hindi/Marathi switching; owner access, reports and saved language verified |
+| Live deployment | Netlify + Supabase. The 6 November database upgrade is applied; release verification is recorded in the current completion report. |
 | Month 2 step 1 — recipe / menu schema | ✅ **done**, migration 0002 |
 | Month 2 steps 2–4 — costing engine | ✅ **done**, paper cases P1–P22 |
 | Month 2 step 5 — costing screens and editors | ✅ **done**, recipe list, cost breakdown, what-if, and the recipe / line / menu-item editors |
 | Daily production and reports | Live at `/production` and `/reports`; date, recipe and metric controls verified |
-| Trunk | `main`. Everything is merged; `month-2-costing` is merged and safe to delete. |
-| Tests | 4 November: 278 passed against isolated native PostgreSQL 17.11, 0 skipped; 18 compiled-app workflow checks and 17 language acceptance checks passed. Separate audit probes reproduced nine defects. |
-| Current deployment verification | 4 November: health, owner access, 15 language-specific protected page checks and all three preference actions passed online. Earlier full-page and Supabase restore checks remain recorded below. Application commit a7cdabd. |
+| Orders and sales | Staff POS, explicit fulfillment/tax setup, saved prices/material costs, manual payment/refund records, printable bills, kitchen board, private tracking and date-range sales/CSV |
+| Corrections and access | Conservative append-only production reversal, shelf disable/re-enable, opening valuation, own password change and owner/manager staff reset |
+| Trunk | `main`; current implementation is prepared on `codex/inventory-hardening` for publication. |
+| Tests | 6 November: 369 passed, 0 failed/skipped; 17 compiled-app workflow groups passed; browser language/draft/mobile checks passed. Earlier nine audit defects now have regressions. |
+| Current database verification | 13 Drizzle migrations; 19 public application tables. Real client backup restored and upgrade rehearsed before live migrations; existing business records preserved. |
 
 ## Verified against a live database vs merely built
 
 This distinction matters more than it sounds. **Do not conflate them, and never report
 one as the other.**
+
+The sections below retain earlier dated evidence. For the current release, use
+[completion-2026-11-06.md](files/completion-2026-11-06.md). Scheduled encrypted backups
+are prepared but disabled pending client keys/storage. Real customer checkout/payment
+gateway and an AI assistant remain unimplemented external integrations. The client still
+needs verified stock values, menu prices/stock policies, batch times and tax settings;
+225 workbook entries still await actual measurements. No cafe data was invented.
 
 **Verified against live Postgres** — schema and all three migrations, the weighted-average
 cost engine against hand-computed paper cases T1–T12, ledger replay equalling the

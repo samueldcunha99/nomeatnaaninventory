@@ -150,8 +150,16 @@ export const tenants = pgTable('tenants', {
   labourRatePaisePerHour: paise('labour_rate_paise_per_hour'),
   /** Gas, power, rent and the rest of the kitchen, per hour of batch time. */
   kitchenRatePaisePerHour: paise('kitchen_rate_paise_per_hour'),
+  // No tax treatment is assumed; an owner/manager must explicitly configure sales.
+  salesTaxMode: text('sales_tax_mode'),
+  salesTaxRateMillipercent: millipercent('sales_tax_rate_millipercent'),
   createdAt: createdAt(),
-});
+}, t => [
+  check('tenants_sales_tax_config', sql`(${t.salesTaxMode} is null and ${t.salesTaxRateMillipercent} is null) or
+    (${t.salesTaxMode} is not null and ${t.salesTaxRateMillipercent} is not null and
+      ${t.salesTaxMode} in ('none', 'exclusive', 'inclusive') and ${t.salesTaxRateMillipercent} between 0 and 100000 and
+      (${t.salesTaxMode} <> 'none' or ${t.salesTaxRateMillipercent} = 0))`),
+]);
 
 export const users = pgTable(
   'users',
@@ -296,6 +304,8 @@ export const stockMovements = pgTable(
     // with Module 4. Older rows and test fixtures may carry none.
     referenceType: text('reference_type'),
     referenceId: uuid('reference_id'), // groups the lines of one multi-line receipt
+    /** Exact compensating movement; the original remains immutable. */
+    reversesMovementId: uuid('reverses_movement_id'),
     reason: movementReason('reason'),
     note: text('note'),
     createdByUserId: uuid('created_by_user_id').notNull(),
@@ -304,6 +314,14 @@ export const stockMovements = pgTable(
   (t) => [
     index('stock_movements_ledger_idx').on(t.tenantId, t.ingredientId, t.seq),
     index('stock_movements_reference_idx').on(t.tenantId, t.referenceType, t.referenceId),
+    unique('stock_movements_tenant_id_uq').on(t.tenantId, t.id),
+    uniqueIndex('stock_movements_tenant_reverses_uq').on(t.tenantId, t.reversesMovementId)
+      .where(sql`${t.reversesMovementId} is not null`),
+    foreignKey({
+      columns: [t.tenantId, t.reversesMovementId], foreignColumns: [t.tenantId, t.id],
+      name: 'stock_movements_tenant_reverses_fk',
+    }),
+    check('stock_movements_reverses_only_reversal', sql`${t.reversesMovementId} is null or ${t.movementType}::text = 'reversal'`),
     foreignKey({
       columns: [t.tenantId, t.ingredientId],
       foreignColumns: [ingredients.tenantId, ingredients.id],
@@ -376,9 +394,8 @@ export const ingredientStock = pgTable(
     tenantId: uuid('tenant_id').notNull(),
     ingredientId: uuid('ingredient_id').notNull(),
     qtyMilliBase: milliBase('qty_milli_base').notNull().default(0),
-    weightedAvgCostMillipaisePerBase: millipaisePerBase('weighted_avg_cost_millipaise_per_base')
-      .notNull()
-      .default(0),
+    // NULL is unknown, distinct from a recorded free inflow at zero.
+    weightedAvgCostMillipaisePerBase: millipaisePerBase('weighted_avg_cost_millipaise_per_base'),
     /**
      * The seq of the last movement folded into this row - the snapshot watermark.
      *
@@ -489,6 +506,8 @@ export const recipes = pgTable(
      * nothing on a shelf.
      */
     stockIngredientId: uuid('stock_ingredient_id'),
+    /** The shelf association is historical; this flag controls future production only. */
+    stockOutputEnabled: boolean('stock_output_enabled').notNull().default(false),
     notes: text('notes'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -504,6 +523,7 @@ export const recipes = pgTable(
     unique('recipes_tenant_id_uq').on(t.tenantId, t.id),
     // A zero-yield recipe divides by zero in every costing path that will exist.
     check('recipes_yield_positive', sql`${t.yieldQtyMilliBase} > 0`),
+    check('recipes_enabled_has_shelf', sql`not ${t.stockOutputEnabled} or ${t.stockIngredientId} is not null`),
     // Composite, like every tenant-scoped reference here: a recipe cannot hold its output
     // in another tenant's ingredient. MATCH SIMPLE, so a null stock_ingredient_id is not
     // checked at all - which is exactly the made-to-order case.
@@ -631,6 +651,8 @@ export const menuItems = pgTable(
     // Whole paise. Money the customer hands over, not a rate — the same boundary
     // rule as stock_movements.total_cost_paise.
     sellingPricePaise: paise('selling_price_paise').notNull(),
+    /** Explicit choice prevents a prepared item being depleted again as raw materials. */
+    fulfillmentMode: text('fulfillment_mode'),
     // Distinct from deleted_at: off the menu today is not gone forever.
     isActive: boolean('is_active').notNull().default(true),
     createdAt: createdAt(),
@@ -644,6 +666,8 @@ export const menuItems = pgTable(
     index('menu_items_tenant_active_idx').on(t.tenantId, t.isActive),
     // "This recipe recosted, which menu items moved."
     index('menu_items_tenant_recipe_idx').on(t.tenantId, t.recipeId),
+    unique('menu_items_tenant_id_uq').on(t.tenantId, t.id),
+    check('menu_items_fulfillment_mode', sql`${t.fulfillmentMode} is null or ${t.fulfillmentMode} in ('stocked', 'made_to_order')`),
     foreignKey({
       columns: [t.tenantId, t.recipeId],
       foreignColumns: [recipes.tenantId, recipes.id],
@@ -712,6 +736,7 @@ export const productionRuns = pgTable(
   (t) => [
     // "What did we make today" is the question every screen on this table asks.
     index('production_runs_tenant_day_idx').on(t.tenantId, t.producedOn),
+    unique('production_runs_tenant_id_uq').on(t.tenantId, t.id),
     foreignKey({
       columns: [t.tenantId, t.recipeId],
       foreignColumns: [recipes.tenantId, recipes.id],
@@ -730,3 +755,126 @@ export const productionRuns = pgTable(
     check('production_runs_cost_nonneg', sql`${t.batchCostPaise} is null or ${t.batchCostPaise} >= 0`),
   ],
 );
+
+/** Append-only corrections. Original production runs and their snapshots stay unchanged. */
+export const productionReversals = pgTable('production_reversals', {
+  id: id(),
+  tenantId: uuid('tenant_id').notNull(),
+  productionRunId: uuid('production_run_id').notNull(),
+  reason: text('reason').notNull(),
+  createdByUserId: uuid('created_by_user_id').notNull(),
+  createdAt: createdAt(),
+}, t => [
+  unique('production_reversals_tenant_id_uq').on(t.tenantId, t.id),
+  unique('production_reversals_tenant_run_uq').on(t.tenantId, t.productionRunId),
+  foreignKey({ columns: [t.tenantId, t.productionRunId], foreignColumns: [productionRuns.tenantId, productionRuns.id], name: 'production_reversals_tenant_run_fk' }),
+  foreignKey({ columns: [t.tenantId, t.createdByUserId], foreignColumns: [users.tenantId, users.id], name: 'production_reversals_tenant_user_fk' }),
+  check('production_reversals_reason_required', sql`length(btrim(${t.reason})) between 1 and 1000`),
+]);
+
+/* Orders store financial and usage snapshots. Changes are explicit status/payment events. */
+export const orderCounters = pgTable('order_counters', {
+  tenantId: uuid('tenant_id').primaryKey().references(() => tenants.id),
+  nextNumber: integer('next_number').notNull().default(1),
+}, t => [check('order_counters_positive', sql`${t.nextNumber} > 0`)]);
+
+export const orders = pgTable('orders', {
+  id: id(), tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
+  requestId: uuid('request_id').notNull(), requestHash: text('request_hash').notNull(),
+  orderNumber: integer('order_number').notNull(), orderType: text('order_type').notNull(),
+  status: text('status').notNull().default('ordered'),
+  customerName: text('customer_name'), customerPhone: text('customer_phone'),
+  deliveryAddress: text('delivery_address'), note: text('note'),
+  trackingToken: text('tracking_token').notNull(),
+  subtotalPaise: paise('subtotal_paise').notNull(), taxPaise: paise('tax_paise').notNull(),
+  totalPaise: paise('total_paise').notNull(), taxMode: text('tax_mode').notNull(),
+  taxRateMillipercent: millipercent('tax_rate_millipercent').notNull(),
+  paymentStatus: text('payment_status').notNull().default('unpaid'),
+  stockReversed: boolean('stock_reversed').notNull().default(false),
+  cancelledAfterPreparation: boolean('cancelled_after_preparation').notNull().default(false),
+  createdByUserId: uuid('created_by_user_id').notNull(),
+  createdAt: createdAt(), updatedAt: updatedAt(), deletedAt: deletedAt(),
+}, t => [
+  unique('orders_tenant_id_uq').on(t.tenantId, t.id),
+  unique('orders_tenant_request_uq').on(t.tenantId, t.requestId),
+  unique('orders_tenant_number_uq').on(t.tenantId, t.orderNumber),
+  unique('orders_tenant_tracking_token_uq').on(t.tenantId, t.trackingToken),
+  index('orders_tenant_day_idx').on(t.tenantId, t.createdAt),
+  index('orders_tenant_status_idx').on(t.tenantId, t.status, t.createdAt),
+  foreignKey({ columns: [t.tenantId, t.createdByUserId], foreignColumns: [users.tenantId, users.id], name: 'orders_tenant_user_fk' }),
+  check('orders_number_positive', sql`${t.orderNumber} > 0`),
+  check('orders_request_hash', sql`${t.requestHash} ~ '^[0-9a-f]{64}$'`),
+  check('orders_tracking_token_length', sql`length(${t.trackingToken}) between 24 and 128`),
+  check('orders_type', sql`${t.orderType} in ('dine_in', 'takeaway', 'delivery')`),
+  check('orders_status', sql`${t.status} in ('ordered', 'in_kitchen', 'baking', 'out_of_oven', 'ready', 'out_for_delivery', 'completed', 'cancelled')`),
+  check('orders_payment_status', sql`${t.paymentStatus} in ('unpaid', 'part_paid', 'paid', 'part_refunded', 'refunded')`),
+  check('orders_amount_bounds', sql`${t.subtotalPaise} between 0 and 9007199254740991 and ${t.taxPaise} between 0 and 9007199254740991 and ${t.totalPaise} between 0 and 9007199254740991`),
+  check('orders_tax_snapshot', sql`${t.taxMode} in ('none', 'exclusive', 'inclusive') and ${t.taxRateMillipercent} between 0 and 100000 and (${t.taxMode} <> 'none' or ${t.taxRateMillipercent} = 0)`),
+  check('orders_cancel_flags', sql`(not ${t.stockReversed} and not ${t.cancelledAfterPreparation}) or ${t.status} = 'cancelled'`),
+]);
+
+export const orderLines = pgTable('order_lines', {
+  id: id(), tenantId: uuid('tenant_id').notNull(), orderId: uuid('order_id').notNull(),
+  lineNumber: integer('line_number').notNull(), menuItemId: uuid('menu_item_id').notNull(), recipeId: uuid('recipe_id').notNull(),
+  nameSnapshot: text('name_snapshot').notNull(), quantity: integer('quantity').notNull(),
+  portionQtyMilliBase: milliBase('portion_qty_milli_base').notNull(), yieldUnitType: unitType('yield_unit_type').notNull(),
+  fulfillmentMode: text('fulfillment_mode').notNull(), unitPricePaise: paise('unit_price_paise').notNull(),
+  lineTotalPaise: paise('line_total_paise').notNull(), costSnapshotPaise: paise('cost_snapshot_paise'),
+  createdAt: createdAt(),
+}, t => [
+  unique('order_lines_tenant_id_uq').on(t.tenantId, t.id),
+  unique('order_lines_tenant_line_uq').on(t.tenantId, t.orderId, t.lineNumber),
+  index('order_lines_tenant_menu_idx').on(t.tenantId, t.menuItemId),
+  foreignKey({ columns: [t.tenantId, t.orderId], foreignColumns: [orders.tenantId, orders.id], name: 'order_lines_tenant_order_fk' }),
+  foreignKey({ columns: [t.tenantId, t.menuItemId], foreignColumns: [menuItems.tenantId, menuItems.id], name: 'order_lines_tenant_menu_fk' }),
+  foreignKey({ columns: [t.tenantId, t.recipeId], foreignColumns: [recipes.tenantId, recipes.id], name: 'order_lines_tenant_recipe_fk' }),
+  check('order_lines_positive', sql`${t.lineNumber} > 0 and ${t.quantity} > 0 and ${t.portionQtyMilliBase} > 0`),
+  check('order_lines_amount_bounds', sql`${t.unitPricePaise} between 0 and 9007199254740991 and ${t.lineTotalPaise} between 0 and 9007199254740991 and (${t.costSnapshotPaise} is null or ${t.costSnapshotPaise} between 0 and 9007199254740991)`),
+  check('order_lines_fulfillment', sql`${t.fulfillmentMode} in ('stocked', 'made_to_order')`),
+]);
+
+export const orderLineDraws = pgTable('order_line_draws', {
+  id: id(), tenantId: uuid('tenant_id').notNull(), orderLineId: uuid('order_line_id').notNull(),
+  ingredientId: uuid('ingredient_id').notNull(), stockMovementId: uuid('stock_movement_id').notNull(),
+  quantityMilliBase: milliBase('quantity_milli_base').notNull(),
+  unitCostMillipaisePerBase: millipaisePerBase('unit_cost_millipaise_per_base'), costPaise: paise('cost_paise'),
+  createdAt: createdAt(),
+}, t => [
+  unique('order_line_draws_tenant_id_uq').on(t.tenantId, t.id),
+  unique('order_line_draws_tenant_movement_uq').on(t.tenantId, t.stockMovementId),
+  index('order_line_draws_tenant_line_idx').on(t.tenantId, t.orderLineId),
+  foreignKey({ columns: [t.tenantId, t.orderLineId], foreignColumns: [orderLines.tenantId, orderLines.id], name: 'order_line_draws_tenant_line_fk' }),
+  foreignKey({ columns: [t.tenantId, t.ingredientId], foreignColumns: [ingredients.tenantId, ingredients.id], name: 'order_line_draws_tenant_ingredient_fk' }),
+  foreignKey({ columns: [t.tenantId, t.stockMovementId], foreignColumns: [stockMovements.tenantId, stockMovements.id], name: 'order_line_draws_tenant_movement_fk' }),
+  check('order_line_draws_positive', sql`${t.quantityMilliBase} > 0`),
+  check('order_line_draws_cost_bounds', sql`(${t.unitCostMillipaisePerBase} is null or ${t.unitCostMillipaisePerBase} >= 0) and (${t.costPaise} is null or ${t.costPaise} >= 0)`),
+]);
+
+export const orderStatusEvents = pgTable('order_status_events', {
+  id: id(), tenantId: uuid('tenant_id').notNull(), orderId: uuid('order_id').notNull(),
+  fromStatus: text('from_status'), toStatus: text('to_status').notNull(), reason: text('reason'),
+  createdByUserId: uuid('created_by_user_id').notNull(), createdAt: createdAt(),
+}, t => [
+  unique('order_status_events_tenant_id_uq').on(t.tenantId, t.id),
+  index('order_status_events_tenant_order_idx').on(t.tenantId, t.orderId, t.createdAt),
+  foreignKey({ columns: [t.tenantId, t.orderId], foreignColumns: [orders.tenantId, orders.id], name: 'order_status_events_tenant_order_fk' }),
+  foreignKey({ columns: [t.tenantId, t.createdByUserId], foreignColumns: [users.tenantId, users.id], name: 'order_status_events_tenant_user_fk' }),
+  check('order_status_events_status', sql`${t.toStatus} in ('ordered', 'in_kitchen', 'baking', 'out_of_oven', 'ready', 'out_for_delivery', 'completed', 'cancelled') and (${t.fromStatus} is null or ${t.fromStatus} in ('ordered', 'in_kitchen', 'baking', 'out_of_oven', 'ready', 'out_for_delivery', 'completed', 'cancelled'))`),
+  check('order_status_events_cancel_reason', sql`${t.toStatus} <> 'cancelled' or length(btrim(${t.reason})) > 0`),
+]);
+
+export const paymentEvents = pgTable('payment_events', {
+  id: id(), tenantId: uuid('tenant_id').notNull(), orderId: uuid('order_id').notNull(),
+  requestId: uuid('request_id').notNull(), method: text('method').notNull(), eventType: text('event_type').notNull(),
+  amountPaise: paise('amount_paise').notNull(), reference: text('reference'), provider: text('provider'), providerEventId: text('provider_event_id'),
+  createdByUserId: uuid('created_by_user_id').notNull(), createdAt: createdAt(),
+}, t => [
+  unique('payment_events_tenant_id_uq').on(t.tenantId, t.id),
+  unique('payment_events_tenant_request_uq').on(t.tenantId, t.requestId),
+  uniqueIndex('payment_events_tenant_provider_uq').on(t.tenantId, t.provider, t.providerEventId).where(sql`${t.providerEventId} is not null`),
+  index('payment_events_tenant_order_idx').on(t.tenantId, t.orderId, t.createdAt),
+  foreignKey({ columns: [t.tenantId, t.orderId], foreignColumns: [orders.tenantId, orders.id], name: 'payment_events_tenant_order_fk' }),
+  foreignKey({ columns: [t.tenantId, t.createdByUserId], foreignColumns: [users.tenantId, users.id], name: 'payment_events_tenant_user_fk' }),
+  check('payment_events_type', sql`${t.eventType} in ('payment', 'refund') and ${t.method} in ('cash', 'external')`),
+  check('payment_events_amount', sql`${t.amountPaise} between 1 and 9007199254740991`),
+]);

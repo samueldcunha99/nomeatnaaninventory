@@ -87,7 +87,8 @@ export async function recalculateStock(
   const from: StockState = cached.length
     ? {
         qtyMilliBase: BigInt(cached[0].qtyMilliBase),
-        weightedAvgCostMillipaisePerBase: BigInt(cached[0].weightedAvgCostMillipaisePerBase),
+        weightedAvgCostMillipaisePerBase: cached[0].weightedAvgCostMillipaisePerBase === null
+          ? null : BigInt(cached[0].weightedAvgCostMillipaisePerBase),
       }
     : EMPTY_STOCK;
   const since = cached.length ? Number(cached[0].snapshotSeq) : 0;
@@ -98,6 +99,13 @@ export async function recalculateStock(
       movementType: stockMovements.movementType,
       quantityMilliBase: stockMovements.quantityMilliBase,
       unitCostMillipaisePerBase: stockMovements.unitCostMillipaisePerBase,
+      cancelled: raw<boolean>`${stockMovements.reversesMovementId} is not null or exists (
+        -- Explicit outer qualification is essential: Drizzle removes column prefixes
+        -- in a single-table select, which would bind an unqualified id to the inner row.
+        select 1 from stock_movements reversing
+        where reversing.tenant_id = stock_movements.tenant_id
+          and reversing.reverses_movement_id = stock_movements.id
+      )`,
     })
     .from(stockMovements)
     .where(
@@ -111,7 +119,9 @@ export async function recalculateStock(
     )
     .orderBy(asc(stockMovements.seq)); // ledger order, never created_at
 
-  const movements: Movement[] = rows.map((r) => ({
+  // Canceled original/inverse pairs stay in history but never enter valuation. Keep
+  // raw rows for the watermark: skipping their seqs would replay them on every write.
+  const movements: Movement[] = rows.filter(r => !r.cancelled).map((r) => ({
     movementType: r.movementType,
     quantityMilliBase: BigInt(r.quantityMilliBase),
     unitCostMillipaisePerBase:
@@ -121,7 +131,8 @@ export async function recalculateStock(
   const next = replayLedger(movements, from);
   const values = {
     qtyMilliBase: Number(next.qtyMilliBase),
-    weightedAvgCostMillipaisePerBase: Number(next.weightedAvgCostMillipaisePerBase),
+    weightedAvgCostMillipaisePerBase: next.weightedAvgCostMillipaisePerBase === null
+      ? null : Number(next.weightedAvgCostMillipaisePerBase),
     // Nothing new to fold leaves the watermark where it was.
     snapshotSeq: rows.length ? Number(rows[rows.length - 1].seq) : since,
     updatedAt: new Date(),
@@ -158,6 +169,7 @@ function auditAction(lines: MovementInput[]): string {
   // mix the type rule below would file as a vague 'stock.movement'. The run is one
   // operation, so it is one entry, named for what it was.
   const refs = new Set(lines.map((l) => l.referenceType));
+  if (refs.size === 1 && refs.has('opening_stock')) return 'stock.opening';
   if (refs.size === 1 && refs.has('production')) return 'stock.production';
   const types = new Set(lines.map((l) => l.movementType));
   if (types.size !== 1) return 'stock.movement';
@@ -214,7 +226,8 @@ export async function recordMovements(lines: MovementInput[], tx?: Tx) {
     // rebuild is still one call away and is what the tests check the cache against.
 
     for (const [ingredientId, tenantId] of affected) {
-      await recalculateStock(t, tenantId, ingredientId);
+      // A new inverse can cancel a movement already inside the cached snapshot.
+      await recalculateStock(t, tenantId, ingredientId, { rebuild: lines.some(line => line.reversesMovementId != null) });
     }
 
     // Audit lives here rather than in each caller, so a future movement path cannot
@@ -235,6 +248,7 @@ export async function recordMovements(lines: MovementInput[], tx?: Tx) {
         totalCostPaise: l.totalCostPaise ?? null,
         reason: l.reason ?? null,
         note: l.note ?? null,
+        reversesMovementId: l.reversesMovementId ?? null,
       })),
     });
   };

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { WorkspaceHeader } from '../../ui/workspace-header.tsx';
 import { requirePermission } from '../../../src/auth/server.ts';
 import { listUsers } from '../../../src/db/users.ts';
-import { NewStaffForm, StaffTable, type StaffRow } from './users-form.tsx';
+import { NewStaffForm, StaffTable, ResetStaffPasswordForm, type StaffRow } from './users-form.tsx';
 import { getTranslations } from '../../i18n/server.ts';
 
 /**
@@ -41,6 +41,9 @@ export default async function StaffPage() {
 
         <h2 className="section-title mt-8">{t("Add someone")}</h2>
         <NewStaffForm canGrantOwner={canGrantOwner} />
+
+        <h2 className="section-title mt-8">{t('Reset a staff password')}</h2>
+        <ResetStaffPasswordForm staff={staff} canGrantOwner={canGrantOwner} />
 
         <p className="prose-note mt-4">{t(" Changing hourly rates is on ")}<Link href="/settings/costing">{t("costing settings")}</Link>.
         </p>

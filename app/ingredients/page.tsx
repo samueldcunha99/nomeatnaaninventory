@@ -37,7 +37,8 @@ export default async function IngredientsPage({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1>{t("Ingredients")}</h1>
           {canManage ? (
-            <Link className="btn" href="/ingredients/new">{t(" + New ingredient ")}</Link>
+            <div className="flex flex-wrap gap-2"><Link className="btn btn--secondary" href={{ pathname: '/stock/opening' }}>{t('Opening stock / valuation')}</Link>
+              <Link className="btn" href="/ingredients/new">{t(" + New ingredient ")}</Link></div>
           ) : null}
         </div>
 
@@ -114,7 +115,7 @@ export default async function IngredientsPage({
                       </td>
 
                       <td className="num whitespace-nowrap">
-                        {formatINR(
+                        {r.weightedAvgCostMillipaisePerBase === null ? t('Unknown') : formatINR(
                           costPerPurchaseUnitPaise(r.weightedAvgCostMillipaisePerBase, r.purchaseUnitInBase),
                         )}
                         <span className="block text-xs muted">{t("per ")}{r.purchaseUnit}</span>

@@ -4,6 +4,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import ts from 'typescript';
 import { messages } from './i18n/messages.ts';
+import { ORDER_LABELS } from './order-labels.ts';
 import { isLocale, resolveLocale, translate, translateMessage, translator } from './i18n/index.ts';
 import { MissingCostError, UnitMismatchError, type Recipe } from './costing.ts';
 import { planDraws, planProductionRun } from './production.ts';
@@ -55,7 +56,8 @@ test('every statically translated UI key and selectable metric label has both la
     'Takes deliveries and records stock. No costing.', 'No workspace access yet.', 'Not changed.', 'Not added.',
     'per kg', 'per litre', 'each', 'Type to search…',
   ]);
-  for (const file of [...walkFiles('app').filter(f => /\.tsx?$/.test(f)), 'src/lib/recipe-quantity.ts']) {
+  for (const label of Object.values(ORDER_LABELS)) required.add(label);
+  for (const file of [...walkFiles('app').filter(f => /\.tsx?$/.test(f)), 'src/lib/recipe-quantity.ts', 'src/lib/order-form.ts']) {
     const source = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true,
       file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
     function visit(node: ts.Node) {
@@ -67,7 +69,7 @@ test('every statically translated UI key and selectable metric label has both la
       }
       if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) &&
           ['min', 'max', 'regex', 'refine', 'uuid'].includes(node.expression.name.text)) {
-        for (const argument of node.arguments.slice(1)) {
+        for (const argument of node.arguments) {
           if (ts.isStringLiteral(argument) && /[A-Za-z]+ [A-Za-z]+/.test(argument.text)) required.add(argument.text);
         }
       }

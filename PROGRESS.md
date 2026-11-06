@@ -2393,3 +2393,54 @@ files/language-hindi-live-2026-11-04.png and files/language-marathi-live-2026-11
 No test business mutation was sent to client Supabase. The temporary QA app/database
 were stopped after verification; the normal compiled localhost app remains on port
 3000 with its existing restricted Supabase runtime connection.
+
+## 2026-11-06 - Inventory repairs and approved stages A-C implemented
+
+User approved `files/completion-schema-proposal-2026-11-06.md` stages A-C. Fixed all
+nine 4 November audit findings with desired-behaviour regressions: nullable unknown
+inventory values, honest partial overhead/descendant timing, recipe/menu/shelf unit
+dependencies, friendly tiny-draw refusal, exact zero-rate edits and receipt idempotency
+under forced concurrent retries. Added opening-stock valuation distinct from purchases.
+
+Added append-only production reversals with linked exact inverse movements, conservative
+later-activity checks, zero/dependency-guarded shelf disable/re-enable and effective report
+totals excluding reversals. Added own password change and role-scoped staff reset with
+session revocation, fresh user checks and login/reset race coverage. Fixed the staff
+table's later-row role submission. The runtime maintenance flag cannot bypass any
+append-only table guard.
+
+Built internal orders/POS, explicit fulfillment/tax configuration, exact portion planning,
+saved prices/material costs, manual partial payments/refund records, printable bills,
+role-filtered kitchen board/status history, public tenant/token tracking with explicit
+privacy DTO/no-store headers and saved-cost date-range sales/CSV reports. Stocked sales
+consume finished stock; made-to-order sales consume inputs once. Menu/production/shelf
+writers prohibit overlapping deduction methods. Kitchen users now land on their board.
+English/Hindi/Marathi includes every new screen and actionable domain error; readable
+English labels replace enum codes without changing submitted values.
+
+Full native PostgreSQL suite: 369 passed, 0 failed/skipped. Typecheck/production build
+passed. Seventeen compiled-app workflow groups passed, including 33 locale/page checks,
+payment/receipt retries, passwords, correction, CSV roles and public tracking privacy.
+Removing the order payload check, ingredient lock and tracking tenant predicate each
+failed its regression; originals restored and full suite passed. Earlier focused guard
+proofs cover valuation, overhead, unit, reversal, password concurrency and encryption.
+Browser verified draft-preserving Hindi order switching and Marathi sales at 320 px,
+with no page overflow. Screenshots/private helpers remain local.
+
+The deployment rehearsal now writes a real stock/run/reversal/order/payment workflow
+under the restricted runtime role, proves maintenance bypass rejection for all immutable
+tables, then verifies a populated backup/restore including new guards and all table counts.
+Fresh migrations apply in one transaction without DDL-ordering errors. Encrypted
+off-site backup automation/runbook is prepared but disabled; no bucket/key/API credentials
+were created and no off-site upload was activated.
+
+Took a fresh real Supabase snapshot, restored it locally, then rehearsed the upgrade on
+that restored client copy. Preserved checksum-verified private recovery files under
+`backups/verified-2026-11-06/`. Applied approved live migrations 0008-0012 and refreshed
+runtime grants outside the web app: 13 migrations, 19 public app tables. Existing 60
+ingredients, 20 recipes, 184 recipe-line rows and the empty business ledger remain.
+No test business writes were made to the client DB. Publication verification follows.
+The operator guide and current completion report explain setup needs and precise report
+semantics. Real cafe quantities/prices/timing/tax/menu setup, 225 pending workbook
+measurements, staff acceptance, off-site backup activation, public checkout/gateway and
+AI integration remain; no values, charges or external messages were invented.

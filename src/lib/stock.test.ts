@@ -33,6 +33,26 @@ test('T1 - first purchase into empty stock uses the first-purchase rule', () => 
   assertStock(applyMovement(EMPTY_STOCK, buy(5000, 50000)), 5000, 50000, 'T1');
 });
 
+test('unknown opening stock is not blended into a purchase as free inventory', () => {
+  const opened = applyMovement(EMPTY_STOCK, out('adjustment', 1000));
+  assert.equal(opened.weightedAvgCostMillipaisePerBase, null);
+  const mixed = applyMovement(opened, buy(1000, 50000));
+  assert.equal(mixed.qtyMilliBase, g(2000));
+  assert.equal(mixed.weightedAvgCostMillipaisePerBase, null);
+  const depleted = applyMovement(mixed, out('consumption', -2000));
+  assert.equal(depleted.weightedAvgCostMillipaisePerBase, null);
+  assertStock(applyMovement(depleted, buy(1000, 60000)), 1000, 60000, 'fresh known basis');
+});
+
+test('a recorded free purchase is known zero and incremental unknown valuation matches rebuild', () => {
+  assertStock(applyMovement(EMPTY_STOCK, buy(1000, 0)), 1000, 0, 'genuine zero');
+  const ledger = [out('adjustment', 1000), buy(1000, 50000), out('wastage', -500)];
+  const first = replayLedger(ledger.slice(0, 1));
+  const incremental = replayLedger(ledger.slice(1), first);
+  assert.deepEqual(incremental, replayLedger(ledger));
+  assert.equal(incremental.weightedAvgCostMillipaisePerBase, null);
+});
+
 test('T2 - second purchase, exact quotient', () => {
   assert.equal(unitCostMillipaisePerBase(165000n, g(3000)), 55000n); // Rs 1,650 / 3 kg
   // (5000x50000 + 3000x55000) / 8000 = 415,000,000 / 8000

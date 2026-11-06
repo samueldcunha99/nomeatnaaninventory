@@ -1,0 +1,75 @@
+# Completion verification - 6 November 2026
+
+## Implemented and verified locally
+
+All nine defects in `qa-2026-11-04.md` are fixed: unknown opening cost/unknown displays,
+nullable overhead rates, incomplete descendant timing, recipe/menu/shelf unit safety,
+tiny production quantities, unchanged zero-rate saves and retry-safe receipts.
+One integer stock fold and costing engine remain; unknown is distinct from recorded zero.
+
+Approved stages A-C also deliver append-only batch reversals, reversible output stocking,
+opening valuations excluded from purchases, own/staff password changes with session
+revocation, staff POS/orders, explicit menu fulfillment/tax setup, printable bills,
+manual payment/refund records, role-filtered kitchen board, opaque public tracking,
+saved-cost sales reports and localized daily/sales CSVs. English/Hindi/Marathi covers
+all new screens and actionable domain messages; stored business data is unchanged.
+Encrypted off-site scheduling is prepared and remains disabled.
+
+| Verification | Result |
+|---|---|
+| Full native PostgreSQL suite | **369 passed, 0 failed, 0 skipped** |
+| Typecheck and production build | Passed |
+| Compiled app against isolated PostgreSQL | **17 workflow groups passed**, including 33 language/page combinations |
+| Fresh migration + restricted runtime + populated backup/restore | Passed; all 13 migrations and table counts matched |
+| Actual client snapshot restored locally | Passed; all existing table counts matched |
+| Upgrade applied to restored client copy first | Passed |
+| Failed-guard proofs | Removed retry comparison, ingredient lock and tracking tenant filter each failed its regression; source restored and full suite green. Earlier repair proofs cover valuation, overhead, units, reversal, password concurrency and encryption guards. |
+| Browser | Hindi order draft retained quantity/notes across switching; Marathi sales report and 320 px layouts had no page overflow. |
+
+The compiled checks exercised actual rendered server actions: concurrent receipt retries,
+quantity-neutral opening valuation, exact zero rates, explicit tax setup, counter order
+and retry, printed-bill controls/cost hiding, public tracking/privacy/no-store/invalid token,
+kitchen transitions without deductions, payment retry, saved sales margin, cancellation
+restoration, later-row staff role changes, own-password revocation, batch reversal,
+sub-resolution form error and owner/manager CSV access versus other roles.
+
+Deployment rehearsal uses real writers under `cafe_app` to create valued stock, a run,
+reversal, another run, an order, usage draws, status events and payment. DELETE attempts
+with the maintenance flag still fail for every immutable table. It then dumps/restores
+that populated state and checks all table counts and protection triggers. No Docker.
+
+Private test helpers, credentials, DB files, screenshots/logs and client backups stay out
+of the release commit. Regressions, migration DDL, the deployment rehearsal and operator
+guide are checked in. Plaintext dumps and owner/runtime credentials must never be staged.
+
+## Live database upgrade
+
+User approval of stages A-C is recorded in `completion-schema-proposal-2026-11-06.md`.
+The actual Supabase snapshot was restored to a separate local target and upgraded before
+applying live migrations. The verified dump/manifest are preserved privately under
+`backups/verified-2026-11-06/`, checksum checked. Live project `oqvedplcgidrvbggimnr` now
+has **13 Drizzle migrations and 19 public application tables**. Existing 60 ingredients,
+20 recipes, 184 recipe-line rows and the empty business ledger were retained. No sample
+orders, purchases, batches or new staff accounts were inserted into the cafe database.
+Runtime grants were refreshed using administrative credentials outside the web service.
+
+Frontend publication and live read-only checks are recorded after the release is verified.
+
+## Remaining setup and limitations
+
+- The client must enter verified stock counts/values, purchase prices, menu serving sizes,
+  selling prices/fulfillment policy, recipe timings/hourly rates and tax settings. No
+  defaults were invented; orders refuse unconfigured tax/menu setup.
+- 225 workbook entries still need actual measurements/yields before import.
+- Staff acceptance against real physical stock is still required. Automated QA does not
+  replace the kitchen/owner validating their own data and daily reconciliation.
+- Corrections/cancellation restoration are conservative: later ingredient movements block
+  undo. After-preparation cancellations retain material consumption and require explicit
+  manual refund records. Sales show completed orders by creation date, excluding tax,
+  before refunds/overheads; they are not an accounting profit statement.
+- Off-site backup upload/decrypt/restore is not activated or demonstrated against a real
+  bucket/key. Scheduling remains disabled until client setup and recovery verification.
+- Public checkout/live gateway payments/webhooks and the AI assistant are not built.
+  No live money movement or external message was sent during development/verification.
+- Free hosting limits/cold starts remain. Unauthorized internal screens currently fail
+  closed with a generic error; capability tests confirm costs/data are not returned.

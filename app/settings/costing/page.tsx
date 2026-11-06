@@ -32,8 +32,8 @@ export default async function CostingSettingsPage() {
         <p className="prose-note">{t(" Ingredients come from the stock ledger on their own. These two are the part the ledger cannot see: the time a batch takes, priced. Set them once and every recipe in the catalogue recosts itself. ")}</p>
 
         <RatesForm
-          labour={rates?.labourPaisePerHour ? paiseToRupees(rates.labourPaisePerHour) : ''}
-          kitchen={rates?.kitchenPaisePerHour ? paiseToRupees(rates.kitchenPaisePerHour) : ''}
+          labour={rates?.labourPaisePerHour == null ? '' : paiseToRupees(rates.labourPaisePerHour)}
+          kitchen={rates?.kitchenPaisePerHour == null ? '' : paiseToRupees(rates.kitchenPaisePerHour)}
         />
 
         <h2 className="section-title">{t("How it reaches a recipe")}</h2>

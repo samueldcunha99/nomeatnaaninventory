@@ -7,14 +7,25 @@ import { istDayStart, istToday } from './time.ts';
 export type ProductionRecipeOption = {
   id: string; name: string; yieldUnitType: Recipe['yieldUnitType']; yieldQtyMilliBase: string;
   stockIngredientId: string | null; updatedAt: string;
+  stockOutputEnabled?: boolean;
   lines: Array<{ ingredientId: string | null; subRecipeId: string | null;
     quantityMilliBase: string; wastageMillipercent: string }>;
 };
 
 export function productionGraph(options: readonly ProductionRecipeOption[]): Map<string, Recipe> {
   return new Map(options.map(r => [r.id, { ...r, yieldQtyMilliBase: BigInt(r.yieldQtyMilliBase),
+    stockIngredientId: r.stockOutputEnabled === false ? null : r.stockIngredientId,
     lines: r.lines.map(l => ({ ...l, quantityMilliBase: BigInt(l.quantityMilliBase),
       wastageMillipercent: BigInt(l.wastageMillipercent) })) }]));
+}
+
+const Reversal = z.object({ requestId: z.string().uuid(), productionRunId: z.string().uuid(),
+  reason: z.string().trim().min(1, 'Enter why this batch needs correcting.').max(1000, 'Keep the correction reason within 1000 characters.') });
+
+export function parseProductionReversalForm(data: FormData) {
+  const parsed = Reversal.safeParse(Object.fromEntries(data));
+  if (!parsed.success) throw new RangeError(parsed.error.issues[0].message);
+  return parsed.data;
 }
 
 const Input = z.object({

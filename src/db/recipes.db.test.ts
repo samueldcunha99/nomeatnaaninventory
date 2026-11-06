@@ -26,6 +26,9 @@ import { tenants, users, ingredients, ingredientStock, recipes, recipeLines } fr
 import {
   loadRecipeGraph,
   loadCostLookup,
+  loadOverheadRates,
+  saveOverheadRates,
+  listRecipes,
   saveRecipe,
   saveMenuItem,
   getRecipeForEdit,
@@ -165,6 +168,17 @@ before(async () => {
 
 after(closeDb);
 
+test('a paid purchase mixed into unvalued opening stock remains uncosted by name', async t => {
+  if (!reachable) return t.skip('no database');
+  const ingredientId = await makeIngredient('Unvalued opening butter');
+  await recordMovements([{ tenantId, ingredientId, createdByUserId: owner.id, movementType: 'adjustment',
+    quantityMilliBase: 1000000, reason: 'count_correction' }]);
+  await recordMovements([{ tenantId, ingredientId, createdByUserId: owner.id, movementType: 'purchase',
+    quantityMilliBase: 1000000, unitCostMillipaisePerBase: 50000, totalCostPaise: 50000 }]);
+  const lookup = await loadCostLookup(owner);
+  assert.throws(() => lookup(ingredientId), e => e instanceof MissingCostError && e.message.includes('Unvalued opening butter'));
+});
+
 /* --------------------------------------------------------------------------
  * The lookup: what counts as having a cost basis
  * ------------------------------------------------------------------------ */
@@ -211,7 +225,7 @@ test('an adjustment-only ingredient throws, even though it HAS a stock row', asy
     .from(ingredientStock)
     .where(and(eq(ingredientStock.tenantId, tenantId), eq(ingredientStock.ingredientId, found)));
   assert.ok(cached, 'the adjustment should have created a stock row');
-  assert.equal(cached.weightedAvgCostMillipaisePerBase, 0, 'and its average should be zero');
+  assert.equal(cached.weightedAvgCostMillipaisePerBase, null, 'unvalued stock has an unknown rate');
 
   const lookup = await loadCostLookup(owner);
   assert.throws(
@@ -568,6 +582,7 @@ test('a menu item is created, then edited, and comes back as bigint', async (t) 
   const name = `Cinnamon roll ${crypto.randomUUID().slice(0, 8)}`;
   const itemId = await saveMenuItem(owner, {
     recipeId: rollId,
+    entryUnitType: 'count',
     name,
     portionQtyMilliBase: g(1),
     sellingPricePaise: 35000n,
@@ -584,6 +599,7 @@ test('a menu item is created, then edited, and comes back as bigint', async (t) 
   const sameId = await saveMenuItem(owner, {
     id: itemId,
     recipeId: rollId,
+    entryUnitType: 'count',
     name,
     portionQtyMilliBase: g(1),
     sellingPricePaise: 39000n,
@@ -602,6 +618,7 @@ test('a menu item priced at nothing is legal; the rest is not', async (t) => {
   // Zero is a staff meal or a sample, and it has to be recordable.
   const free = await saveMenuItem(owner, {
     recipeId: rollId,
+    entryUnitType: 'count',
     name: `Staff roll ${crypto.randomUUID().slice(0, 8)}`,
     portionQtyMilliBase: g(1),
     sellingPricePaise: 0n,
@@ -613,6 +630,7 @@ test('a menu item priced at nothing is legal; the rest is not', async (t) => {
     saveMenuItem(owner, {
       recipeId: rollId,
       name: `No portion ${crypto.randomUUID().slice(0, 8)}`,
+      entryUnitType: 'count',
       portionQtyMilliBase: 0n,
       sellingPricePaise: 100n,
       isActive: true,
@@ -624,6 +642,7 @@ test('a menu item priced at nothing is legal; the rest is not', async (t) => {
     saveMenuItem(owner, {
       recipeId: rollId,
       name: `Negative ${crypto.randomUUID().slice(0, 8)}`,
+      entryUnitType: 'count',
       portionQtyMilliBase: g(1),
       sellingPricePaise: -1n,
       isActive: true,
@@ -636,6 +655,7 @@ test('a menu item priced at nothing is legal; the rest is not', async (t) => {
     saveMenuItem(owner, {
       recipeId: crypto.randomUUID(),
       name: `Orphan ${crypto.randomUUID().slice(0, 8)}`,
+      entryUnitType: 'count',
       portionQtyMilliBase: g(1),
       sellingPricePaise: 100n,
       isActive: true,
@@ -647,6 +667,7 @@ test('a menu item priced at nothing is legal; the rest is not', async (t) => {
     saveMenuItem(kitchen, {
       recipeId: rollId,
       name: `Not allowed ${crypto.randomUUID().slice(0, 8)}`,
+      entryUnitType: 'count',
       portionQtyMilliBase: g(1),
       sellingPricePaise: 100n,
       isActive: true,
@@ -655,11 +676,69 @@ test('a menu item priced at nothing is legal; the rest is not', async (t) => {
   );
 });
 
+test('a recipe yield unit cannot reinterpret active or inactive saved menu portions', async (t) => {
+  if (!reachable) return t.skip('no database');
+  for (const active of [true, false]) {
+    const ingredientId = await makeIngredient('Portion guard flour');
+    const name = `Portion guard ${crypto.randomUUID()}`;
+    const recipeId = await saveRecipe(owner, { name, yieldUnitType: 'weight', yieldQtyMilliBase: g(1000), lines: [line({ ingredientId }, 500)] });
+    const portionName = `Serving ${crypto.randomUUID()}`;
+    await saveMenuItem(owner, { recipeId, entryUnitType: 'weight', name: portionName, portionQtyMilliBase: g(100), sellingPricePaise: 1000n, isActive: active });
+    await assert.rejects(
+      () => saveRecipe(owner, { id: recipeId, name, yieldUnitType: 'count', yieldQtyMilliBase: g(10), lines: [line({ ingredientId }, 500)] }),
+      (error: unknown) => error instanceof RangeError && error.message.includes(portionName) && /saved serving portions/.test(error.message),
+    );
+    assert.equal((await getRecipeForEdit(owner, recipeId))?.yieldUnitType, 'weight');
+  }
+});
+
+test('a stale serving form cannot save quantities in a recipe unit that changed', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const ingredientId = await makeIngredient('Stale portion flour');
+  const name = `Stale portion ${crypto.randomUUID()}`;
+  const recipeId = await saveRecipe(owner, { name, yieldUnitType: 'weight', yieldQtyMilliBase: g(1000), lines: [line({ ingredientId }, 500)] });
+  await saveRecipe(owner, { id: recipeId, name, yieldUnitType: 'count', yieldQtyMilliBase: g(10), lines: [line({ ingredientId }, 500)] });
+  await assert.rejects(
+    () => saveMenuItem(owner, { recipeId, entryUnitType: 'weight', name: 'Old grams form', portionQtyMilliBase: g(100), sellingPricePaise: 1000n, isActive: true }),
+    UnitMismatchError,
+  );
+  assert.deepEqual(await listMenuItems(owner, recipeId), []);
+});
+
+test('a simultaneous menu save and yield-unit change cannot both reinterpret a portion', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const ingredientId = await makeIngredient('Racing portion flour');
+  const name = `Racing portion ${crypto.randomUUID()}`;
+  const recipeId = await saveRecipe(owner, { name, yieldUnitType: 'weight', yieldQtyMilliBase: g(1000), lines: [line({ ingredientId }, 500)] });
+  const results = await Promise.allSettled([
+    saveMenuItem(owner, { recipeId, entryUnitType: 'weight', name: `Race serving ${crypto.randomUUID()}`, portionQtyMilliBase: g(100), sellingPricePaise: 1000n, isActive: true }),
+    saveRecipe(owner, { id: recipeId, name, yieldUnitType: 'count', yieldQtyMilliBase: g(10), lines: [line({ ingredientId }, 500)] }),
+  ]);
+  assert.equal(results.filter(r => r.status === 'fulfilled').length, 1);
+  const recipe = await getRecipeForEdit(owner, recipeId);
+  const items = await listMenuItems(owner, recipeId);
+  assert.ok((recipe?.yieldUnitType === 'weight' && items.length === 1) || (recipe?.yieldUnitType === 'count' && items.length === 0));
+});
+
+test('a menu edit cannot claim the unit of a different recipe', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const itemId = await saveMenuItem(owner, {
+    recipeId: rollId, entryUnitType: 'count', name: `Bound serving ${crypto.randomUUID()}`,
+    portionQtyMilliBase: g(1), sellingPricePaise: 1000n, isActive: true,
+  });
+  await assert.rejects(() => saveMenuItem(owner, {
+    id: itemId, recipeId: doughId, entryUnitType: 'weight', name: 'Wrong recipe form',
+    portionQtyMilliBase: g(100), sellingPricePaise: 1000n, isActive: true,
+  }), /belongs to a different recipe/);
+  assert.equal((await listMenuItems(owner, rollId)).find(item => item.id === itemId)?.portionQtyMilliBase, g(1));
+});
+
 test('a menu item name that is already taken is refused in words', async (t) => {
   if (!reachable) return t.skip('no database');
   const name = `Twice sold ${crypto.randomUUID().slice(0, 8)}`;
   const body = {
     recipeId: rollId,
+    entryUnitType: 'count' as const,
     portionQtyMilliBase: g(1),
     sellingPricePaise: 100n,
     isActive: true,
@@ -760,6 +839,47 @@ test('the joined graph retains recipes with only deleted lines and excludes othe
   assert.equal(graph.get(empty.id)!.updatedAt.getTime(), empty.updatedAt.getTime());
   assert.equal(graph.has(deleted.id), false, 'a deleted recipe must stay excluded');
   assert.equal(graph.has(otherRecipe.id), false, 'another tenant must stay excluded');
+});
+
+test('hourly-rate loading preserves missing rates, explicit zero and permission checks', async (t) => {
+  if (!reachable) return t.skip('no database');
+  try {
+    await saveOverheadRates(owner, { labourPaisePerHour: 8000n, kitchenPaisePerHour: null });
+    assert.deepEqual(await loadOverheadRates(owner), { labourPaisePerHour: 8000n, kitchenPaisePerHour: null });
+    await saveOverheadRates(owner, { labourPaisePerHour: null, kitchenPaisePerHour: 0n });
+    assert.deepEqual(await loadOverheadRates(owner), { labourPaisePerHour: null, kitchenPaisePerHour: 0n });
+    await saveOverheadRates(owner, { labourPaisePerHour: 0n, kitchenPaisePerHour: 0n });
+    assert.deepEqual(await loadOverheadRates(owner), { labourPaisePerHour: 0n, kitchenPaisePerHour: 0n });
+    await assert.rejects(loadOverheadRates(kitchen), AuthzError);
+  } finally {
+    await saveOverheadRates(owner, { labourPaisePerHour: null, kitchenPaisePerHour: null });
+  }
+  assert.equal(await loadOverheadRates(owner), null);
+});
+
+test('recipe list costs stay qualified until every component time and both rates are known', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const childName = `Untimed child ${crypto.randomUUID()}`;
+  const child = await saveRecipe(owner, { name: childName, yieldUnitType: 'weight', yieldQtyMilliBase: g(100),
+    lines: [line({ ingredientId: ing.maida }, 100)] });
+  const parent = await saveRecipe(owner, { name: `Timed parent ${crypto.randomUUID()}`, yieldUnitType: 'count',
+    yieldQtyMilliBase: g(10), batchMinutes: 20, lines: [line({ subRecipeId: child }, 100)] });
+  try {
+    await saveOverheadRates(owner, { labourPaisePerHour: 8000n, kitchenPaisePerHour: 3000n });
+    let cost = (await listRecipes(owner)).find(row => row.id === parent)!.cost;
+    assert.equal(cost.ok, true);
+    if (!cost.ok) throw new Error('Expected the known ingredient cost');
+    assert.equal(cost.overheadComplete, false, 'a list card must disclose its untimed child');
+    await saveRecipe(owner, { id: child, name: childName, yieldUnitType: 'weight', yieldQtyMilliBase: g(100),
+      batchMinutes: 10, lines: [line({ ingredientId: ing.maida }, 100)] });
+    cost = (await listRecipes(owner)).find(row => row.id === parent)!.cost;
+    assert.ok(cost.ok && cost.overheadComplete, 'timing the component completes the parent cost');
+    await saveOverheadRates(owner, { labourPaisePerHour: 8000n, kitchenPaisePerHour: null });
+    cost = (await listRecipes(owner)).find(row => row.id === parent)!.cost;
+    assert.ok(cost.ok && !cost.overheadComplete, 'an unknown hourly rate remains incomplete on the list');
+  } finally {
+    await saveOverheadRates(owner, { labourPaisePerHour: null, kitchenPaisePerHour: null });
+  }
 });
 
 /* --------------------------------------------------------------------------

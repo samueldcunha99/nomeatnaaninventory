@@ -21,6 +21,8 @@ import {
   type IngredientInput,
 } from './ingredients.ts';
 import { recordMovements } from './stock.ts';
+import { saveRecipe } from './recipes.ts';
+import { stockRecipe } from './production.ts';
 import { AuthzError, type Actor, type Role } from '../lib/auth.ts';
 import { isLowStock } from '../lib/units.ts';
 
@@ -161,7 +163,7 @@ test('an ingredient with no movements yet lists at zero rather than vanishing', 
   const found = (await listIngredients(owner, {})).find((r) => r.id === row.id);
   assert.ok(found, 'the left join must not drop it');
   assert.equal(found.qtyMilliBase, 0);
-  assert.equal(found.weightedAvgCostMillipaisePerBase, 0);
+  assert.equal(found.weightedAvgCostMillipaisePerBase, null, 'unknown is distinct from a free purchase');
 });
 
 test('counter may view but not mutate; kitchen may not even view', async (t) => {
@@ -260,4 +262,23 @@ test('everything else about an ingredient stays editable once it has stock', asy
   );
   assert.equal(after.purchaseUnitInBase, 25_000);
   assert.equal(after.purchaseUnit, 'sack');
+});
+
+test('an unused production shelf keeps the measurement type of its producing recipe', async (t) => {
+  if (!reachable) return t.skip('no database');
+  const flour = await createIngredient(owner, input());
+  const recipeName = `Shelf guard ${crypto.randomUUID()}`;
+  const recipeId = await saveRecipe(owner, {
+    name: recipeName, yieldUnitType: 'weight', yieldQtyMilliBase: 100_000n,
+    lines: [{ ingredientId: flour.id, entryUnitType: 'weight', quantityMilliBase: 100_000n }],
+  });
+  const shelfId = await stockRecipe(owner, recipeId);
+  await assert.rejects(
+    () => updateIngredient(owner, shelfId, input({ name: recipeName, unitType: 'count' })),
+    (error: unknown) => error instanceof RangeError && error.message.includes(recipeName) && /holds production/.test(error.message),
+  );
+  assert.equal((await getIngredient(owner, shelfId))?.unitType, 'weight');
+  // Pack descriptions remain editable; changing the physical measurement is the refusal.
+  await updateIngredient(owner, shelfId, input({ name: recipeName, unitType: 'weight', purchaseUnit: 'tub', purchaseUnitInBase: 500 }));
+  assert.equal((await getIngredient(owner, shelfId))?.purchaseUnit, 'tub');
 });

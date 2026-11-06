@@ -3,6 +3,33 @@
 Conventions for the cafe management system. Read `files/PROJECT-SPEC.md` first — this
 file records what we decided that the spec does not say, and why.
 
+**Current state, 6 November 2026 (supersedes older milestone/status notes below):**
+Netlify Free + Supabase is the selected deployment. The user approved stages A-C in
+`files/completion-schema-proposal-2026-11-06.md`. Migrations 0008-0012 add nullable
+unknown valuations, production reversal/stock-mode history and the order/payment
+snapshots. The append-only maintenance flag also requires a privileged role: `cafe_app`
+cannot bypass it. There are 369 passing isolated PostgreSQL tests, zero skipped.
+Internal POS, kitchen board, manual payment/refund records, customer tracking and sales
+reports now exist. Kitchen has board/status access; it never sees costs or private
+customer contacts. Current capability roles are authoritative in `src/lib/auth.ts`.
+Read the current completion report and operator guide for verification and setup gaps.
+
+Unknown cost is NULL throughout the stock/cache/read paths. A recorded free inflow is
+zero. Opening valuation uses append-only `opening_stock` references and is excluded from
+purchases/deliveries. Corrections retain original movements and inverse links; rebuilds
+exclude cancelled pairs and keep the raw highest sequence watermark. Reversals refuse
+later activity on any affected ingredient. Never broaden that policy without proving
+historical downstream values remain unchanged.
+
+Orders consume prepared shelf stock OR made-to-order ingredients once. Both recipe and
+menu writers enforce the choice under the graph lock; no parallel manual production for
+active made-to-order items. All order financial/usage snapshots and payment/status events
+are immutable. Tax is explicitly configured, never assumed. Sales reports read saved
+costs and state whether they exclude tax/refunds/overheads. Tracking is a tenant-scoped
+opaque capability with an explicit public DTO, no prices/contacts/notes and no caching.
+All new UI and domain messages need Hindi and Marathi translations. Off-site backup
+automation stays disabled until client configuration and a real recovery rehearsal.
+
 **Deployment override, approved by the user 10 October 2026:** Render native Node.js +
 Supabase PostgreSQL, without Docker. This supersedes the original VPS/container setup
 in the spec and historical log. See `deploy/README.md`. Client-owned accounts still

@@ -1,11 +1,13 @@
-import { and, asc, desc, eq, gte, lt, inArray, sql as raw } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lt, inArray, isNull, sql as raw } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { db } from './client.ts';
-import { ingredients, productionRuns, recipes, stockMovements, suppliers, users } from './schema.ts';
+import { ingredients, productionRuns, productionReversals, recipes, stockMovements, suppliers, users } from './schema.ts';
 import { assertPermission, type Actor } from '../lib/auth.ts';
 import { istDayStart, istDayAfter } from '../lib/time.ts';
 import { summarizePurchases, summarizeRuns, type RecordedRun, type RecordedMovement } from '../lib/daily-report.ts';
 
 type Connection = Parameters<Parameters<typeof db.transaction>[0]>[0] | typeof db;
+const reversalUser = alias(users, 'production_reversal_user');
 
 function checkDay(day: string) {
   if (!istDayStart(day)) throw new RangeError('Choose a valid calendar date.');
@@ -21,13 +23,19 @@ export async function listProductionRuns(actor: Actor, day: string, recipeId?: s
     actualYieldMilliBase: productionRuns.actualYieldMilliBase, yieldUnitType: productionRuns.yieldUnitType,
     batchCostPaise: productionRuns.batchCostPaise, note: productionRuns.note,
     userName: users.name, createdAt: productionRuns.createdAt,
+    reversal: { id: productionReversals.id, reason: productionReversals.reason,
+      userName: reversalUser.name, createdAt: productionReversals.createdAt },
   }).from(productionRuns)
     .innerJoin(recipes, and(eq(recipes.tenantId, productionRuns.tenantId), eq(recipes.id, productionRuns.recipeId)))
     .innerJoin(users, and(eq(users.tenantId, productionRuns.tenantId), eq(users.id, productionRuns.createdByUserId)))
+    .leftJoin(productionReversals, and(eq(productionReversals.tenantId, productionRuns.tenantId), eq(productionReversals.productionRunId, productionRuns.id)))
+    .leftJoin(reversalUser, and(eq(reversalUser.tenantId, productionReversals.tenantId), eq(reversalUser.id, productionReversals.createdByUserId)))
     .where(and(eq(productionRuns.tenantId, actor.tenantId), eq(productionRuns.producedOn, day),
       recipeId ? eq(productionRuns.recipeId, recipeId) : undefined))
     .orderBy(desc(productionRuns.createdAt), asc(productionRuns.id));
   return rows.map(r => ({ ...r, batchesMilli: BigInt(r.batchesMilli),
+    reversal: r.reversal.id === null ? null : { id: r.reversal.id, reason: r.reversal.reason!,
+      userName: r.reversal.userName, createdAt: r.reversal.createdAt! },
     expectedYieldMilliBase: BigInt(r.expectedYieldMilliBase), actualYieldMilliBase: BigInt(r.actualYieldMilliBase),
     batchCostPaise: r.batchCostPaise === null ? null : BigInt(r.batchCostPaise) }));
 }
@@ -50,6 +58,7 @@ export async function getDailyReport(actor: Actor, day: string, recipeId?: strin
         .leftJoin(suppliers, and(eq(suppliers.tenantId, stockMovements.tenantId), eq(suppliers.id, stockMovements.supplierId)))
         .leftJoin(users, and(eq(users.tenantId, stockMovements.tenantId), eq(users.id, stockMovements.createdByUserId)))
         .where(and(eq(stockMovements.tenantId, actor.tenantId), inArray(stockMovements.movementType, ['purchase', 'wastage']),
+          raw`${stockMovements.referenceType} is distinct from 'opening_stock'`,
           gte(stockMovements.createdAt, istDayStart(day)!), lt(stockMovements.createdAt, istDayAfter(day)!)))
         .orderBy(asc(stockMovements.seq)),
       tx.select({ ingredientId: ingredients.id, name: ingredients.name, unitType: ingredients.unitType,
@@ -60,7 +69,9 @@ export async function getDailyReport(actor: Actor, day: string, recipeId?: strin
         .innerJoin(productionRuns, and(eq(productionRuns.tenantId, stockMovements.tenantId),
           eq(productionRuns.id, stockMovements.referenceId)))
         .innerJoin(ingredients, and(eq(ingredients.tenantId, stockMovements.tenantId), eq(ingredients.id, stockMovements.ingredientId)))
+        .leftJoin(productionReversals, and(eq(productionReversals.tenantId, productionRuns.tenantId), eq(productionReversals.productionRunId, productionRuns.id)))
         .where(and(eq(stockMovements.tenantId, actor.tenantId), eq(productionRuns.tenantId, actor.tenantId),
+          isNull(productionReversals.id),
           eq(stockMovements.movementType, 'consumption'), eq(stockMovements.referenceType, 'production'),
           // A backdated run's materials belong to its working day, not its entry timestamp.
           eq(productionRuns.producedOn, day), recipeId ? eq(productionRuns.recipeId, recipeId) : undefined))

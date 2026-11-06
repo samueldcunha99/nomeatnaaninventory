@@ -27,6 +27,10 @@ export function hashPassword(password: string): Promise<string> {
   return hash(password);
 }
 
+export function verifyPassword(passwordHash: string, password: string): Promise<boolean> {
+  return verify(passwordHash, password).catch(() => false);
+}
+
 /**
  * Returns a raw session token to put in the cookie, or null. The token is never
  * stored - only its sha256 is.
@@ -42,18 +46,25 @@ export async function login(email: string, password: string) {
     .where(and(raw`lower(${users.email}) = lower(${email})`, isNull(users.deletedAt)));
 
   const user = candidates.length === 1 ? candidates[0] : undefined;
-  const ok = await verify(user?.passwordHash ?? DUMMY_HASH, password).catch(() => false);
+  const ok = await verifyPassword(user?.passwordHash ?? DUMMY_HASH, password);
   if (!user || !ok || !user.isActive) return null;
 
-  const token = generateSessionToken();
-  const expiresAt = sessionExpiry();
-  await db.insert(sessions).values({
-    tokenHash: hashToken(token),
-    tenantId: user.tenantId,
-    userId: user.id,
-    expiresAt,
+  return db.transaction(async tx => {
+    // Password changes lock this same row before replacing its hash and revoking all
+    // sessions. Recheck after verification so a stale old-password login cannot insert
+    // a fresh session after that revocation has already committed.
+    const [current] = await tx.select({ passwordHash: users.passwordHash, isActive: users.isActive,
+      deletedAt: users.deletedAt }).from(users)
+      .where(and(eq(users.tenantId, user.tenantId), eq(users.id, user.id))).for('update');
+    if (!current || !current.isActive || current.deletedAt || current.passwordHash !== user.passwordHash) return null;
+
+    const token = generateSessionToken();
+    const expiresAt = sessionExpiry();
+    await tx.insert(sessions).values({
+      tokenHash: hashToken(token), tenantId: user.tenantId, userId: user.id, expiresAt,
+    });
+    return { token, expiresAt };
   });
-  return { token, expiresAt };
 }
 
 /**

@@ -115,6 +115,7 @@ export default async function RecipesPage({
                               costPerPurchaseUnitPaise(r.cost.rateMillipaisePerBase, unit.inBase),
                             )}
                             <span className="block text-xs muted">{t(unit.label)}</span>
+                            {!r.cost.overheadComplete ? <span className="block text-xs muted">{t('Known costs only')}</span> : null}
                           </>
                         ) : (
                           /*

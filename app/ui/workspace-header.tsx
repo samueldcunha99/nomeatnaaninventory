@@ -7,6 +7,9 @@ import { LanguageSwitcher } from '../i18n/language-switcher.tsx';
 export async function WorkspaceHeader({ actor, title }: { actor: Actor & { name?: string }; title: string }) {
   const t = await getTranslations();
   const items: NavigationItem[] = [{ href: '/', label: 'Overview', group: 'Workspace', icon: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z' }];
+  if (hasPermission(actor.role, 'orders.view')) items.push({ href: '/orders', label: 'Orders', group: 'Workspace', icon: 'M4 3h16v18H4zM8 8h8M8 12h8M8 16h5' });
+  if (hasPermission(actor.role, 'kitchen.view')) items.push({ href: '/kitchen', label: 'Kitchen board', group: 'Workspace', icon: 'M3 7h18v14H3zM7 3v4M17 3v4M3 12h18' });
+  if (hasPermission(actor.role, 'sales.view')) items.push({ href: '/reports/sales', label: 'Sales reports', group: 'Workspace', icon: 'M4 21V3M4 21h17M8 17v-5M13 17V8M18 17V4' });
   if (hasPermission(actor.role, 'recipes.view')) items.push({ href: '/recipes', label: 'Recipes & costing', group: 'Workspace', icon: 'M4 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-2H4zM13 7a3 3 0 0 1 3-3h5v15h-4a4 4 0 0 0-4 2' });
   if (hasPermission(actor.role, 'production.record')) items.push(
     { href: '/production', label: 'Daily production', group: 'Workspace', icon: 'M4 6h16v15H4zM8 3v6M16 3v6M4 11h16M8 15h3M8 18h7' },
@@ -23,6 +26,8 @@ export async function WorkspaceHeader({ actor, title }: { actor: Actor & { name?
   );
   if (hasPermission(actor.role, 'recipes.manage')) items.push({ href: '/settings/costing', label: 'Hourly rates', group: 'Settings', icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 7v5l4 2' });
   if (hasPermission(actor.role, 'users.manage')) items.push({ href: '/settings/users', label: 'Staff', group: 'Settings', icon: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8' });
+  if (hasPermission(actor.role, 'sales.manage')) items.push({ href: '/settings/sales', label: 'Sales settings', group: 'Settings', icon: 'M12 3v18M5 7h10a4 4 0 0 1 0 8H5' });
+  items.push({ href: '/settings/password', label: 'My password', group: 'Settings', icon: 'M14 8a5 5 0 1 1-4-5M14 8l7 7M18 12l-3 3M21 15l-3 3' });
   return <>
     <a className="skip-link" href="#main-content">{t("Skip to content")}</a>
     <WorkspaceNav items={items} />

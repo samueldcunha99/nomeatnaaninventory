@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseProductionForm } from './production-form.ts';
+import { parseProductionForm, parseProductionReversalForm, productionGraph } from './production-form.ts';
 
 function input(patch: Record<string, string> = {}) {
   const fields = { requestId: crypto.randomUUID(), recipeId: crypto.randomUUID(), recipeUpdatedAt: '2020-01-01T00:00:00.000Z',
@@ -25,4 +25,23 @@ test('production form rejects future/invalid days, unit mismatches and overpreci
   assert.throws(() => parseProductionForm(input({ actualUnit: 'ml' }), now), /weight unit/);
   assert.throws(() => parseProductionForm(input({ actualYield: '-1' }), now), /negative/);
   assert.throws(() => parseProductionForm(input({ requestId: '' }), now));
+});
+
+test('production correction requires request identity, original run and a nonempty bounded reason', () => {
+  const data = new FormData();
+  const requestId = crypto.randomUUID(), productionRunId = crypto.randomUUID();
+  for (const [key, value] of Object.entries({ requestId, productionRunId, reason: '  Wrong measured output  ' })) data.set(key, value);
+  assert.deepEqual(parseProductionReversalForm(data), { requestId, productionRunId, reason: 'Wrong measured output' });
+  for (const reason of ['', ' ', 'x'.repeat(1001)]) {
+    data.set('reason', reason); assert.throws(() => parseProductionReversalForm(data), RangeError);
+  }
+  data.set('reason', 'Correction'); data.set('productionRunId', 'not-a-run');
+  assert.throws(() => parseProductionReversalForm(data), RangeError);
+});
+
+test('disabled future output cannot appear stocked in the client production planner', () => {
+  const [recipe] = [...productionGraph([{ id: 'dough', name: 'Dough', yieldUnitType: 'weight',
+    yieldQtyMilliBase: '100000', stockIngredientId: 'historical-shelf', stockOutputEnabled: false,
+    updatedAt: '2026-11-06T00:00:00.000Z', lines: [] }]).values()];
+  assert.equal(recipe.stockIngredientId, null);
 });

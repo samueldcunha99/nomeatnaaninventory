@@ -31,6 +31,7 @@ import {
   RecipeCycleError,
   explainRecipe,
   recipeRateMillipaisePerBase,
+  recipeOverheadStatus,
   assertAcyclicWithinDepth,
   assertLineUnitCompatible,
   type CostLookup,
@@ -44,7 +45,7 @@ import { translating } from './errors.ts';
 import type { UnitType } from '../lib/units.ts';
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-type LoadedRecipe = Recipe & { updatedAt: Date };
+type LoadedRecipe = Recipe & { updatedAt: Date; historicalStockIngredientId: string | null };
 
 /**
  * Every live recipe in the tenant, in the shape the costing functions take.
@@ -91,6 +92,7 @@ export async function loadRecipeGraphForTenant(
         yieldQtyMilliBase: recipes.yieldQtyMilliBase,
         batchMinutes: recipes.batchMinutes,
         stockIngredientId: recipes.stockIngredientId,
+        stockOutputEnabled: recipes.stockOutputEnabled,
         updatedAt: recipes.updatedAt,
       },
       line: {
@@ -131,7 +133,8 @@ export async function loadRecipeGraphForTenant(
         yieldUnitType: row.yieldUnitType,
         yieldQtyMilliBase: BigInt(row.yieldQtyMilliBase),
         batchMinutes: row.batchMinutes,
-        stockIngredientId: row.stockIngredientId,
+        stockIngredientId: row.stockOutputEnabled ? row.stockIngredientId : null,
+        historicalStockIngredientId: row.stockIngredientId,
         updatedAt: row.updatedAt,
         lines: [],
       };
@@ -217,6 +220,7 @@ export async function loadCostLookupForTenant(
       id: ingredients.id,
       name: ingredients.name,
       rate: ingredientStock.weightedAvgCostMillipaisePerBase,
+      cacheId: ingredientStock.ingredientId,
       hasBasis: raw<boolean>`exists (
         select 1 from stock_movements sm
         where sm.tenant_id = ${ingredients.tenantId}
@@ -248,7 +252,8 @@ export async function loadCostLookupForTenant(
     // strings; String() then BigInt() is correct whether the driver hands back a number
     // or a numeric string.
     if (!(row.hasBasis === true || String(row.hasBasis) === 'true')) continue;
-    if (row.rate === null) throw new StaleCostCacheError(row.name);
+    if (row.cacheId === null) throw new StaleCostCacheError(row.name);
+    if (row.rate === null) continue; // Positive opening stock had no complete valuation.
     costs.set(row.id, BigInt(String(row.rate)));
   }
 
@@ -267,8 +272,8 @@ export async function loadCostLookupForTenant(
  * Null means "not configured" and the screens say so; it never means zero, because a
  * total that quietly claims labour is free is the same class of lie as costing an
  * ingredient nobody has bought at nothing. One rate set and the other not is a real
- * answer - a cafe may know its wage bill and not its gas - so that half counts as zero
- * and overhead still applies.
+ * answer - a cafe may know its wage bill and not its gas. Keep the missing half null;
+ * the costing engine and screen must identify the incomplete setup, not invent a zero.
  */
 export async function loadOverheadRates(actor: Actor): Promise<OverheadRates | null> {
   assertPermission(actor.role, 'recipes.view');
@@ -282,8 +287,8 @@ export async function loadOverheadRates(actor: Actor): Promise<OverheadRates | n
 
   if (!row || (row.labour === null && row.kitchen === null)) return null;
   return {
-    labourPaisePerHour: BigInt(row.labour ?? 0),
-    kitchenPaisePerHour: BigInt(row.kitchen ?? 0),
+    labourPaisePerHour: row.labour === null ? null : BigInt(row.labour),
+    kitchenPaisePerHour: row.kitchen === null ? null : BigInt(row.kitchen),
   };
 }
 
@@ -432,7 +437,7 @@ export async function saveRecipe(actor: Actor, input: RecipeInput): Promise<stri
       // shelf was counted in it. Changing the unit would read 4.2 kg of dough as 4.2
       // litres without a word - the same reinterpretation updateIngredient refuses one
       // level down. So it is refused outright, before the parent check below.
-      if (before?.stockIngredientId && before.yieldUnitType !== input.yieldUnitType) {
+      if (before?.historicalStockIngredientId && before.yieldUnitType !== input.yieldUnitType) {
         throw new RangeError(
           `"${before.name}" is held in stock, counted by ${before.yieldUnitType}. Changing what ` +
             `it yields to ${input.yieldUnitType} would reinterpret everything already on the ` +
@@ -440,6 +445,17 @@ export async function saveRecipe(actor: Actor, input: RecipeInput): Promise<stri
         );
       }
       if (before && before.yieldUnitType !== input.yieldUnitType) {
+        // Inactive portions can be reactivated later, so their meaning must be preserved
+        // as well. A portion stores no unit of its own: its recipe is the definition.
+        const portions = await tx.select({ name: menuItems.name }).from(menuItems).where(and(
+          eq(menuItems.tenantId, actor.tenantId), eq(menuItems.recipeId, recipeId), isNull(menuItems.deletedAt),
+        ));
+        if (portions.length > 0) {
+          throw new RangeError(
+            `"${before.name}" has saved serving portions: ${portions.map(p => `"${p.name}"`).join(', ')}. ` +
+              `Changing its yield unit would change what those portions mean. Create a new recipe for the new unit.`,
+          );
+        }
         const parents = [...graph.values()].filter(
           (r) => r.id !== recipeId && r.lines.some((l) => l.subRecipeId === recipeId),
         );
@@ -588,10 +604,13 @@ export type MenuItemInput = {
   /** Present on an edit. Absent creates. */
   id?: string;
   recipeId: string;
+  /** Unit shown beside the portion input; validated against the locked recipe now. */
+  entryUnitType: UnitType;
   name: string;
   portionQtyMilliBase: bigint;
   sellingPricePaise: bigint;
   isActive: boolean;
+  fulfillmentMode?: 'stocked' | 'made_to_order' | null;
 };
 
 /**
@@ -609,28 +628,45 @@ export async function saveMenuItem(actor: Actor, input: MenuItemInput): Promise<
   }
   // Zero is legal - staff meals, samples. Negative is not.
   if (input.sellingPricePaise < 0n) throw new RangeError('A selling price cannot be negative.');
-
-  const [recipe] = await db
-    .select({ id: recipes.id })
-    .from(recipes)
-    .where(
-      and(
-        eq(recipes.tenantId, actor.tenantId),
-        eq(recipes.id, input.recipeId),
-        isNull(recipes.deletedAt),
-      ),
-    );
-  if (!recipe) throw new RangeError(`recipe ${input.recipeId} does not exist in this tenant`);
+  if (!Number.isSafeInteger(Number(input.sellingPricePaise)) || !Number.isSafeInteger(Number(input.portionQtyMilliBase))) {
+    throw new RangeError('The serving quantity or price is too large to record exactly.');
+  }
+  if (input.fulfillmentMode != null && !['stocked', 'made_to_order'].includes(input.fulfillmentMode)) {
+    throw new RangeError('Choose a valid order stock policy.');
+  }
 
   const itemId = input.id ?? crypto.randomUUID();
 
   const run = () =>
     db.transaction(async (tx: Tx) => {
+      // Serialize with yield-unit changes. Checking the recipe outside this lock lets
+      // an old grams form save immediately after the recipe changed to pieces.
+      await tx.execute(raw`select pg_advisory_xact_lock(hashtextextended(${`recipes:${actor.tenantId}`}, 0))`);
+      const [recipe] = await tx.select({ name: recipes.name, yieldUnitType: recipes.yieldUnitType,
+        stockIngredientId: recipes.stockIngredientId, stockOutputEnabled: recipes.stockOutputEnabled }).from(recipes).where(and(
+        eq(recipes.tenantId, actor.tenantId), eq(recipes.id, input.recipeId), isNull(recipes.deletedAt),
+      ));
+      if (!recipe) throw new RangeError(`recipe ${input.recipeId} does not exist in this tenant`);
+      assertLineUnitCompatible(input.entryUnitType, recipe.yieldUnitType, recipe.name);
+      if (input.fulfillmentMode === 'stocked' && (!recipe.stockIngredientId || !recipe.stockOutputEnabled)) {
+        throw new RangeError('Hold this recipe in stock before selling prepared items from its shelf.');
+      }
+      if (input.fulfillmentMode === 'made_to_order') {
+        if (recipe.stockOutputEnabled) throw new RangeError('This recipe is held in stock. Sell its prepared stock instead of deducting raw materials again.');
+        const [previousManual] = await tx.execute<{ id: string }>(raw`select pr.id from production_runs pr
+          where pr.tenant_id = ${actor.tenantId} and pr.recipe_id = ${input.recipeId} and pr.actual_yield_milli_base > 0
+          and not exists (select 1 from production_reversals r where r.tenant_id = pr.tenant_id and r.production_run_id = pr.id)
+          and not exists (select 1 from stock_movements m where m.tenant_id = pr.tenant_id
+            and m.reference_type = 'production' and m.reference_id = pr.id and m.movement_type = 'production') limit 1`);
+        if (previousManual) throw new RangeError('This recipe has manually recorded output without shelf stock. Use a new recipe for made-to-order sales to avoid counting its materials twice.');
+      }
+
       const values = {
         name: input.name,
         portionQtyMilliBase: Number(input.portionQtyMilliBase),
         sellingPricePaise: Number(input.sellingPricePaise),
         isActive: input.isActive,
+        fulfillmentMode: input.fulfillmentMode,
         updatedAt: new Date(),
       };
 
@@ -643,6 +679,9 @@ export async function saveMenuItem(actor: Actor, input: MenuItemInput): Promise<
           .from(menuItems)
           .where(and(eq(menuItems.tenantId, actor.tenantId), eq(menuItems.id, itemId)));
         if (!before || before.deletedAt) throw new RangeError('That menu item no longer exists.');
+        if (before.recipeId !== input.recipeId) {
+          throw new RangeError('That menu item belongs to a different recipe. Refresh and try again.');
+        }
         beforeJson = auditable(before);
 
         await tx
@@ -664,11 +703,13 @@ export async function saveMenuItem(actor: Actor, input: MenuItemInput): Promise<
         beforeJson,
         afterJson: {
           recipeId: input.recipeId,
+          entryUnitType: input.entryUnitType,
           name: input.name,
           // bigint is not JSON, and jsonb is. Both are far inside Number's exact range.
           portionQtyMilliBase: Number(input.portionQtyMilliBase),
           sellingPricePaise: Number(input.sellingPricePaise),
           isActive: input.isActive,
+          fulfillmentMode: input.fulfillmentMode ?? null,
         },
       });
     });
@@ -696,7 +737,7 @@ function auditable(row: typeof menuItems.$inferSelect) {
  * Everywhere a single cost is the point, the throw is still the right shape.
  */
 export type RecipeCost =
-  | { ok: true; rateMillipaisePerBase: bigint }
+  | { ok: true; rateMillipaisePerBase: bigint; overheadComplete: boolean }
   /**
    * `missing` names uncosted ingredients. `problem` carries a STRUCTURAL refusal -
    * a line pointing at a deleted sub-recipe, or a cycle that reached the database
@@ -758,6 +799,7 @@ export async function listRecipes(
       cost = {
         ok: true,
         rateMillipaisePerBase: recipeRateMillipaisePerBase(recipe.id, graph, lookup, cache, rates),
+        overheadComplete: recipeOverheadStatus(recipe.id, graph, rates).complete,
       };
     } catch (e) {
       if (e instanceof MissingCostError) {
@@ -913,6 +955,7 @@ export type MenuItemRow = {
   name: string;
   portionQtyMilliBase: bigint;
   sellingPricePaise: bigint;
+  fulfillmentMode: 'stocked' | 'made_to_order' | null;
   isActive: boolean;
 };
 
@@ -926,6 +969,7 @@ export async function listMenuItems(actor: Actor, recipeId: string): Promise<Men
       name: menuItems.name,
       portionQtyMilliBase: menuItems.portionQtyMilliBase,
       sellingPricePaise: menuItems.sellingPricePaise,
+      fulfillmentMode: menuItems.fulfillmentMode,
       isActive: menuItems.isActive,
     })
     .from(menuItems)
@@ -944,6 +988,7 @@ export async function listMenuItems(actor: Actor, recipeId: string): Promise<Men
     ...m,
     portionQtyMilliBase: BigInt(String(m.portionQtyMilliBase)),
     sellingPricePaise: BigInt(String(m.sellingPricePaise)),
+    fulfillmentMode: m.fulfillmentMode as MenuItemRow['fulfillmentMode'],
   }));
 }
 

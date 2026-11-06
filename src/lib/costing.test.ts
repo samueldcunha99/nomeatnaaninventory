@@ -540,3 +540,35 @@ test('P27 the total is what a portion is measured against', () => {
   assert.equal(ingredientsOnly, 3_582n);
   assert.equal(perRoll - ingredientsOnly, 1_401n);
 });
+
+test('P28 an absent hourly rate stays unknown instead of being charged as zero', () => {
+  const partial: OverheadRates = { labourPaisePerHour: 8000n, kitchenPaisePerHour: null };
+  const overhead = batchOverheadPaise(120, partial);
+  assert.equal(overhead.applied, false);
+  const ex = explainRecipe('dough', graph(TIMED_DOUGH), lookup, partial);
+  assert.equal(ex.overheadComplete, false);
+  assert.equal(ex.rateMillipaisePerBase, rate('dough', graph(DOUGH)),
+    'an incomplete pair of hourly rates must leave the displayed amount ingredients-only');
+});
+
+test('P29 untimed descendants remain named on a timed parent, including shared descendants', () => {
+  const filling = { ...r('filling', 100, 'weight', [['butter', 100]]), batchMinutes: null };
+  const middle = { ...r('middle', 100, 'weight', [['filling', 50]]), batchMinutes: 10 };
+  const parent = { ...r('parent', 10, 'count', [['middle', 25], ['filling', 25]]), batchMinutes: 20 };
+  const ex = explainRecipe('parent', graph(filling, middle, parent), lookup, RATES);
+  assert.equal(ex.overhead.applied, true, 'the parent still carries its own known time');
+  assert.equal(ex.overheadComplete, false, 'known parent time cannot hide an untimed component');
+  assert.deepEqual(ex.untimedRecipes, [{ recipeId: 'filling', name: 'filling' }]);
+  assert.equal(ex.lines.find(l => l.sourceId === 'middle')!.children!.overheadComplete, false);
+});
+
+test('P30 explicit zero hourly rates are complete when every component has been timed', () => {
+  const child = { ...r('child', 100, 'weight', [['butter', 100]]), batchMinutes: 10 };
+  const parent = { ...r('parent', 10, 'count', [['child', 100]]), batchMinutes: 20 };
+  const ex = explainRecipe('parent', graph(child, parent), lookup,
+    { labourPaisePerHour: 0n, kitchenPaisePerHour: 0n });
+  assert.equal(ex.overhead.applied, true);
+  assert.equal(ex.overheadComplete, true);
+  assert.deepEqual(ex.untimedRecipes, []);
+  assert.equal(ex.totalBatchPaise, ex.batchPaise);
+});

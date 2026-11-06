@@ -81,15 +81,15 @@ export type Recipe = {
  */
 export type OverheadRates = {
   /** Wages, per hour of batch time. */
-  labourPaisePerHour: bigint;
+  labourPaisePerHour: bigint | null;
   /** Gas, power, rent and the rest of the kitchen, per hour of batch time. */
-  kitchenPaisePerHour: bigint;
+  kitchenPaisePerHour: bigint | null;
 };
 
 export type BatchOverhead = {
   labourPaise: bigint;
   kitchenPaise: bigint;
-  /** False when the batch has no time set, or the tenant has set no rates. */
+  /** False when the batch has no time set, or either hourly rate is unknown. */
   applied: boolean;
 };
 
@@ -105,13 +105,45 @@ export function batchOverheadPaise(
   batchMinutes: number | null | undefined,
   rates: OverheadRates | null,
 ): BatchOverhead {
-  if (batchMinutes == null || rates == null) return NO_OVERHEAD;
+  if (batchMinutes == null || rates == null ||
+      rates.labourPaisePerHour == null || rates.kitchenPaisePerHour == null) return NO_OVERHEAD;
   if (batchMinutes < 0) throw new RangeError('a batch cannot take negative time');
   const minutes = BigInt(batchMinutes);
   return {
     labourPaise: divRoundHalfUp(minutes * rates.labourPaisePerHour, 60n),
     kitchenPaise: divRoundHalfUp(minutes * rates.kitchenPaisePerHour, 60n),
     applied: true,
+  };
+}
+
+export type RecipeOverheadStatus = {
+  complete: boolean;
+  untimedRecipes: { recipeId: string; name: string }[];
+};
+
+/** Metadata only, shared by list cards and breakdowns; all cost arithmetic stays in rateOf. */
+export function recipeOverheadStatus(
+  recipeId: string,
+  recipes: ReadonlyMap<string, Recipe>,
+  rates: OverheadRates | null,
+): RecipeOverheadStatus {
+  const seen = new Set<string>();
+  const untimedRecipes: RecipeOverheadStatus['untimedRecipes'] = [];
+  const visit = (id: string, stack: readonly string[]) => {
+    const recipe = recipes.get(id);
+    if (!recipe) throw new MissingSubRecipeError(id, stack);
+    if (stack.includes(recipe.name)) throw new RecipeCycleError([...stack, recipe.name]);
+    if (seen.has(id)) return;
+    seen.add(id);
+    if (recipe.batchMinutes == null) untimedRecipes.push({ recipeId: id, name: recipe.name });
+    for (const line of recipe.lines) {
+      if (line.subRecipeId) visit(line.subRecipeId, [...stack, recipe.name]);
+    }
+  };
+  visit(recipeId, []);
+  return {
+    complete: rates != null && rates.labourPaisePerHour != null && rates.kitchenPaisePerHour != null && untimedRecipes.length === 0,
+    untimedRecipes,
   };
 }
 
@@ -141,8 +173,8 @@ export class MissingCostError extends Error {
       .join(', ');
     super(
       `${missing.length} ${missing.length === 1 ? 'ingredient has' : 'ingredients have'} ` +
-        `no purchase history, so nothing here can be costed: ${names}. ` +
-        `Record a delivery for each, then cost this again.`,
+        `no complete recorded cost, so nothing here can be costed: ${names}. ` +
+        `Review purchase prices and opening stock values, then cost this again.`,
     );
     this.name = 'MissingCostError';
     this.missing = missing;
@@ -359,15 +391,17 @@ export type RecipeExplanation = {
    * See AGENTS.md § Nested rounding.
    */
   /**
-   * INGREDIENTS ONLY. What the time in the kitchen costs is below it, and
-   * `totalBatchPaise` is the two together - which is what a menu item is measured
-   * against, because a roll that took ninety minutes of somebody's day did not cost
-   * only its flour.
+   * Input lines, including each sub-recipe's known time costs. This recipe's own time
+   * in the kitchen is below it, and `totalBatchPaise` is the two together.
    */
   batchPaise: bigint;
   /** Minutes one batch takes, or null when nobody has timed it. Null is not zero. */
   batchMinutes: number | null;
   overhead: BatchOverhead;
+  /** True only when both hourly rates and every contributing recipe's time are known. */
+  overheadComplete: boolean;
+  /** Named once, even when the same untimed component is used through several paths. */
+  untimedRecipes: { recipeId: string; name: string }[];
   /** Ingredients plus labour plus kitchen. What making one batch actually costs. */
   totalBatchPaise: bigint;
   rateMillipaisePerBase: bigint;
@@ -408,6 +442,7 @@ function explain(recipeId: string, ctx: Ctx, stack: readonly string[]): RecipeEx
   }));
 
   const batchPaise = lines.reduce((sum, l) => sum + l.contributionPaise, 0n);
+  const status = recipeOverheadStatus(recipeId, ctx.recipes, ctx.rates);
 
   return {
     recipeId,
@@ -418,6 +453,8 @@ function explain(recipeId: string, ctx: Ctx, stack: readonly string[]): RecipeEx
     batchPaise,
     batchMinutes: recipe.batchMinutes ?? null,
     overhead,
+    overheadComplete: status.complete,
+    untimedRecipes: status.untimedRecipes,
     totalBatchPaise: batchPaise + overhead.labourPaise + overhead.kitchenPaise,
     rateMillipaisePerBase: rate,
   };

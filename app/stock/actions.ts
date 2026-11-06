@@ -3,12 +3,13 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requirePermission } from '../../src/auth/server.ts';
-import { recordReceipt, recordCorrection } from '../../src/db/movements.ts';
+import { recordReceipt, recordOpeningStock, recordCorrection } from '../../src/db/movements.ts';
+import type { Actor } from '../../src/lib/auth.ts';
 import { getIngredient } from '../../src/db/ingredients.ts';
 import { purchaseUnitsToMilliBase, rupeesToPaise } from '../../src/lib/units.ts';
 import { collectIndexedRows, isBlankRow, staleUnitMessage } from '../../src/lib/form.ts';
 
-export type FormState = { error: string | null; ok: string | null };
+export type FormState = { error: string | null; ok: string | null; nextRequestId?: string };
 
 /** Conversion and domain failures are the operator's to fix; anything else is a bug. */
 function friendly(err: unknown): string {
@@ -29,6 +30,7 @@ const Line = z.object({
 });
 
 const Receipt = z.object({
+  requestId: z.uuid('Reload the receipt page before recording this delivery.'),
   supplierId: z.string().uuid().nullable(),
   note: z.string().trim().max(500).nullable(),
   lines: z.array(Line).min(1, 'Add at least one line.'),
@@ -36,6 +38,15 @@ const Receipt = z.object({
 
 export async function recordReceiptAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const actor = await requirePermission('stock.record');
+  return saveInflow(actor, formData, false);
+}
+
+export async function recordOpeningStockAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const actor = await requirePermission('ingredients.manage');
+  return saveInflow(actor, formData, true);
+}
+
+async function saveInflow(actor: Actor, formData: FormData, opening: boolean): Promise<FormState> {
 
   const supplierId = String(formData.get('supplierId') ?? '') || null;
   const note = String(formData.get('note') ?? '').trim() || null;
@@ -43,7 +54,7 @@ export async function recordReceiptAction(_prev: FormState, formData: FormData):
   // A row the operator left entirely blank is not an error, it is an unused row.
   const lines = collectIndexedRows(formData.entries()).filter((r) => !isBlankRow(r));
 
-  const parsed = Receipt.safeParse({ supplierId, note, lines });
+  const parsed = Receipt.safeParse({ requestId: formData.get('requestId'), supplierId, note, lines });
   if (!parsed.success) return { error: parsed.error.issues[0].message, ok: null };
 
   try {
@@ -63,13 +74,19 @@ export async function recordReceiptAction(_prev: FormState, formData: FormData):
       });
     }
 
-    const result = await recordReceipt(actor, {
+    const result = await (opening ? recordOpeningStock : recordReceipt)(actor, {
+      requestId: parsed.data.requestId,
       supplierId: parsed.data.supplierId,
       note: parsed.data.note,
       lines: converted,
     });
     revalidatePath('/ingredients');
-    return { error: null, ok: `Receipt recorded: ${result.lineCount} line(s).` };
+    return {
+      error: null,
+      ok: result.replayed ? 'This receipt was already recorded. Stock has not been added again.' : opening
+        ? `Opening stock recorded: ${result.lineCount} line(s).` : `Receipt recorded: ${result.lineCount} line(s).`,
+      nextRequestId: crypto.randomUUID(),
+    };
   } catch (err) {
     // Nothing was written - recordMovements runs the whole receipt in one transaction.
     return { error: friendly(err), ok: null };
