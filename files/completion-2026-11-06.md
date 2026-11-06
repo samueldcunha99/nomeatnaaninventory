@@ -17,7 +17,7 @@ Encrypted off-site scheduling is prepared and remains disabled.
 
 | Verification | Result |
 |---|---|
-| Full native PostgreSQL suite | **369 passed, 0 failed, 0 skipped** |
+| Full native PostgreSQL suite | **370 passed, 0 failed, 0 skipped** |
 | Typecheck and production build | Passed |
 | Compiled app against isolated PostgreSQL | **17 workflow groups passed**, including 33 language/page combinations |
 | Fresh migration + restricted runtime + populated backup/restore | Passed; all 13 migrations and table counts matched |
@@ -54,6 +54,25 @@ orders, purchases, batches or new staff accounts were inserted into the cafe dat
 Runtime grants were refreshed using administrative credentials outside the web service.
 
 Frontend publication and live read-only checks are recorded after the release is verified.
+
+## Release compatibility and dependency fixes
+
+The first CI candidate caught PostgreSQL 16's stricter uncommitted-enum rule in 0008's
+backfill. Comparing `movement_type::text` fixes fresh installs without changing the
+backfill result or re-running the already-applied live migration. A new test commits an
+enum type first, then adds the valued-inflow label inside the backfill transaction; it
+exposes the stricter rule even on PostgreSQL 17. Removing the cast was watched failing
+with `unsafe use of new value`; restoring it passes. No historical 0000-0007 file changed.
+
+Updated Next.js to 16.4.5, Drizzle ORM to 0.45.4, Zod to 4.6.7 and Drizzle Kit to
+0.31.11. Refreshed source-map-js and pinned the obsolete development loader's esbuild
+dependency to the patched compatible API with a scoped override. A clean `npm ci`,
+`npm audit` (**zero reported vulnerabilities**), Drizzle schema generation (no changes),
+370 tests and populated runtime/migration/restore rehearsal pass. Relevant published
+advisories: [Next.js](https://github.com/vercel/next.js/security/advisories/GHSA-2464-fhr4-w9xw)
+and [Drizzle](https://github.com/drizzle-team/drizzle-orm/security/advisories/GHSA-gpj5-g38j-94v9).
+The public health response includes the whitelisted build commit for exact Netlify
+release verification; it exposes no runtime secrets or business data.
 
 ## Remaining setup and limitations
 

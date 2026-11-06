@@ -2444,3 +2444,20 @@ The operator guide and current completion report explain setup needs and precise
 semantics. Real cafe quantities/prices/timing/tax/menu setup, 225 pending workbook
 measurements, staff acceptance, off-site backup activation, public checkout/gateway and
 AI integration remain; no values, charges or external messages were invented.
+
+## 2026-11-06 - Fresh-install compatibility and dependency patches
+
+Candidate 8c178f0 passed local PostgreSQL 17 rehearsal but CI on PostgreSQL 16 caught
+an unsafe enum reference in 0008's new backfill. Changed only that backfill predicate to
+`movement_type::text`, the same rule as 0007. It has identical results on already-upgraded
+databases and requires no second live write. A new committed-enum transactional fixture
+reproduces the stricter rule on PostgreSQL 17 too. Removing the text cast produced
+the expected unsafe-enum failure; restored source passes. No 0000-0007 file changed.
+
+CI's dependency report also prompted a full audit. Updated Next.js 16.4.5, Drizzle ORM
+0.45.4, Zod 4.6.7 and Drizzle Kit 0.31.11, plus the patched source-map dependency and a
+scoped patched esbuild override for the obsolete development loader. Verified clean
+installation and zero npm audit vulnerabilities. Schema generation still reports no
+changes. The final full suite has 370 passed, zero failed/skipped; typecheck, production
+build and another populated migration/runtime/restore rehearsal pass. Health now
+includes a whitelisted public build revision for precise Netlify deployment checks.

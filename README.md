@@ -8,7 +8,7 @@ order management, and a customer-facing tracking page. Five-month build.
 from the earlier audit are fixed. Opening-stock valuation, append-only batch correction,
 safe stock-mode changes, password administration, internal orders/POS, manual payments,
 printable bills, kitchen status, private customer tracking and sales reports are built.
-All **369 tests pass against isolated native PostgreSQL, zero skipped**; production
+All **370 tests pass against isolated native PostgreSQL, zero skipped**; production
 build/typecheck, 17 compiled-app workflow groups and populated backup/restore passed.
 The user approved schema stages A-C; the live Supabase upgrade through migration 0012
 has been applied after a verified backup and restored-copy rehearsal. Frontend release
@@ -43,7 +43,7 @@ repository. Nothing important lives in a chat log.
 | Orders and sales | Staff POS, explicit fulfillment/tax setup, saved prices/material costs, manual payment/refund records, printable bills, kitchen board, private tracking and date-range sales/CSV |
 | Corrections and access | Conservative append-only production reversal, shelf disable/re-enable, opening valuation, own password change and owner/manager staff reset |
 | Trunk | `main`; current implementation is prepared on `codex/inventory-hardening` for publication. |
-| Tests | 6 November: 369 passed, 0 failed/skipped; 17 compiled-app workflow groups passed; browser language/draft/mobile checks passed. Earlier nine audit defects now have regressions. |
+| Tests | 6 November: 370 passed, 0 failed/skipped; 17 compiled-app workflow groups passed; browser language/draft/mobile checks passed. Earlier nine audit defects now have regressions. |
 | Current database verification | 13 Drizzle migrations; 19 public application tables. Real client backup restored and upgrade rehearsed before live migrations; existing business records preserved. |
 
 ## Verified against a live database vs merely built

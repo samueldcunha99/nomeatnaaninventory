@@ -8,7 +8,7 @@ export async function GET() {
   try {
     // Exercise the runtime role and a migrated table, not just an open TCP socket.
     await sql`select 1 from public.tenants limit 1`;
-    return Response.json({ status: 'ok' }, { headers: { 'Cache-Control': 'no-store' } });
+    return Response.json({ status: 'ok', revision: process.env.APP_REVISION }, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return Response.json({ status: 'unavailable' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
   }

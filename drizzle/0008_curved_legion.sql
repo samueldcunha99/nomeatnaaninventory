@@ -13,7 +13,9 @@ WITH positions AS (
 ), known_basis AS (
   SELECT tenant_id, ingredient_id
   FROM positions
-  WHERE movement_type IN ('purchase', 'production') AND quantity_before <= 0
+  -- 0007 adds production in this same migrator transaction on a fresh install.
+  -- Compare as text so PostgreSQL 16 never resolves an uncommitted enum label.
+  WHERE movement_type::text IN ('purchase', 'production') AND quantity_before <= 0
   GROUP BY tenant_id, ingredient_id
 )
 UPDATE ingredient_stock AS stock

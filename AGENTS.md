@@ -8,7 +8,7 @@ Netlify Free + Supabase is the selected deployment. The user approved stages A-C
 `files/completion-schema-proposal-2026-11-06.md`. Migrations 0008-0012 add nullable
 unknown valuations, production reversal/stock-mode history and the order/payment
 snapshots. The append-only maintenance flag also requires a privileged role: `cafe_app`
-cannot bypass it. There are 369 passing isolated PostgreSQL tests, zero skipped.
+cannot bypass it. There are 370 passing isolated PostgreSQL tests, zero skipped.
 Internal POS, kitchen board, manual payment/refund records, customer tracking and sales
 reports now exist. Kitchen has board/status access; it never sees costs or private
 customer contacts. Current capability roles are authoritative in `src/lib/auth.ts`.

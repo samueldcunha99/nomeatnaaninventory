@@ -8,7 +8,7 @@ integer costing and the stock ledger stay in place. No Supabase browser client i
 **Upgraded 6 November 2026:** approved stages A-C applied through 0012: 19 public app
 tables and 13 Drizzle migrations. A fresh actual Supabase snapshot was restored locally
 and the upgrade rehearsed on that copy before live changes. The nine earlier audit
-defects are fixed; 369 isolated PostgreSQL tests, the production build, 17 compiled
+defects are fixed; 370 isolated PostgreSQL tests, the production build, 17 compiled
 workflow groups and a populated runtime/backup/restore rehearsal pass. See the
 [current completion report](../files/completion-2026-11-06.md).
 Encrypted nightly backup automation is prepared but disabled pending the client's

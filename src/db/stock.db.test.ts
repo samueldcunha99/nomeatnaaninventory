@@ -38,6 +38,33 @@ before(async () => {
   userId = u.id;
 });
 
+test('unknown-value backfill accepts a valued-inflow enum added in its transaction', async t => {
+  if (!reachable) return t.skip('no database');
+  const schema = raw.identifier('migration_probe_' + crypto.randomUUID().replaceAll('-', ''));
+  await db.execute(raw`create schema ${schema}`);
+  try {
+    // Commit the enum type first: this exercises the stricter rule even on PG17,
+    // which permits more cases when both type and label were created in one transaction.
+    await db.execute(raw`create type ${schema}.movement_type as enum ('purchase')`);
+    await db.transaction(async tx => {
+      await tx.execute(raw`set local search_path to ${schema}, public`);
+      await tx.execute(raw`create table ingredient_stock (tenant_id uuid, ingredient_id uuid,
+        weighted_avg_cost_millipaise_per_base bigint not null default 0)`);
+      await tx.execute(raw`create table stock_movements (tenant_id uuid, ingredient_id uuid, movement_type ${schema}.movement_type,
+        quantity_milli_base bigint, seq bigint)`);
+      await tx.execute(raw`alter type ${schema}.movement_type add value 'production'`);
+      for (const statement of readFileSync('drizzle/0008_curved_legion.sql', 'utf8').split('--> statement-breakpoint')) {
+        try { await tx.execute(raw.raw(statement)); }
+        catch (error) {
+          // Preserve the PostgreSQL diagnostic when the query wrapper adds SQL text.
+          if (error instanceof Error && error.cause instanceof Error) throw error.cause;
+          throw error;
+        }
+      }
+    });
+  } finally { await db.execute(raw`drop schema ${schema} cascade`); }
+});
+
 after(closeDb);
 
 test('unknown-value migration backfills a previously diluted cache and preserves real zero and its watermark', async t => {
