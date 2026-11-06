@@ -53,7 +53,29 @@ has **13 Drizzle migrations and 19 public application tables**. Existing 60 ingr
 orders, purchases, batches or new staff accounts were inserted into the cafe database.
 Runtime grants were refreshed using administrative credentials outside the web service.
 
-Frontend publication and live read-only checks are recorded after the release is verified.
+## Published release verification
+
+Netlify serves application commit **cfc77d4f324ab51083b8f6d8d60a55a5a9824b94**, confirmed
+by its public readiness revision. GitHub CI
+[42171961216](https://github.com/samueldcunha99/nomeatnaaninventory/actions/runs/42171961216)
+passed **test and build**, including fresh PostgreSQL 16 migrations, zero skipped tests,
+the restricted runtime workflow and populated recovery rehearsal.
+
+Live checks passed **39 protected locale/page requests** (13 screens in each language),
+Marathi daily/sales CSVs with private/no-store headers, invalid public tracking token
+404, owner Secure/HttpOnly/SameSite sign-in and server-side sign-out revocation. The
+browser showed the new navigation and readable status labels and confirmed explicit
+tax/menu setup guidance on the published order screen. No business form was submitted.
+
+Restricted-runtime reads confirm all prior business counts are unchanged: 60 ingredients,
+20 recipes, 184 recipe-line rows, one tenant/owner, 83 prior audit rows and zero menu,
+ledger, batch, order, payment or reversal rows. Test writes stayed in isolated PostgreSQL.
+Owner authentication/preference actions were the only normal live session activity.
+The normal patched app runs at localhost:3000 with the restricted Supabase connection;
+the disposable app/database services were stopped after verification. The final
+documentation-only commit skips redundant CI/Netlify builds; deployed application stays
+at the tested revision above. Local evidence includes `completion-live-2026-11-06.json`,
+`completion-http-2026-11-06.json`, restore logs and the private verification screenshots.
 
 ## Release compatibility and dependency fixes
 

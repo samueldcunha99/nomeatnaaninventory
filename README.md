@@ -11,8 +11,9 @@ printable bills, kitchen status, private customer tracking and sales reports are
 All **370 tests pass against isolated native PostgreSQL, zero skipped**; production
 build/typecheck, 17 compiled-app workflow groups and populated backup/restore passed.
 The user approved schema stages A-C; the live Supabase upgrade through migration 0012
-has been applied after a verified backup and restored-copy rehearsal. Frontend release
-verification follows publication. See the [current verification report](files/completion-2026-11-06.md)
+has been applied after a verified backup and restored-copy rehearsal. Application commit
+`cfc77d4` is published: CI test/build and 39 live language/page checks passed, plus both
+CSV exports and secure owner login/logout. See the [current verification report](files/completion-2026-11-06.md)
 and [operator guide](files/OPERATOR-GUIDE.md).
 The user selected **Netlify Free + Supabase without Docker on 10 October 2026**,
 superseding the earlier Render choice. The app is live at
@@ -35,16 +36,20 @@ repository. Nothing important lives in a chat log.
 | Month 1 — foundations & inventory | ✅ **complete**, steps 1–7, verified against live Postgres |
 | UI styling pass | ✅ complete, all 9 internal screens, Tailwind v4 |
 | Deployment configuration | Netlify Next.js adapter + Supabase PostgreSQL; CI uses native PostgreSQL |
-| Live deployment | Netlify + Supabase. The 6 November database upgrade is applied; release verification is recorded in the current completion report. |
+| Live deployment | Netlify serves cfc77d4; Supabase upgrade applied. Exact revision, 39 language/page checks, two CSV exports, owner login/logout and unchanged client business counts verified. |
 | Month 2 step 1 — recipe / menu schema | ✅ **done**, migration 0002 |
 | Month 2 steps 2–4 — costing engine | ✅ **done**, paper cases P1–P22 |
 | Month 2 step 5 — costing screens and editors | ✅ **done**, recipe list, cost breakdown, what-if, and the recipe / line / menu-item editors |
 | Daily production and reports | Live at `/production` and `/reports`; date, recipe and metric controls verified |
 | Orders and sales | Staff POS, explicit fulfillment/tax setup, saved prices/material costs, manual payment/refund records, printable bills, kitchen board, private tracking and date-range sales/CSV |
 | Corrections and access | Conservative append-only production reversal, shelf disable/re-enable, opening valuation, own password change and owner/manager staff reset |
-| Trunk | `main`; current implementation is prepared on `codex/inventory-hardening` for publication. |
+| Trunk | Published to `main` from `codex/inventory-hardening`; later documentation-only updates do not rebuild the tested application. |
 | Tests | 6 November: 370 passed, 0 failed/skipped; 17 compiled-app workflow groups passed; browser language/draft/mobile checks passed. Earlier nine audit defects now have regressions. |
 | Current database verification | 13 Drizzle migrations; 19 public application tables. Real client backup restored and upgrade rehearsed before live migrations; existing business records preserved. |
+
+Patched runtime/development dependencies were clean-installed and audited: zero reported
+vulnerabilities on 6 November. The [operator guide](files/OPERATOR-GUIDE.md) explains the
+real cafe setup required before its first order.
 
 ## Verified against a live database vs merely built
 

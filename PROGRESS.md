@@ -2461,3 +2461,25 @@ installation and zero npm audit vulnerabilities. Schema generation still reports
 changes. The final full suite has 370 passed, zero failed/skipped; typecheck, production
 build and another populated migration/runtime/restore rehearsal pass. Health now
 includes a whitelisted public build revision for precise Netlify deployment checks.
+
+## 2026-11-06 - Final release published and verified
+
+Published application commit cfc77d4f324ab51083b8f6d8d60a55a5a9824b94 to inventory/main.
+Netlify readiness reports that exact revision. GitHub CI run 42171961216 passed test
+and build, including fresh PostgreSQL 16 migration, all tests with zero skips and the
+populated restricted-runtime backup/restore rehearsal. This closes the candidate CI
+enum failure rather than bypassing it. Clean dependency audit reports zero vulnerabilities.
+
+The final patched compiled app passed all 17 isolated HTTP workflow groups. Online,
+secure owner authentication/logout, 39 protected page/language requests, both translated
+CSV exports and invalid public tracking 404 passed. Browser sign-in/navigation verified
+the release and its honest unconfigured tax/menu guidance. Read-only comparison against
+the pre-upgrade snapshot confirmed all existing business counts unchanged and no test
+orders/payments/batches/movements/reversals in production. The live browser is left on
+the new-order setup screen; screenshots are local. No real money transfer or external
+message was made. The localhost app remains on port 3000; temporary QA services stopped.
+
+Updated current handover/verification/operator documents. Their final documentation-only
+commit skips redundant CI/Netlify builds, preserving the tested deployed source revision.
+Cafe data setup, staff acceptance, unresolved workbook measurements and external
+backup/payment/checkout/AI integrations remain explicitly described, not claimed complete.

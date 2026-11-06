@@ -14,6 +14,14 @@ workflow groups and a populated runtime/backup/restore rehearsal pass. See the
 Encrypted nightly backup automation is prepared but disabled pending the client's
 public encryption key, private storage credentials and real recovery rehearsal.
 
+**Release verified 6 November:** Netlify's public readiness response reports source
+revision `cfc77d4f324ab51083b8f6d8d60a55a5a9824b94`. GitHub CI
+[42171961216](https://github.com/samueldcunha99/nomeatnaaninventory/actions/runs/42171961216)
+passed test/build, including native PostgreSQL 16 fresh migration and populated recovery.
+Secure owner sign-in/sign-out, 39 protected locale/page requests, both CSV exports and
+invalid tracking-link refusal passed online. Client business table counts match the
+pre-upgrade snapshot. The normal localhost app runs on port 3000; QA services are stopped.
+
 **Deployed and checked on 10 October 2026.** The app is available at
 [nomeatnaaninventory.netlify.app](https://nomeatnaaninventory.netlify.app/). Netlify deploy
 `6aca38cc947b9f0008b322a7` published application commit `c633ad2` in 39 seconds. HTTPS
