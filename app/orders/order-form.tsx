@@ -1,5 +1,7 @@
 'use client';
 
+import { DraftForm } from '../ui/draft-form.tsx';
+
 import { useActionState, useState } from 'react';
 import { useTranslations } from '../i18n/provider.tsx';
 import { createOrderAction } from './actions.ts';
@@ -38,7 +40,7 @@ export function OrderForm({ menu, requestId: initialRequestId, taxMode, taxRate 
   }
   function update(index: number, patch: Partial<Row>) { setRows(current => current.map((row, i) => i === index ? { ...row, ...patch } : row)); }
 
-  return <form action={action} className="max-w-4xl" noValidate>
+  return <DraftForm result={state} action={action} className="max-w-4xl" noValidate>
     <input type="hidden" name="requestId" value={requestId} />
     <input type="hidden" name="expectedTaxMode" value={taxMode ?? ''} />
     <input type="hidden" name="expectedTaxRateMillipercent" value={taxRate ?? ''} />
@@ -104,5 +106,5 @@ export function OrderForm({ menu, requestId: initialRequestId, taxMode, taxRate 
       <p className="prose-note mt-4">{t('Confirming creates the order and records its stock deductions. Check the items, quantities and payment before saving.')}</p>
       <button className="btn" type="submit" disabled={pending || !totals}>{pending ? t('Confirming order…') : t('Confirm order')}</button>
     </section>
-  </form>;
+  </DraftForm>;
 }

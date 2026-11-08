@@ -4,6 +4,14 @@ Internal management system for a single-outlet cafe and bakery in Chhatrapati
 Sambhajinagar, Maharashtra. Ingredient-level cost visibility, self-maintaining inventory,
 order management, and a customer-facing tracking page. Five-month build.
 
+**Full-flow audit - 8 November 2026:** fixed stale measurement/pack handling in stock
+forms (including concurrent ingredient edits), exact-number limits, invalid ingredient
+threshold handling and lost form drafts after validation errors. Local PostgreSQL:
+382 tests passed, zero skipped; 47 compiled form workflow groups and the populated
+deployment/recovery rehearsal passed. Current npm audit reports zero vulnerabilities.
+Production remains transaction-empty; all test business writes used isolated databases.
+See [the full-flow QA report](files/FULL-FLOW-QA-2026-11-08.md) for scope and evidence.
+
 **Page tutorials - 8 November 2026:** every rendered page now includes a short
 explanation and an expandable step-by-step guide in English, Hindi and Marathi. Guides
 cover inputs, stock/payment effects and the next action; manager-only steps are hidden

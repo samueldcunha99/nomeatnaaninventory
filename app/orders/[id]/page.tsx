@@ -45,7 +45,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             <tr><th colSpan={3}>{t('Tax')} ({millipercentToPercent(order.taxRateMillipercent)}%)</th><td className="num">{formatINR(order.taxPaise)}</td></tr>
             <tr><th colSpan={3}>{t('Total')}</th><td className="num font-semibold">{formatINR(order.totalPaise)}</td></tr>
             <tr><th colSpan={3}>{t('Net received')}</th><td className="num">{formatINR(order.paidPaise)}</td></tr>
-            <tr><th colSpan={3}>{t('Balance')}</th><td className="num">{order.status === 'cancelled' ? t('Order cancelled — no balance due') : formatINR(order.balancePaise)}</td></tr>
+            <tr><th colSpan={3}>{t('Balance due')}</th><td className="num">{order.status === 'cancelled' ? t('Order cancelled — no balance due') : formatINR(order.balancePaise)}</td></tr>
           </tfoot></table></div>
         <p>{t('Payment status:')} <strong>{t(orderLabel(order.paymentStatus))}</strong></p>
         {order.note ? <p>{t('Notes:')} {order.note}</p> : null}

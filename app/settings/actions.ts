@@ -24,6 +24,7 @@ function friendly(err: unknown): string {
 const Rate = z
   .string()
   .trim()
+  .max(24, 'Hourly rate is too long.')
   .transform((v) => (v === '' ? null : v));
 
 const Rates = z.object({

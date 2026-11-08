@@ -26,7 +26,8 @@ const Line = z.object({
   quantity: z.string().trim().min(1).max(DECIMAL_MAX),
   totalCost: z.string().trim().min(1).max(DECIMAL_MAX),
   /** The pack size the form displayed. Checked, never calculated with. See staleUnit. */
-  unitInBase: z.coerce.number().int().positive().optional(),
+  unitInBase: z.coerce.number().int().positive(),
+  entryUnitType: z.enum(['weight', 'volume', 'count'], { error: 'Reload this stock page before recording a quantity.' }),
 });
 
 const Receipt = z.object({
@@ -71,6 +72,8 @@ async function saveInflow(actor: Actor, formData: FormData, opening: boolean): P
         ingredientId: line.ingredientId,
         quantityMilliBase: purchaseUnitsToMilliBase(line.quantity, ingredient.purchaseUnitInBase),
         totalCostPaise: rupeesToPaise(line.totalCost),
+        entryUnitType: line.entryUnitType,
+        entryPurchaseUnitInBase: line.unitInBase,
       });
     }
 
@@ -100,7 +103,8 @@ const Correction = z.object({
   quantity: z.string().trim().min(1, 'Enter a quantity.').max(DECIMAL_MAX),
   reason: z.enum(['count_correction', 'theft', 'spoilage', 'expiry', 'burnt', 'dropped', 'trim', 'other']),
   note: z.string().trim().max(500).nullable(),
-  unitInBase: z.coerce.number().int().positive().optional(),
+  unitInBase: z.coerce.number().int().positive(),
+  entryUnitType: z.enum(['weight', 'volume', 'count'], { error: 'Reload this stock page before recording a quantity.' }),
 });
 
 export async function recordCorrectionAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -114,6 +118,7 @@ export async function recordCorrectionAction(_prev: FormState, formData: FormDat
     reason: formData.get('reason'),
     note: String(formData.get('note') ?? '').trim() || null,
     unitInBase: formData.get('unitInBase') ?? undefined,
+    entryUnitType: formData.get('entryUnitType'),
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message, ok: null };
 
@@ -133,6 +138,8 @@ export async function recordCorrectionAction(_prev: FormState, formData: FormDat
       quantityMilliBase: signed,
       reason: parsed.data.reason,
       note: parsed.data.note,
+      entryUnitType: parsed.data.entryUnitType,
+      entryPurchaseUnitInBase: parsed.data.unitInBase,
     });
     revalidatePath('/ingredients');
     return { error: null, ok: `${parsed.data.kind === 'wastage' ? 'Wastage' : 'Adjustment'} recorded.` };

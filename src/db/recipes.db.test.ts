@@ -857,6 +857,22 @@ test('hourly-rate loading preserves missing rates, explicit zero and permission 
   assert.equal(await loadOverheadRates(owner), null);
 });
 
+test('oversized hourly rates and recipe quantities refuse lossy conversion without saving', async t => {
+  if (!reachable) return t.skip('no database');
+  const rates = await loadOverheadRates(owner);
+  for (const input of [{ labourPaisePerHour: 9007199254740993n, kitchenPaisePerHour: null },
+    { labourPaisePerHour: null, kitchenPaisePerHour: 9007199254740993n }]) {
+    await assert.rejects(() => saveOverheadRates(owner, input), /hourly rate.*too large/);
+    assert.deepEqual(await loadOverheadRates(owner), rates);
+  }
+  const name = `Exact quantity guard ${crypto.randomUUID()}`;
+  const normal = { name, yieldUnitType: 'weight' as const, yieldQtyMilliBase: 1000000n,
+    lines: [{ ingredientId: ing.maida, entryUnitType: 'weight' as const, quantityMilliBase: 100000n }] };
+  await assert.rejects(() => saveRecipe(owner, { ...normal, yieldQtyMilliBase: 9007199254740993n }), /recipe quantity.*too large/);
+  await assert.rejects(() => saveRecipe(owner, { ...normal, lines: [{ ...normal.lines[0], quantityMilliBase: 9007199254740993n }] }), /recipe quantity.*too large/);
+  assert.ok(![...(await loadRecipeGraph(owner)).values()].some(recipe => recipe.name === name));
+});
+
 test('recipe list costs stay qualified until every component time and both rates are known', async (t) => {
   if (!reachable) return t.skip('no database');
   const childName = `Untimed child ${crypto.randomUUID()}`;

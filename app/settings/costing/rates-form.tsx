@@ -1,5 +1,7 @@
 'use client';
 
+import { DraftForm } from '../../ui/draft-form.tsx';
+
 import { useActionState } from 'react';
 import { saveRatesAction, type FormState } from '../actions.ts';
 import { useTranslations } from '../../i18n/provider.tsx';
@@ -21,7 +23,7 @@ export function RatesForm({
   });
 
   return (
-    <form action={formAction} className="max-w-xl">
+    <DraftForm result={state} action={formAction} className="max-w-xl">
       {state.error ? (
         <div className="msg msg--error" role="alert">
           <svg className="msg__icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -67,6 +69,6 @@ export function RatesForm({
       <button className="btn" type="submit" disabled={pending}>
         {pending ? t("Saving…") : t("Save rates")}
       </button>
-    </form>
+    </DraftForm>
   );
 }

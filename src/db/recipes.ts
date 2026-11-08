@@ -300,6 +300,7 @@ export async function saveOverheadRates(
   assertPermission(actor.role, 'recipes.manage');
   for (const value of [input.labourPaisePerHour, input.kitchenPaisePerHour]) {
     if (value !== null && value < 0n) throw new RangeError('An hourly rate cannot be negative.');
+    if (value !== null && value > BigInt(Number.MAX_SAFE_INTEGER)) throw new RangeError('An hourly rate is too large to record exactly.');
   }
 
   await db.transaction(async (tx: Tx) => {
@@ -390,6 +391,10 @@ export async function saveRecipe(actor: Actor, input: RecipeInput): Promise<stri
   if (input.lines.length === 0) throw new RangeError('A recipe needs at least one line.');
   if (input.yieldQtyMilliBase <= 0n) {
     throw new RangeError('One batch has to yield something. Enter how much it makes.');
+  }
+  const exactLimit = BigInt(Number.MAX_SAFE_INTEGER);
+  if (input.yieldQtyMilliBase > exactLimit || input.lines.some(line => line.quantityMilliBase > exactLimit || line.quantityMilliBase < -exactLimit)) {
+    throw new RangeError('A recipe quantity is too large to record exactly.');
   }
 
   const recipeId = input.id ?? crypto.randomUUID();

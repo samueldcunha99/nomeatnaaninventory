@@ -1,5 +1,7 @@
 'use client';
 
+import { DraftForm } from '../ui/draft-form.tsx';
+
 import { useActionState, useRef, useState } from 'react';
 import Link from 'next/link';
 import { saveRecipeAction, type FormState } from './actions.ts';
@@ -106,7 +108,7 @@ export function RecipeForm({
   }));
 
   return (
-    <form action={formAction} className="recipe-editor">
+    <DraftForm result={state} action={formAction} className="recipe-editor">
       {initial?.id ? <input type="hidden" name="id" value={initial.id} /> : null}
       <input type="hidden" name="yieldUnitType" value={recipeUnitType(yieldUnit)} />
       {unitError ? <p className="msg msg--error" role="alert">{t.message(unitError)}</p> : null}
@@ -331,6 +333,6 @@ export function RecipeForm({
         {pending ? t("Saving…") : submitLabel}
       </button></div>
       </div>
-    </form>
+    </DraftForm>
   );
 }

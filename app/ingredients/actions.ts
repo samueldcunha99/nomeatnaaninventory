@@ -9,40 +9,10 @@ import {
   updateIngredient,
   setIngredientActive,
   DuplicateIngredientError,
-  type IngredientInput,
 } from '../../src/db/ingredients.ts';
-import { purchaseUnitsToMilliBase } from '../../src/lib/units.ts';
+import { IngredientFields as Fields, ingredientFormInput as toInput } from '../../src/lib/ingredient-form.ts';
 
 export type FormState = { error: string | null };
-
-const Fields = z.object({
-  name: z.string().trim().min(1, 'Name is required').max(120),
-  // Blank is a real answer: plenty of the masala is bought loose from a bulk trader.
-  brand: z.string().trim().max(120).nullable(),
-  unitType: z.enum(['weight', 'volume', 'count']),
-  purchaseUnit: z.string().trim().min(1, 'Purchase unit is required').max(40),
-  purchaseUnitInBase: z.coerce
-    .number()
-    .int('Conversion factor must be a whole number of base units')
-    .positive('Conversion factor must be greater than zero'),
-  // Kept as text so it reaches purchaseUnitsToMilliBase as a decimal string. Parsing it
-  // to a float here would reintroduce exactly the rounding the boundary rule forbids.
-  lowStockThreshold: z.string().trim().default('0'),
-});
-
-/** The input boundary: operator decimals in, exact integers out. */
-function toInput(raw: z.infer<typeof Fields>): IngredientInput {
-  return {
-    name: raw.name,
-    brand: raw.brand,
-    unitType: raw.unitType,
-    purchaseUnit: raw.purchaseUnit,
-    purchaseUnitInBase: raw.purchaseUnitInBase,
-    lowStockThresholdMilliBase: Number(
-      purchaseUnitsToMilliBase(raw.lowStockThreshold || '0', raw.purchaseUnitInBase),
-    ),
-  };
-}
 
 function parse(formData: FormData) {
   return Fields.safeParse({

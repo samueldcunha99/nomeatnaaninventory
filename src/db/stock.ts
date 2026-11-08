@@ -129,6 +129,13 @@ export async function recalculateStock(
   }));
 
   const next = replayLedger(movements, from);
+  const exactLimit = BigInt(Number.MAX_SAFE_INTEGER);
+  if (next.qtyMilliBase > exactLimit || next.qtyMilliBase < -exactLimit) {
+    throw new RangeError('The resulting stock quantity is too large to record exactly.');
+  }
+  if (next.weightedAvgCostMillipaisePerBase !== null && next.weightedAvgCostMillipaisePerBase > exactLimit) {
+    throw new RangeError('The resulting stock cost is too large to record exactly.');
+  }
   const values = {
     qtyMilliBase: Number(next.qtyMilliBase),
     weightedAvgCostMillipaisePerBase: next.weightedAvgCostMillipaisePerBase === null

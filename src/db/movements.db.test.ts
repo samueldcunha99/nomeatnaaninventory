@@ -10,7 +10,8 @@ import { and, eq, sql as raw } from 'drizzle-orm';
 import { db } from './client.ts';
 import { dbReachable, closeDb } from './test-db.ts';
 import { tenants, users, ingredients, suppliers, stockMovements, ingredientStock, auditLog } from './schema.ts';
-import { recordReceipt, recordCorrection, listSuppliers } from './movements.ts';
+import { recordReceipt, recordOpeningStock, recordCorrection, listSuppliers } from './movements.ts';
+import { updateIngredient } from './ingredients.ts';
 import { lockIngredients, recalculateStock } from './stock.ts';
 import { AuthzError, type Actor, type Role } from '../lib/auth.ts';
 
@@ -381,4 +382,68 @@ test('the ledger refuses to be rewritten, even by the application role', async (
 
   const [after] = await movementsOf(ing);
   assert.equal(after.quantityMilliBase, before.quantityMilliBase, 'the row survived unchanged');
+});
+
+test('stock entry refuses a changed measurement even when the purchase pack still contains 1000 base units', async t => {
+  if (!reachable) return t.skip('no database');
+  const ing = await makeIngredient('Stale measurement');
+  const [row] = await db.select().from(ingredients).where(eq(ingredients.id, ing));
+  await updateIngredient(owner, ing, { name: row.name, unitType: 'volume', purchaseUnit: 'L', purchaseUnitInBase: 1000, lowStockThresholdMilliBase: 0 });
+  const claim = { entryUnitType: 'weight' as const, entryPurchaseUnitInBase: 1000 };
+  const line = { ingredientId: ing, quantityMilliBase: 1000000n, totalCostPaise: 10000n, ...claim };
+  await assert.rejects(() => recordReceipt(owner, { lines: [line] }), /measurement or purchase pack/);
+  await assert.rejects(() => recordOpeningStock(owner, { lines: [line] }), /measurement or purchase pack/);
+  for (const kind of ['adjustment', 'wastage'] as const) await assert.rejects(() => recordCorrection(owner, kind, {
+    ingredientId: ing, quantityMilliBase: -1000n, reason: kind === 'wastage' ? 'expiry' : 'count_correction', ...claim,
+  }), /measurement or purchase pack/);
+  assert.equal((await movementsOf(ing)).length, 0);
+  assert.equal(await stockOf(ing), undefined, 'rejected forms must not even create a derived stock row');
+});
+
+test('stock entry rechecks the displayed pack after an ingredient edit', async t => {
+  if (!reachable) return t.skip('no database');
+  const ing = await makeIngredient('Stale pack');
+  const [row] = await db.select().from(ingredients).where(eq(ingredients.id, ing));
+  await updateIngredient(owner, ing, { name: row.name, unitType: 'weight', purchaseUnit: 'bag', purchaseUnitInBase: 2000, lowStockThresholdMilliBase: 0 });
+  const line = { ingredientId: ing, quantityMilliBase: 1000000n, totalCostPaise: 10000n, entryUnitType: 'weight' as const, entryPurchaseUnitInBase: 1000 };
+  await assert.rejects(() => recordReceipt(owner, { lines: [line] }), /measurement or purchase pack/);
+  await recordReceipt(owner, { lines: [{ ...line, quantityMilliBase: 2000000n, entryPurchaseUnitInBase: 2000 }] });
+  assert.equal((await stockOf(ing)).qtyMilliBase, 2000000);
+});
+
+test('a receipt waiting behind an ingredient edit validates units after acquiring the stock lock', async t => {
+  if (!reachable) return t.skip('no database');
+  const ing = await makeIngredient('Concurrent measurement');
+  let pending!: Promise<{ error: unknown }>;
+  let settled = false;
+  await db.transaction(async tx => {
+    await lockIngredients(tx, owner.tenantId, [ing]);
+    pending = recordReceipt(owner, { lines: [{ ingredientId: ing, quantityMilliBase: 1000000n, totalCostPaise: 10000n,
+      entryUnitType: 'weight', entryPurchaseUnitInBase: 1000 }] }).then(
+      () => ({ error: null }), error => ({ error }),
+    ).finally(() => { settled = true; });
+    await new Promise(resolve => setTimeout(resolve, 70));
+    assert.equal(settled, false, 'receipt must wait for the ingredient edit lock');
+    await tx.update(ingredients).set({ unitType: 'volume', purchaseUnit: 'L' }).where(and(eq(ingredients.tenantId, owner.tenantId), eq(ingredients.id, ing)));
+  });
+  assert.match(String((await pending).error), /measurement or purchase pack/);
+  assert.equal((await movementsOf(ing)).length, 0);
+});
+
+test('manual corrections reject quantities beyond the exact stored-number range without rounding them', async t => {
+  if (!reachable) return t.skip('no database');
+  const ing = await makeIngredient('Unsafe correction');
+  for (const quantityMilliBase of [9007199254740993n, -9007199254740993n]) {
+    await assert.rejects(() => recordCorrection(owner, 'adjustment', { ingredientId: ing, quantityMilliBase, reason: 'count_correction' }), /too large to record exactly/);
+  }
+  assert.equal((await movementsOf(ing)).length, 0);
+});
+
+test('a safe individual entry cannot overflow the cumulative stock cache', async t => {
+  if (!reachable) return t.skip('no database');
+  const ing = await makeIngredient('Stock ceiling');
+  await recordReceipt(owner, { lines: [{ ingredientId: ing, quantityMilliBase: 9007199254740991n, totalCostPaise: 0n }] });
+  await assert.rejects(() => recordCorrection(owner, 'adjustment', { ingredientId: ing, quantityMilliBase: 2n, reason: 'count_correction' }), /resulting stock quantity.*too large/);
+  assert.equal((await stockOf(ing)).qtyMilliBase, Number.MAX_SAFE_INTEGER);
+  assert.equal((await movementsOf(ing)).length, 1, 'the overflow movement rolls back with its cache change');
 });

@@ -3,6 +3,14 @@
 Conventions for the cafe management system. Read `files/PROJECT-SPEC.md` first — this
 file records what we decided that the spec does not say, and why.
 
+**Latest QA, 8 November 2026:** 382 isolated PostgreSQL tests and 47 compiled form
+workflow groups pass. See `files/FULL-FLOW-QA-2026-11-08.md`. Stock forms now submit
+both measurement type and purchase factor, and writers recheck them under ingredient
+locks before inserting. Integer bounds are checked before number-backed storage and
+after the stock fold. Business forms preserve ordinary drafts on action errors using
+`DraftForm`; passwords/hidden identities are excluded and successful resets remain.
+No schema change was needed. This supersedes older test-count notes below.
+
 **Current state, 6 November 2026 (supersedes older milestone/status notes below):**
 Netlify Free + Supabase is the selected deployment. The user approved stages A-C in
 `files/completion-schema-proposal-2026-11-06.md`. Migrations 0008-0012 add nullable

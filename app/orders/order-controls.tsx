@@ -1,5 +1,7 @@
 'use client';
 
+import { DraftForm } from '../ui/draft-form.tsx';
+
 import { orderLabel } from '../../src/lib/order-labels.ts';
 
 import { useActionState, useEffect, useRef, useState } from 'react';
@@ -19,14 +21,14 @@ export function OrderStatusControls({ orderId, status, orderType, canCancel }: {
   return <div className="no-print">
     {state.error ? <p className="msg msg--error" role="alert">{t.message(state.error)}</p> : null}
     {state.ok ? <p className="msg msg--ok" role="status">{t(state.ok)}</p> : null}
-    {forward ? <form action={action} className="mb-3">
+    {forward ? <DraftForm result={state} action={action} className="mb-3">
       <input type="hidden" name="orderId" value={orderId} />
       <input type="hidden" name="fromStatus" value={status} />
       <button className="btn" type="submit" name="status" value={forward} disabled={pending || cancelling}>
         {pending ? t('Updating…') : t('Move to {status}', { status: t(orderLabel(forward)) })}
-      </button></form> : null}
+      </button></DraftForm> : null}
     {options.length ? <details className="mt-3"><summary>{t('Other status changes')}</summary>
-      <form action={action} className="mt-3">
+      <DraftForm result={state} action={action} className="mt-3">
         <input type="hidden" name="orderId" value={orderId} />
         <input type="hidden" name="fromStatus" value={status} />
         <div className="field"><label className="label" htmlFor={`status-${orderId}`}>{t('New status')}</label>
@@ -36,9 +38,9 @@ export function OrderStatusControls({ orderId, status, orderType, canCancel }: {
           <input className="input" id={`status-reason-${orderId}`} name="reason" maxLength={1000} disabled={pending || cancelling} /></div>
         <p className="prose-note">{t('Backward changes need a reason. Every change is kept in the order history.')}</p>
         <button className="btn btn--secondary" type="submit" disabled={pending || cancelling}>{pending ? t('Updating…') : t('Update status')}</button>
-      </form></details> : null}
+      </DraftForm></details> : null}
     {canCancel && allowed.includes('cancelled') ? <details className="mt-4"><summary>{t('Cancel this order')}</summary>
-      <form action={cancelAction} className="mt-3">
+      <DraftForm result={cancelState} action={cancelAction} className="mt-3">
         <input type="hidden" name="orderId" value={orderId} /><input type="hidden" name="status" value="cancelled" />
         <input type="hidden" name="fromStatus" value={status} />
         <p className="prose-note">{t('Cancellation before preparation restores the reserved stock. Once preparation has started, materials stay used and the cancellation is recorded as a loss. Payments are not automatically refunded.')}</p>
@@ -46,7 +48,7 @@ export function OrderStatusControls({ orderId, status, orderType, canCancel }: {
         <div className="field"><label className="label" htmlFor={`cancel-reason-${orderId}`}>{t('Cancellation reason')}</label>
           <textarea className="input" id={`cancel-reason-${orderId}`} name="reason" maxLength={1000} rows={2} required disabled={pending || cancelling} /></div>
         <button className="btn btn--secondary" type="submit" disabled={pending || cancelling}>{cancelling ? t('Cancelling…') : t('Confirm cancellation')}</button>
-      </form></details> : null}
+      </DraftForm></details> : null}
   </div>;
 }
 
@@ -58,7 +60,7 @@ export function OrderPaymentControls({ orderId, requestId: initialRequestId, amo
   const [requestId, setRequestId] = useState(initialRequestId);
   const form = useRef<HTMLFormElement>(null);
   useEffect(() => { if (state.ok && state.nextRequestId) { setRequestId(state.nextRequestId); form.current?.reset(); } }, [state]);
-  return <form ref={form} action={action} className="form-section max-w-xl no-print" noValidate>
+  return <DraftForm result={state} ref={form} action={action} className="form-section max-w-xl no-print" noValidate>
     <h2>{eventType === 'refund' ? t('Record a refund already made') : t('Record a payment already received')}</h2>
     <input type="hidden" name="orderId" value={orderId} /><input type="hidden" name="requestId" value={requestId} /><input type="hidden" name="eventType" value={eventType} />
     {state.error ? <p className="msg msg--error" role="alert">{t.message(state.error)}</p> : null}
@@ -72,7 +74,7 @@ export function OrderPaymentControls({ orderId, requestId: initialRequestId, amo
       <input className="input" id={`${eventType}-reference`} name="reference" maxLength={200} disabled={pending} /></div>
     <p className="prose-note">{t('Record only a payment or refund completed outside this screen. No money is transferred by this action. External transactions need a reference.')}</p>
     <button className="btn btn--secondary" type="submit" disabled={pending}>{pending ? t('Saving…') : eventType === 'refund' ? t('Record refund') : t('Record payment')}</button>
-  </form>;
+  </DraftForm>;
 }
 
 export function BillTools({ trackingPath }: { trackingPath: string }) {

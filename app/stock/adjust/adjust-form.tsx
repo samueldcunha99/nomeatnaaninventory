@@ -1,10 +1,12 @@
 'use client';
 
+import { DraftForm } from '../../ui/draft-form.tsx';
+
 import { useActionState, useState } from 'react';
 import { recordCorrectionAction, type FormState } from '../actions.ts';
 import { useTranslations } from '../../i18n/provider.tsx';
 
-export type IngredientOption = { id: string; name: string; purchaseUnit: string; purchaseUnitInBase: number };
+export type IngredientOption = { id: string; name: string; purchaseUnit: string; purchaseUnitInBase: number; unitType: 'weight' | 'volume' | 'count' };
 
 const ADJUSTMENT_REASONS = [
   ['count_correction', 'Count correction'],
@@ -41,11 +43,12 @@ export function AdjustForm({ ingredients }: { ingredients: IngredientOption[] })
   };
 
   return (
-    <form action={formAction} className="max-w-xl">
+    <DraftForm result={state} action={formAction} className="max-w-xl">
       <input type="hidden" name="kind" value={kind} />
       {/* The pack this quantity is being typed in. Compared server-side, never used as a
           conversion factor - see staleUnit in ../actions.ts. */}
-      {chosen ? <input type="hidden" name="unitInBase" value={chosen.purchaseUnitInBase} /> : null}
+      {chosen ? <><input type="hidden" name="unitInBase" value={chosen.purchaseUnitInBase} />
+        <input type="hidden" name="entryUnitType" value={chosen.unitType} /></> : null}
 
       {state.error ? (
         <div className="msg msg--error" role="alert">
@@ -181,6 +184,6 @@ export function AdjustForm({ ingredients }: { ingredients: IngredientOption[] })
       <button className="btn" type="submit" disabled={pending}>
         {pending ? t("Saving…") : t("Record {0}", { "0": t(kind) })}
       </button>
-    </form>
+    </DraftForm>
   );
 }

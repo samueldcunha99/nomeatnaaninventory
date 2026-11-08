@@ -18,7 +18,7 @@ export default async function OpeningStockPage() {
       <p className="prose-note">{t('Enter verified starting quantities and their total inventory value. These entries establish a cost basis and are excluded from new purchases and money paid today.')}</p>
       <p className="msg msg--warn">{t('For existing stock with an unknown value, enter its current positive quantity exactly. Its quantity stays the same while the supplied value is recorded. Make physical count corrections separately. Known purchase costs cannot be replaced here.')}</p>
       <ReceiptForm requestId={crypto.randomUUID()} opening suppliers={[]} ingredients={ingredients.map(i => ({
-        id: i.id, name: i.name, purchaseUnit: i.purchaseUnit, purchaseUnitInBase: i.purchaseUnitInBase,
+        id: i.id, name: i.name, purchaseUnit: i.purchaseUnit, purchaseUnitInBase: i.purchaseUnitInBase, unitType: i.unitType,
       }))} />
     </main></>;
 }

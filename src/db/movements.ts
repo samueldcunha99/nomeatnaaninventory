@@ -10,9 +10,9 @@ import { randomUUID } from 'node:crypto';
 import { and, asc, eq, inArray, isNull, sql as raw } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from './client.ts';
-import { suppliers, stockMovements } from './schema.ts';
+import { suppliers, stockMovements, ingredients } from './schema.ts';
 import { lockIngredients, recalculateStock, recordMovements, type MovementInput } from './stock.ts';
-import { unitCostMillipaisePerBase } from '../lib/units.ts';
+import { unitCostMillipaisePerBase, type UnitType } from '../lib/units.ts';
 import { assertPermission, AuthzError, type Actor } from '../lib/auth.ts';
 
 /** Lives here rather than in its own module: the receipt form is its only consumer. */
@@ -25,7 +25,31 @@ export async function listSuppliers(actor: Actor) {
     .orderBy(asc(suppliers.name));
 }
 
-export type ReceiptLine = {
+type EntryUnitClaim = {
+  /** What the operator was shown; canonical internal writers need no conversion claim. */
+  entryUnitType?: UnitType;
+  entryPurchaseUnitInBase?: number;
+};
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/** Called only while holding all affected ingredient locks, before any ledger write. */
+async function assertCurrentEntryUnits(tx: Tx, actor: Actor, lines: readonly (EntryUnitClaim & { ingredientId: string })[]) {
+  const claimed = lines.filter(line => line.entryUnitType !== undefined || line.entryPurchaseUnitInBase !== undefined);
+  if (!claimed.length) return;
+  const rows = await tx.select({ id: ingredients.id, name: ingredients.name, unitType: ingredients.unitType,
+    purchaseUnitInBase: ingredients.purchaseUnitInBase, deletedAt: ingredients.deletedAt }).from(ingredients)
+    .where(and(eq(ingredients.tenantId, actor.tenantId), inArray(ingredients.id, claimed.map(line => line.ingredientId))));
+  const current = new Map(rows.map(row => [row.id, row]));
+  for (const line of claimed) {
+    const row = current.get(line.ingredientId);
+    if (!row || row.deletedAt) throw new RangeError('One of the ingredients no longer exists.');
+    if (row.unitType !== line.entryUnitType || row.purchaseUnitInBase !== line.entryPurchaseUnitInBase) {
+      throw new RangeError(`"${row.name}" has a different measurement or purchase pack now. Nothing was saved. Reload the stock page and enter the quantity again.`);
+    }
+  }
+}
+
+export type ReceiptLine = EntryUnitClaim & {
   ingredientId: string;
   /** positive, milli-base, already converted at the input boundary */
   quantityMilliBase: bigint;
@@ -111,9 +135,12 @@ async function recordValuedInflow(actor: Actor, input: ReceiptInput, referenceTy
       if (!identical) throw new RangeError('This receipt was already recorded with different details. Open a new receipt for another delivery.');
       return { referenceId, lineCount: inflows.length, replayed: true };
     }
+    // An ingredient edit takes the same lock. Recheck the displayed units AFTER it,
+    // closing the gap between an action's initial ingredient read and this insert.
+    await lockIngredients(tx, actor.tenantId, lines.map(line => line.ingredientId));
+    await assertCurrentEntryUnits(tx, actor, input.lines);
     const resets: MovementInput[] = [];
     if (referenceType === 'opening_stock') {
-      await lockIngredients(tx, actor.tenantId, lines.map(line => line.ingredientId));
       for (const line of lines) {
         const current = await recalculateStock(tx, actor.tenantId, line.ingredientId, { rebuild: true });
         if (current.weightedAvgCostMillipaisePerBase !== null) {
@@ -140,7 +167,7 @@ async function recordValuedInflow(actor: Actor, input: ReceiptInput, referenceTy
   });
 }
 
-export type CorrectionInput = {
+export type CorrectionInput = EntryUnitClaim & {
   ingredientId: string;
   /** signed, milli-base. Negative reduces stock. */
   quantityMilliBase: bigint;
@@ -181,20 +208,25 @@ export async function recordCorrection(
     throw new RangeError('A note is required when the reason is "other".');
   }
 
+  const quantityMilliBase = storedInteger(input.quantityMilliBase, 'Correction quantity');
   const referenceId = randomUUID();
-  await recordMovements([
-    {
-      tenantId: actor.tenantId,
-      ingredientId: input.ingredientId,
-      movementType: kind,
-      quantityMilliBase: Number(input.quantityMilliBase),
-      referenceType: kind,
-      referenceId,
-      reason: input.reason,
-      note: input.note?.trim() || null,
-      createdByUserId: actor.id,
-    },
-  ]);
+  await db.transaction(async tx => {
+    await lockIngredients(tx, actor.tenantId, [input.ingredientId]);
+    await assertCurrentEntryUnits(tx, actor, [input]);
+    await recordMovements([
+      {
+        tenantId: actor.tenantId,
+        ingredientId: input.ingredientId,
+        movementType: kind,
+        quantityMilliBase,
+        referenceType: kind,
+        referenceId,
+        reason: input.reason,
+        note: input.note?.trim() || null,
+        createdByUserId: actor.id,
+      },
+    ], tx);
+  });
   return { referenceId };
 }
 

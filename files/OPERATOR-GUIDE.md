@@ -19,6 +19,12 @@ form; the customer tracking page also has its own guide. The guides follow the w
 language and staff role, and do not submit forms or change stock. They are omitted from
 printed order bills.
 
+If an ingredient's measurement or purchase pack changes while a stock form is open,
+the form refuses the save; reload and check the quantity in its new unit. Ordinary
+business form details are kept after validation errors so you can correct the entry.
+Password fields still clear after submission, and successful receipts reset for the
+next delivery. Negative thresholds and values too large to store exactly are refused.
+
 ## Prepare the real cafe before relying on the figures
 
 1. Create the cafe's ingredients and recipes for the trial. The previous 60 ingredients

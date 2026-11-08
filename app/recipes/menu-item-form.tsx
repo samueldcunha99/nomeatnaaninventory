@@ -1,5 +1,7 @@
 'use client';
 
+import { DraftForm } from '../ui/draft-form.tsx';
+
 import { useActionState } from 'react';
 import { saveMenuItemAction, type FormState } from './actions.ts';
 import { baseUnitLabel, type UnitType } from '../../src/lib/units.ts';
@@ -44,7 +46,7 @@ export function MenuItemForm({
   const id = initial?.id ?? 'new';
 
   return (
-    <form action={formAction} className="form-section">
+    <DraftForm result={state} action={formAction} className="form-section">
       <input type="hidden" name="recipeId" value={recipeId} />
       <input type="hidden" name="entryUnitType" value={yieldUnitType} />
       {initial?.id ? <input type="hidden" name="id" value={initial.id} /> : null}
@@ -129,6 +131,6 @@ export function MenuItemForm({
           {pending ? t("Saving…") : submitLabel}
         </button>
       </p>
-    </form>
+    </DraftForm>
   );
 }

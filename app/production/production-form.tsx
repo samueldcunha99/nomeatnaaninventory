@@ -1,5 +1,7 @@
 'use client';
 
+import { DraftForm } from '../ui/draft-form.tsx';
+
 import { useActionState, useMemo, useState } from 'react';
 import { recordProductionAction, changeRecipeStockAction, type ProductionState } from './actions.ts';
 import { productionGraph, type ProductionRecipeOption } from '../../src/lib/production-form.ts';
@@ -34,7 +36,7 @@ export function ProductionForm({ recipes, ingredients, day, today, requestId, in
   }
 
   return <>
-    <form action={action} className="recipe-editor max-w-4xl">
+    <DraftForm result={state} action={action} className="recipe-editor max-w-4xl">
       <input type="hidden" name="requestId" value={requestId} />
       <input type="hidden" name="recipeUpdatedAt" value={selected?.updatedAt ?? ''} />
       <input type="hidden" name="yieldUnitType" value={selected?.yieldUnitType ?? ''} />
@@ -91,8 +93,8 @@ export function ProductionForm({ recipes, ingredients, day, today, requestId, in
         <p className="prose-note">{t('Recording deducts these materials from stock. Check the batch count and output before saving. Corrections add a reversal and retain the original record.')}</p>
         <button className="btn" type="submit" disabled={pending || holding || !preview || Boolean(unitError)}>{pending ? t("Recording…") : t("Record production")}</button>
       </section>
-    </form>
-    {selected ? <form action={holdAction} className="form-section max-w-4xl mt-4">
+    </DraftForm>
+    {selected ? <DraftForm result={state} action={holdAction} className="form-section max-w-4xl mt-4">
       <input type="hidden" name="recipeId" value={selected.id} />
       <input type="hidden" name="enabled" value={selected.stockIngredientId ? 'off' : 'on'} />
       <h2>{t(selected.stockIngredientId ? 'Future batches go into stock' : 'Keep this item in stock')}</h2>
@@ -101,6 +103,6 @@ export function ProductionForm({ recipes, ingredients, day, today, requestId, in
         : 'Use this for dough, sauces or other items stored before use. Future batches go into stock and need recorded input prices. Previously logged batches are not added.')}</p>
       {holdState.error ? <p className="msg msg--error" role="alert">{t.message(holdState.error)}</p> : null}
       <button className="btn btn--secondary" type="submit" disabled={holding || pending}>{holding ? t("Updating…") : selected.stockIngredientId ? t('Stop future shelf output') : t("Hold {0} in stock", { "0": selected.name })}</button>
-    </form> : null}
+    </DraftForm> : null}
   </>;
 }

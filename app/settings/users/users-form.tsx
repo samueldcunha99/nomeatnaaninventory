@@ -1,5 +1,7 @@
 'use client';
 
+import { DraftForm } from '../../ui/draft-form.tsx';
+
 import { useActionState, useEffect, useRef } from 'react';
 import { createUserAction, changeUserAction, resetUserPasswordAction, type FormState } from './actions.ts';
 import { useTranslations } from '../../i18n/provider.tsx';
@@ -70,7 +72,7 @@ export function StaffTable({ staff, canGrantOwner }: { staff: StaffRow[]; canGra
   });
 
   return (
-    <form action={formAction}>
+    <DraftForm result={state} action={formAction}>
       <Messages state={state} what="Not changed." />
 
       <div className="table-wrap">
@@ -155,7 +157,7 @@ export function StaffTable({ staff, canGrantOwner }: { staff: StaffRow[]; canGra
       <input type="hidden" name="userId" defaultValue="" />
       <input type="hidden" name="role" defaultValue="" />
       <input type="hidden" name="active" defaultValue="" />
-    </form>
+    </DraftForm>
   );
 }
 
@@ -169,7 +171,7 @@ export function ResetStaffPasswordForm({ staff, canGrantOwner }: { staff: StaffR
   if (!eligible.length) return <p className="prose-note">{t('There are no other staff accounts you can reset.')} {' '}
     <Link href="/settings/password">{t('Change your own password')}</Link></p>;
 
-  return <form ref={form} action={action} className="max-w-xl" noValidate>
+  return <DraftForm result={state} ref={form} action={action} className="max-w-xl" noValidate>
     <Messages state={state} what="Not changed." />
     <p className="prose-note">{t('Choose another staff member and enter a new password twice. All their existing sessions will be signed out. Their role and active status stay the same.')}</p>
     <div className="field max-w-sm"><label className="label" htmlFor="reset-user">{t('Staff member')}</label>
@@ -185,7 +187,7 @@ export function ResetStaffPasswordForm({ staff, canGrantOwner }: { staff: StaffR
         minLength={PASSWORD_MIN_LENGTH} maxLength={PASSWORD_MAX_LENGTH} required disabled={pending} /></div>
     <p className="prose-note">{t('Use at least 12 characters. Tell the staff member their new password privately. No password is emailed or saved in the activity history.')}</p>
     <button className="btn btn--secondary" type="submit" disabled={pending}>{pending ? t('Changing password…') : t('Reset staff password')}</button>
-  </form>;
+  </DraftForm>;
 }
 
 export function NewStaffForm({ canGrantOwner }: { canGrantOwner: boolean }) {
@@ -203,7 +205,7 @@ export function NewStaffForm({ canGrantOwner }: { canGrantOwner: boolean }) {
   }, [state]);
 
   return (
-    <form action={formAction} ref={form} className="max-w-xl">
+    <DraftForm result={state} action={formAction} ref={form} className="max-w-xl">
       <Messages state={state} what="Not added." />
 
       <div className="field max-w-sm">
@@ -246,6 +248,6 @@ export function NewStaffForm({ canGrantOwner }: { canGrantOwner: boolean }) {
       <button className="btn" type="submit" disabled={pending}>
         {pending ? t("Adding…") : t("Add to the team")}
       </button>
-    </form>
+    </DraftForm>
   );
 }

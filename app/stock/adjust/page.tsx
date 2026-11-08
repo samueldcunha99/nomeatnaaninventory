@@ -20,7 +20,7 @@ export default async function AdjustPage() {
       <h1>{t("Adjustment or wastage")}</h1>
       <p className="prose-note">{t(" Corrections are new movements — nothing is edited or deleted. The running stock follows from the ledger. ")}</p>
       <AdjustForm
-        ingredients={ingredients.map((i) => ({ id: i.id, name: i.name, purchaseUnit: i.purchaseUnit, purchaseUnitInBase: i.purchaseUnitInBase }))}
+        ingredients={ingredients.map((i) => ({ id: i.id, name: i.name, purchaseUnit: i.purchaseUnit, purchaseUnitInBase: i.purchaseUnitInBase, unitType: i.unitType }))}
       />
     </main>
     </>

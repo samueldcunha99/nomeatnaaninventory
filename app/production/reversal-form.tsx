@@ -1,5 +1,7 @@
 'use client';
 
+import { DraftForm } from '../ui/draft-form.tsx';
+
 import { useActionState } from 'react';
 import { reverseProductionAction, type ProductionState } from './actions.ts';
 import { useTranslations } from '../i18n/provider.tsx';
@@ -7,7 +9,7 @@ import { useTranslations } from '../i18n/provider.tsx';
 export function ReversalForm({ productionRunId, requestId, day }: { productionRunId: string; requestId: string; day: string }) {
   const t = useTranslations();
   const [state, action, pending] = useActionState<ProductionState, FormData>(reverseProductionAction, { error: null });
-  return <details><summary>{t('Correct this batch')}</summary><form action={action} className="mt-3">
+  return <details><summary>{t('Correct this batch')}</summary><DraftForm result={state} action={action} className="mt-3">
     <input type="hidden" name="productionRunId" value={productionRunId} />
     <input type="hidden" name="requestId" value={requestId} />
     <input type="hidden" name="day" value={day} />
@@ -17,5 +19,5 @@ export function ReversalForm({ productionRunId, requestId, day }: { productionRu
     <label className="label" htmlFor={`reversal-${productionRunId}`}>{t('Correction reason')}</label>
     <textarea className="input" id={`reversal-${productionRunId}`} name="reason" required maxLength={1000} rows={2} />
     <button className="btn btn--secondary" type="submit" disabled={pending}>{t(pending ? 'Reversing…' : 'Reverse batch')}</button>
-  </form></details>;
+  </DraftForm></details>;
 }

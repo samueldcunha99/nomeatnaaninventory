@@ -30,6 +30,7 @@ export default async function ReceiptPage() {
           name: i.name,
           purchaseUnit: i.purchaseUnit,
           purchaseUnitInBase: i.purchaseUnitInBase,
+          unitType: i.unitType,
         }))}
         suppliers={suppliers}
       />

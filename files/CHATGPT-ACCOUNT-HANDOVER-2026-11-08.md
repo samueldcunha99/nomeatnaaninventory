@@ -29,6 +29,11 @@ The app includes:
 - Opaque customer order-tracking links with an intentionally limited public view that excludes price, private contact details and notes.
 - Date-range sales reports and CSV exports.
 - English, Hindi and Marathi UI/messages.
+- The subsequent full-flow audit fixed stale measurement/pack stock submissions,
+  numeric overflow/rounding at storage, invalid ingredient thresholds and business
+  form drafts clearing after a validation error. The post-fix local suite has 382
+  passing tests with zero skips, plus 47 compiled form workflow groups. No schema
+  change was needed. See `files/FULL-FLOW-QA-2026-11-08.md` for release status.
 - Page-specific tutorials on all 27 rendered pages: a description, expandable numbered
   steps and an explanation of what happens next. Guides cover sign-in, inventory,
   recipe editors/costing, production/reports, orders/kitchen, settings and customer
@@ -120,3 +125,4 @@ Read the repository's `AGENTS.md`, `README.md`, `files/PROJECT-SPEC.md`, operato
 - `files/completion-schema-proposal-2026-11-06.md` — approved stages A–C schema proposal.
 - `files/TRIAL-HANDOVER-2026-11-08.md` — completed clean-start operation, backup and trial setup.
 - `files/PAGE-TUTORIALS-2026-11-08.md` — multilingual page tutorial implementation and verification.
+- `files/FULL-FLOW-QA-2026-11-08.md` — full-flow audit, reproduced bugs, fixes and post-fix verification.

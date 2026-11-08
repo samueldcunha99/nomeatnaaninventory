@@ -2531,3 +2531,24 @@ tutorial/page/language combinations passed with owner sign-in/out and no busines
 writes. Browser confirmation showed the empty workspace and expanded Overview guide;
 normal viewport restored and guide left open for review. Updated release/account docs.
 The documentation-only follow-up skips CI/Netlify to preserve the verified app revision.
+
+## 2026-11-08 - Full cafe flow audit and regression repairs
+
+Fresh native PostgreSQL suite and deployment/recovery databases were created for the
+requested full-flow test. The initial 373 tests, 18 inventory/production groups and
+17 order/access groups passed. Additional probes reproduced stale kg/litre entry in
+all four stock forms, unsafe integer conversions/aggregate bounds, negative threshold
+500s and browser draft clearing after a validation error.
+
+Fixed the unit/pack recheck under ingredient locks, mandatory form measurement claims,
+exact storage bounds, ingredient input validation and error-only business draft restore
+(excluding password/file/hidden controls). No schema or cost arithmetic changes. Tests
+for the stock unit/race and numeric failures were watched failing before repair.
+
+Post-fix: 382 tests pass, zero skipped; production build/typecheck, all 47 compiled form
+workflow groups and fresh populated restricted-runtime recovery passed. npm audit has
+zero vulnerabilities. Browser ingredient/receipt/recipe/menu and invalid-form correction
+flows pass, as do Hindi draft preservation and a 320-pixel order layout. Live reads
+confirm zero active catalogue, ledger, batches, orders or payments and preserved owner/
+archive/audit counts. Details: `files/FULL-FLOW-QA-2026-11-08.md`. Release and final
+browser completion are recorded separately after publication verification.

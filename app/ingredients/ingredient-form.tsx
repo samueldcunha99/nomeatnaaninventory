@@ -1,5 +1,7 @@
 'use client';
 
+import { DraftForm } from '../ui/draft-form.tsx';
+
 import { useActionState } from 'react';
 import type { FormState } from './actions.ts';
 import { useTranslations } from '../i18n/provider.tsx';
@@ -28,7 +30,7 @@ export function IngredientForm({
   const [state, formAction, pending] = useActionState(action, { error: null });
 
   return (
-    <form action={formAction} className="max-w-xl">
+    <DraftForm result={state} action={formAction} className="max-w-xl">
       {initial?.id ? <input type="hidden" name="id" value={initial.id} /> : null}
 
       {state.error ? (
@@ -116,6 +118,6 @@ export function IngredientForm({
       <button className="btn" type="submit" disabled={pending}>
         {pending ? t("Saving…") : submitLabel}
       </button>
-    </form>
+    </DraftForm>
   );
 }

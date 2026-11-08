@@ -1,5 +1,7 @@
 'use client';
 
+import { DraftForm } from '../../ui/draft-form.tsx';
+
 import { useActionState, useEffect, useState } from 'react';
 import { recordReceiptAction, recordOpeningStockAction, type FormState } from '../actions.ts';
 import { IngredientCombobox } from '../../ui/ingredient-combobox.tsx';
@@ -17,6 +19,7 @@ export type IngredientOption = {
   name: string;
   purchaseUnit: string;
   purchaseUnitInBase: number;
+  unitType: 'weight' | 'volume' | 'count';
 };
 
 /**
@@ -81,7 +84,7 @@ export function ReceiptForm({
     setRows((rs) => rs.map((r, k) => (k === i ? { ...r, ...patch } : r)));
 
   return (
-    <form action={formAction}>
+    <DraftForm result={state} action={formAction}>
       <input type="hidden" name="requestId" value={requestId} />
       {state.error ? (
         <div className="msg msg--error" role="alert">
@@ -167,11 +170,11 @@ export function ReceiptForm({
                         cause a refusal, never a wrong quantity.
                       */}
                       {ing ? (
-                        <input
+                        <><input
                           type="hidden"
                           name={`lines[${i}][unitInBase]`}
                           value={ing.purchaseUnitInBase}
-                        />
+                        /><input type="hidden" name={`lines[${i}][entryUnitType]`} value={ing.unitType} /></>
                       ) : null}
                     </div>
                   </td>
@@ -216,6 +219,6 @@ export function ReceiptForm({
       <button className="btn" type="submit" disabled={pending}>
         {pending ? t("Saving…") : opening ? t('Record opening stock') : t("Record receipt")}
       </button>
-    </form>
+    </DraftForm>
   );
 }

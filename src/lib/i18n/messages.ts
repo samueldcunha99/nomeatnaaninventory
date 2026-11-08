@@ -3,6 +3,27 @@ import { tutorialMessages } from '../page-tutorials.ts';
 /** English source keys, with Hindi and Marathi interface translations. */
 export const messages = {
   ...tutorialMessages,
+  'Balance due': ['बकाया राशि', 'देय शिल्लक'],
+  'Hourly rate is too long.': ['प्रति घंटा दर बहुत लंबी है।', 'तासाचा दर खूप लांब आहे.'],
+  'An hourly rate is too large to record exactly.': ['प्रति घंटा दर सटीक रूप से दर्ज करने के लिए बहुत बड़ी है।', 'तासाचा दर अचूकपणे नोंदवण्यासाठी खूप मोठा आहे.'],
+  'A recipe quantity is too large to record exactly.': ['व्यंजन की मात्रा सटीक रूप से दर्ज करने के लिए बहुत बड़ी है।', 'पाककृतीचे प्रमाण अचूकपणे नोंदवण्यासाठी खूप मोठे आहे.'],
+  'The resulting stock quantity is too large to record exactly.': ['बनने वाली स्टॉक मात्रा सटीक रूप से दर्ज करने के लिए बहुत बड़ी है।', 'परिणामी साठ्याचे प्रमाण अचूकपणे नोंदवण्यासाठी खूप मोठे आहे.'],
+  'The resulting stock cost is too large to record exactly.': ['बनने वाली स्टॉक लागत सटीक रूप से दर्ज करने के लिए बहुत बड़ी है।', 'परिणामी साठ्याचा खर्च अचूकपणे नोंदवण्यासाठी खूप मोठा आहे.'],
+  'Low-stock threshold is too long.': ['कम स्टॉक की सीमा बहुत लंबी है।', 'कमी साठ्याची मर्यादा खूप लांब आहे.'],
+  'Low-stock threshold must be zero or more.': ['कम स्टॉक की सीमा शून्य या अधिक होनी चाहिए।', 'कमी साठ्याची मर्यादा शून्य किंवा जास्त असावी.'],
+  'Low-stock threshold is too large to record exactly.': ['कम स्टॉक की सीमा सटीक रूप से दर्ज करने के लिए बहुत बड़ी है।', 'कमी साठ्याची मर्यादा अचूकपणे नोंदवण्यासाठी खूप मोठी आहे.'],
+  'Reload this stock page before recording a quantity.': [
+    'मात्रा दर्ज करने से पहले यह स्टॉक पृष्ठ दोबारा खोलें।',
+    'प्रमाण नोंदवण्यापूर्वी हे साठ्याचे पान पुन्हा उघडा.'
+  ],
+  '"{name}" has a different measurement or purchase pack now. Nothing was saved. Reload the stock page and enter the quantity again.': [
+    '"{name}" की माप इकाई या खरीद पैक बदल गया है। कुछ सहेजा नहीं गया। स्टॉक पृष्ठ दोबारा खोलकर मात्रा फिर दर्ज करें।',
+    '"{name}" चे मोजमाप एकक किंवा खरेदी पॅक बदलला आहे. काहीही जतन झालेले नाही. साठ्याचे पान पुन्हा उघडून प्रमाण पुन्हा भरा.'
+  ],
+  'Correction quantity is too large to record exactly.': [
+    'सुधार की मात्रा सटीक रूप से दर्ज करने के लिए बहुत बड़ी है।',
+    'दुरुस्तीचे प्रमाण अचूकपणे नोंदवण्यासाठी खूप मोठे आहे.'
+  ],
   "Kitchen board and preparation updates. No prices or costs.": [
     "रसोई बोर्ड और तैयारी की स्थिति बदलना। कीमत या लागत नहीं दिखती।",
     "स्वयंपाकघर फलक आणि तयारीची स्थिती बदलणे. किमती किंवा खर्च दिसत नाहीत."

@@ -137,6 +137,23 @@ test('unknown validation details have a localized fallback, without changing Eng
   assert.equal(translateMessage('mr', 'Unexpected internal issue'), 'नोंदवलेली माहिती तपासून पुन्हा प्रयत्न करा.');
 });
 
+test('stock-unit and exact-number refusals retain ingredient names and give specific instructions in both languages', () => {
+  const name = 'QA "special" ingredient';
+  const message = `"${name}" has a different measurement or purchase pack now. Nothing was saved. Reload the stock page and enter the quantity again.`;
+  for (const locale of ['hi', 'mr'] as const) {
+    const t = translator(locale), translated = t.message(message);
+    assert.ok(translated.includes(name));
+    assert.notEqual(translated, t('Please check the entered details and try again.'));
+    assert.ok(!translated.includes('Nothing was saved'));
+    for (const text of ['Correction quantity is too large to record exactly.', 'Low-stock threshold must be zero or more.',
+      'Low-stock threshold is too large to record exactly.', 'A recipe quantity is too large to record exactly.',
+      'An hourly rate is too large to record exactly.', 'The resulting stock quantity is too large to record exactly.']) {
+      assert.notEqual(t.message(text), text);
+      assert.notEqual(t.message(text), t('Please check the entered details and try again.'));
+    }
+  }
+});
+
 test('rendered success messages translate roles but preserve the staff member name', () => {
   const message = translate('mr', 'Asha can now sign in as manager.');
   assert.equal(message, 'Asha आता व्यवस्थापक म्हणून साइन इन करू शकतात.');
