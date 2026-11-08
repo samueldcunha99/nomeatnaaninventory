@@ -8,8 +8,9 @@ order management, and a customer-facing tracking page. Five-month build.
 explanation and an expandable step-by-step guide in English, Hindi and Marathi. Guides
 cover inputs, stock/payment effects and the next action; manager-only steps are hidden
 from counter staff. The production day shortcut uses its destination report's guide.
-Local verification: typecheck/build and 17 relevant tests passed; 63 compiled page checks
-passed across all three languages. See [tutorial notes](files/PAGE-TUTORIALS-2026-11-08.md).
+Published application `71c5746` is verified: all 373 CI tests passed, build/recovery checks
+passed and 63 live tutorial page/language checks passed without business writes. See
+[tutorial notes](files/PAGE-TUTORIALS-2026-11-08.md).
 
 **Trial clean start - 8 November 2026:** at the user's request, the live catalogue was
 archived after a fresh backup, successful local restore and cleanup rehearsal. The app

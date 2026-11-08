@@ -2521,3 +2521,13 @@ language switching passed; the guide remained open across changes, and a 320-pix
 viewport showed no horizontal overflow. Tutorials are hidden when printing bills.
 Updated the operator guide and both handovers; details in
 `files/PAGE-TUTORIALS-2026-11-08.md`. Publication verification is recorded separately.
+
+## 2026-11-08 - Tutorial release published and verified
+
+Application commit 71c5746ebccf5a405642daa163a8e1a82c953a70 is published and confirmed
+by Netlify readiness. GitHub CI run 42505448494 passed: 373 tests, zero failed/skipped,
+production build, fresh migrations and populated recovery rehearsal. All 63 live
+tutorial/page/language combinations passed with owner sign-in/out and no business
+writes. Browser confirmation showed the empty workspace and expanded Overview guide;
+normal viewport restored and guide left open for review. Updated release/account docs.
+The documentation-only follow-up skips CI/Netlify to preserve the verified app revision.

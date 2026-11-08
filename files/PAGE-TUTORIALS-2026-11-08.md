@@ -42,5 +42,16 @@ and explicit tutorial mounts in each page. Coverage tests require a specific gui
 each rendered page and validate all translated sentences and role-specific steps.
 
 Local private verification evidence is under the ignored `.netlify/` directory.
-The full database suite is exercised by GitHub CI on publication; this document does
-not claim those deployment checks until the release is confirmed.
+
+## Published verification
+
+Netlify health confirms application commit `71c5746ebccf5a405642daa163a8e1a82c953a70`.
+[GitHub CI run 42505448494](https://github.com/samueldcunha99/nomeatnaaninventory/actions/runs/42505448494)
+passed test and build: **373 tests passed, 0 failed, 0 skipped**, fresh PostgreSQL
+migrations and the populated restricted-runtime backup/restore rehearsal.
+
+The 63 tutorial/page/language checks also passed against the published Netlify app,
+including secure owner login/logout, with no business-data writes. The live browser
+confirmed owner access, the empty trial workspace and the expanded Overview guide.
+Its normal viewport was restored and the live guide left open for the user. Local
+proof screenshot: `files/tutorial-live-2026-11-08.png` (not committed).

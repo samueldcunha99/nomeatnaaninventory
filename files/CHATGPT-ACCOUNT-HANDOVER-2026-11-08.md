@@ -13,7 +13,7 @@ A cafe inventory, recipe costing, production and order management system for No 
 - **Source repository:** [github.com/samueldcunha99/nomeatnaaninventory](https://github.com/samueldcunha99/nomeatnaaninventory)
 - **Live app:** [nomeatnaaninventory.netlify.app](https://nomeatnaaninventory.netlify.app/)
 - **Hosting and database:** Netlify Free + Supabase PostgreSQL, without Docker. The user selected Netlify after an earlier Render plan.
-- **Current deployed application revision verified in the completion report:** `cfc77d4f324ab51083b8f6d8d60a55a5a9824b94` (short hash `cfc77d4`). The later repository head `ee9d267` is a documentation-only handover update; the live app remains the tested application revision.
+- **Current deployed application revision:** `71c5746ebccf5a405642daa163a8e1a82c953a70` (short hash `71c5746`), the 8 November page-tutorial release. GitHub CI passed all 373 tests with zero failures/skips, production build and backup/restore rehearsal. The public health revision matched, and 63 live tutorial/page/language checks passed. Earlier completion reports refer to the prior `cfc77d4` release; later documentation-only commits do not rebuild the verified app.
 - The app has also been run locally at `http://localhost:3000` during prior work.
 
 ## Work completed
