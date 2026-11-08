@@ -85,3 +85,30 @@ are manual records, not a payment gateway. Existing denied internal routes fail 
 with a generic error page; tests verify the data/action refusal, not an ideal 403 UX.
 The test results establish the checked scenarios and do not replace the month of staff
 testing with actual measurements and physical stock.
+
+## Published release and final checks
+
+Netlify readiness confirms application `a608f0a7908726ccbd9bec935d8a4dc9e84789de`.
+[CI run 42509667437](https://github.com/samueldcunha99/nomeatnaaninventory/actions/runs/42509667437)
+passed test and build, with **382 passed / 0 failed / 0 skipped**, fresh migrations and
+the populated restricted-runtime backup/restore rehearsal. All 63 final live protected
+page/sign-in/language checks passed without business writes.
+
+In the isolated cafe, all **7 existing stock caches** exactly matched full ledger
+rebuilds. All **13 orders** had consistent saved payment totals and balances. The browser
+sale was completed and paid: INR 40 bill/payment, zero due, INR 2 saved material cost,
+and 1.23 kg sugar remaining from the initial 1.25 kg delivery. Advancing kitchen stages
+did not consume the 20 g again. Customer tracking showed completion in Hindi and Marathi,
+with item count/progress and no prices, customer contact/name or internal notes.
+
+Read-only production counts after publication matched the clean trial start: one owner/
+tenant, zero active ingredients/recipes/menu/suppliers, zero stock movements/batches/
+orders/payments and the retained archived 60 ingredients/20 recipes/184 lines plus 84
+audit rows. No schema upgrade or maintenance purge was run. The temporary test app and
+PostgreSQL were stopped; their private files remain for inspection. The live workspace
+was refreshed and remains available to the owner.
+
+Private evidence: `.netlify/full-qa-2026-11-08/` contains suite, recovery, 18+17+12 HTTP
+results, failing-before-fix proofs, edge probes, final invariants and live counts.
+`.netlify/tutorial-http-live.json` contains the final 63 live checks. Local proof image:
+`files/full-flow-qa-tracking-2026-11-08.png` (excluded from the release commit).

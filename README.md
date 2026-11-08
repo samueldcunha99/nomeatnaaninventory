@@ -6,9 +6,10 @@ order management, and a customer-facing tracking page. Five-month build.
 
 **Full-flow audit - 8 November 2026:** fixed stale measurement/pack handling in stock
 forms (including concurrent ingredient edits), exact-number limits, invalid ingredient
-threshold handling and lost form drafts after validation errors. Local PostgreSQL:
-382 tests passed, zero skipped; 47 compiled form workflow groups and the populated
-deployment/recovery rehearsal passed. Current npm audit reports zero vulnerabilities.
+threshold handling and lost form drafts after validation errors. Published `a608f0a`:
+382 local/CI tests passed, zero skipped; 47 compiled form workflow groups, 63 live
+page/language checks and populated deployment/recovery rehearsals passed. Current npm
+audit reports zero vulnerabilities.
 Production remains transaction-empty; all test business writes used isolated databases.
 See [the full-flow QA report](files/FULL-FLOW-QA-2026-11-08.md) for scope and evidence.
 

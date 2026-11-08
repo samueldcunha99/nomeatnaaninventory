@@ -2552,3 +2552,20 @@ flows pass, as do Hindi draft preservation and a 320-pixel order layout. Live re
 confirm zero active catalogue, ledger, batches, orders or payments and preserved owner/
 archive/audit counts. Details: `files/FULL-FLOW-QA-2026-11-08.md`. Release and final
 browser completion are recorded separately after publication verification.
+
+## 2026-11-08 - Full-flow fixes published and final verification completed
+
+Published a608f0a7908726ccbd9bec935d8a4dc9e84789de. GitHub CI 42509667437 passed all
+382 tests with zero failures/skips, production build and recovery rehearsal. Netlify
+readiness reports the exact revision. All 63 final live page/language checks passed;
+live read-only counts remain the empty trial start with retained owner/archive/audit.
+
+Completed the native browser path through ingredient creation, delivery, rejected and
+corrected recipe draft, menu serving, Hindi order confirmation, manual test payment,
+all kitchen stages and customer tracking completion (Hindi/Marathi). The INR 40 sale
+saved INR 2 material cost and consumed 20 g exactly once. All seven test stock caches
+match rebuilds; all thirteen test order balances match their recorded payments.
+Corrected the Hindi bill's stock/money balance ambiguity with a separate Balance due
+label. Closed temporary browser tabs, restored normal viewport, refreshed the live
+workspace and stopped the QA app/PostgreSQL. No test business records reached Supabase.
+Final details and operational setup limits remain in the full-flow QA report.
