@@ -1,3 +1,4 @@
+import { PageTutorial } from '../../ui/page-tutorial.tsx';
 import { WorkspaceHeader } from "../../ui/workspace-header.tsx";
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -31,6 +32,7 @@ export default async function EditIngredientPage({ params }: { params: Promise<{
       <WorkspaceHeader actor={actor} title={t("Ingredient")} />
 
       <main className="page" id="main-content" tabIndex={-1}>
+      <PageTutorial topic="ingredientEdit" role={actor.role} />
         <p>
           <Link href="/ingredients">{t("← Ingredients")}</Link>
         </p>

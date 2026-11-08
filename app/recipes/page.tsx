@@ -1,3 +1,4 @@
+import { PageTutorial } from '../ui/page-tutorial.tsx';
 import { WorkspaceHeader } from "../ui/workspace-header.tsx";
 import Link from 'next/link';
 import { requirePermission } from '../../src/auth/server.ts';
@@ -39,6 +40,7 @@ export default async function RecipesPage({
       <WorkspaceHeader actor={actor} title={t("Recipes")} />
 
       <main className="page" id="main-content" tabIndex={-1}>
+      <PageTutorial topic="recipes" role={actor.role} />
         <div className="page-heading">
           <h1>{t("Recipes & costing")}</h1>
           {canManage ? (

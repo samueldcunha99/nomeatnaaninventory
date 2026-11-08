@@ -1,3 +1,4 @@
+import { PageTutorial } from '../../ui/page-tutorial.tsx';
 import Link from 'next/link';
 import { requirePermission } from '../../../src/auth/server.ts';
 import { listOrderMenu, loadSalesSettings } from '../../../src/db/orders.ts';
@@ -14,6 +15,7 @@ export default async function NewOrderPage() {
   const ready = settings.taxMode != null && settings.taxRateMillipercent != null;
   return <><WorkspaceHeader actor={actor} title={t('New order')} />
     <main className="page" id="main-content" tabIndex={-1}>
+      <PageTutorial topic="orderNew" role={actor.role} />
       <p><Link href="/orders">{t('← Orders')}</Link></p><h1>{t('New order')}</h1>
       <p className="prose-note">{t('Choose the items and quantities. Each confirmed order keeps its own prices, tax and material-cost snapshot.')}</p>
       {!ready ? <p className="msg msg--warn" role="status">{t('Sales tax settings need an explicit choice before an order can be confirmed.')} {' '}

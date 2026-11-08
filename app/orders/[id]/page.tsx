@@ -1,3 +1,4 @@
+import { PageTutorial } from '../../ui/page-tutorial.tsx';
 
 import { orderLabel } from '../../../src/lib/order-labels.ts';
 import Link from 'next/link';
@@ -26,6 +27,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const trackingPath = `/track/${actor.tenantId}/${order.trackingToken}`;
   return <><WorkspaceHeader actor={actor} title={t('Order #{number}', { number: order.orderNumber })} />
     <main className="page order-page" id="main-content" tabIndex={-1}>
+      <PageTutorial topic="orderDetail" role={actor.role} />
       <p className="no-print"><Link href="/orders">{t('← Orders')}</Link></p>
       <div className="page-heading no-print"><h1>{t('Order #{number}', { number: order.orderNumber })}</h1><span className="badge">{t(orderLabel(order.status))}</span></div>
       {order.stockReversed ? <p className="msg msg--warn no-print">{t('This order was cancelled before preparation. Its reserved stock was restored.')}</p> : null}

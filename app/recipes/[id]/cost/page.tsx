@@ -1,3 +1,4 @@
+import { PageTutorial } from '../../../ui/page-tutorial.tsx';
 import { WorkspaceHeader } from "../../../ui/workspace-header.tsx";
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -229,6 +230,7 @@ export default async function CostBreakdownPage({
       <WorkspaceHeader actor={actor} title={t("Cost breakdown")} />
 
       <main className="page" id="main-content" tabIndex={-1}>
+      <PageTutorial topic="recipeCost" role={actor.role} />
         <p>
           <Link href="/recipes">{t("← Recipes")}</Link>
         </p>

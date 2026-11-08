@@ -1,3 +1,4 @@
+import { PageTutorial } from '../ui/page-tutorial.tsx';
 
 import { orderLabel } from '../../src/lib/order-labels.ts';
 import Link from 'next/link';
@@ -20,6 +21,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const rows = await listOrders(actor, { day, status, q });
   return <><WorkspaceHeader actor={actor} title={t('Orders')} />
     <main className="page" id="main-content" tabIndex={-1}>
+      <PageTutorial topic="orders" role={actor.role} />
       <div className="page-heading"><h1>{t('Orders')}</h1>{hasPermission(actor.role, 'orders.record') ? <Link className="btn" href="/orders/new">{t('+ New order')}</Link> : null}</div>
       <p className="prose-note">{t('Find orders by their creation date in Asia/Kolkata. Prices and material costs are saved when an order is confirmed.')}</p>
       {parameters.day && !istDayStart(parameters.day) ? <p className="msg msg--warn" role="status">{t('Choose a valid date. Showing today.')}</p> : null}

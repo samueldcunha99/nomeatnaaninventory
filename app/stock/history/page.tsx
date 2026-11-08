@@ -1,3 +1,4 @@
+import { PageTutorial } from '../../ui/page-tutorial.tsx';
 import { WorkspaceHeader } from "../../ui/workspace-header.tsx";
 import Link from 'next/link';
 import { requirePermission } from '../../../src/auth/server.ts';
@@ -82,6 +83,7 @@ export default async function HistoryPage({
       <WorkspaceHeader actor={actor} title={t("Movement history")} />
 
       <main className="page" id="main-content" tabIndex={-1}>
+      <PageTutorial topic="history" role={actor.role} />
         <h1>{t("Movement history")}</h1>
         <p className="prose-note">{t(" Read-only. Corrections are new movements — nothing here is ever edited or deleted. Times shown in Asia/Kolkata. ")}</p>
 

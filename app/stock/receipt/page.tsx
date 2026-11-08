@@ -1,3 +1,4 @@
+import { PageTutorial } from '../../ui/page-tutorial.tsx';
 import { WorkspaceHeader } from "../../ui/workspace-header.tsx";
 import Link from 'next/link';
 import { requirePermission } from '../../../src/auth/server.ts';
@@ -19,6 +20,7 @@ export default async function ReceiptPage() {
       <WorkspaceHeader actor={actor} title={t("Stock receipt")} />
 
       <main className="page" id="main-content" tabIndex={-1}>
+      <PageTutorial topic="receipt" role={actor.role} />
       <h1>{t("Stock receipt")}</h1>
       <p className="prose-note">{t(" Enter quantities in the unit you buy in, and what was actually paid for that line. The unit cost is worked out for you — check it against the delivery note before saving. ")}</p>
       <ReceiptForm

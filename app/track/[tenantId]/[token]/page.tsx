@@ -1,3 +1,4 @@
+import { PageTutorial } from '../../../ui/page-tutorial.tsx';
 
 import { orderLabel } from '../../../../src/lib/order-labels.ts';
 import { notFound } from 'next/navigation';
@@ -16,6 +17,7 @@ export default async function TrackingPage({ params }: { params: Promise<{ tenan
   if (!order) notFound();
   const t = await getTranslations();
   return <main className="page page--narrow" id="main-content">
+      <PageTutorial topic="tracking" />
     <div className="page-heading"><p className="eyebrow">{order.cafeName}</p><LanguageSwitcher /></div>
     <h1>{t('Track your order')}</h1>
     <p>{t('Order #{number}', { number: order.orderNumber })}</p>

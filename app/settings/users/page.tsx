@@ -1,3 +1,4 @@
+import { PageTutorial } from '../../ui/page-tutorial.tsx';
 import Link from 'next/link';
 import { WorkspaceHeader } from '../../ui/workspace-header.tsx';
 import { requirePermission } from '../../../src/auth/server.ts';
@@ -31,6 +32,7 @@ export default async function StaffPage() {
       <WorkspaceHeader actor={actor} title={t("Staff")} />
 
       <main className="page" id="main-content" tabIndex={-1}>
+      <PageTutorial topic="staff" role={actor.role} />
         <h1>{t("Who can sign in")}</h1>
         <p className="prose-note">{t(" Everyone gets their own account. Shared logins make the movement history useless: when a count is wrong, the question is who counted, and a stock ledger that says \"the owner\" for every line cannot answer it. ")}</p>
 

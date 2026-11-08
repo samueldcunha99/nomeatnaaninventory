@@ -1,3 +1,4 @@
+import { PageTutorial } from '../../ui/page-tutorial.tsx';
 import { WorkspaceHeader } from "../../ui/workspace-header.tsx";
 import Link from 'next/link';
 import { requirePermission } from '../../../src/auth/server.ts';
@@ -15,6 +16,7 @@ export default async function AdjustPage() {
       <WorkspaceHeader actor={actor} title={t("Adjustment / wastage")} />
 
       <main className="page" id="main-content" tabIndex={-1}>
+      <PageTutorial topic="adjustment" role={actor.role} />
       <h1>{t("Adjustment or wastage")}</h1>
       <p className="prose-note">{t(" Corrections are new movements — nothing is edited or deleted. The running stock follows from the ledger. ")}</p>
       <AdjustForm

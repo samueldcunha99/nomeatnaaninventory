@@ -1,5 +1,7 @@
 'use client';
 
+import { PageTutorial } from '../ui/page-tutorial.tsx';
+
 import { useActionState, useState } from 'react';
 import { loginAction } from './actions.ts';
 import { Emblem, Star, Wordmark } from '../ui/brand-mark.tsx';
@@ -125,6 +127,7 @@ export default function LoginPage() {
             {pending ? t("Signing in…") : t("Sign in")}
           </button>
         </form>
+        <PageTutorial topic="login" />
       </div>
     </main>
   );

@@ -1,3 +1,4 @@
+import { PageTutorial } from '../ui/page-tutorial.tsx';
 import Link from 'next/link';
 import { eq } from 'drizzle-orm';
 import { requirePermission } from '../../src/auth/server.ts';
@@ -22,6 +23,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   return <>
     <WorkspaceHeader actor={actor} title={t("Daily report")} />
     <main className="page" id="main-content" tabIndex={-1}>
+      <PageTutorial topic="dailyReports" role={actor.role} />
       <div className="page-heading"><h1>{t("Daily report")}</h1><div className="flex flex-wrap gap-2">
         <a className="btn btn--secondary" href={`/reports/export?${new URLSearchParams({ day, ...(recipeId ? { recipeId } : {}) })}`}>{t('Download CSV')}</a>
         <Link className="btn" href={{ pathname: '/production', query: { day } }}>{t("Record production")}</Link></div></div>

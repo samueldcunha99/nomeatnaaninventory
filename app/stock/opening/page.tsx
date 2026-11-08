@@ -1,3 +1,4 @@
+import { PageTutorial } from '../../ui/page-tutorial.tsx';
 import Link from 'next/link';
 import { requirePermission } from '../../../src/auth/server.ts';
 import { listIngredients } from '../../../src/db/ingredients.ts';
@@ -11,6 +12,7 @@ export default async function OpeningStockPage() {
   const ingredients = await listIngredients(actor, { activeOnly: false });
   return <><WorkspaceHeader actor={actor} title={t('Opening stock / valuation')} />
     <main className="page" id="main-content" tabIndex={-1}>
+      <PageTutorial topic="opening" role={actor.role} />
       <p><Link href="/ingredients">{t('← Ingredients')}</Link></p>
       <h1>{t('Opening stock / valuation')}</h1>
       <p className="prose-note">{t('Enter verified starting quantities and their total inventory value. These entries establish a cost basis and are excluded from new purchases and money paid today.')}</p>

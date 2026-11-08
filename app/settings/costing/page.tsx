@@ -1,3 +1,4 @@
+import { PageTutorial } from '../../ui/page-tutorial.tsx';
 import { WorkspaceHeader } from "../../ui/workspace-header.tsx";
 import Link from 'next/link';
 import { requirePermission } from '../../../src/auth/server.ts';
@@ -25,6 +26,7 @@ export default async function CostingSettingsPage() {
       <WorkspaceHeader actor={actor} title={t("Costing settings")} />
 
       <main className="page" id="main-content" tabIndex={-1}>
+      <PageTutorial topic="costingSettings" role={actor.role} />
         <p>
           <Link href="/recipes">{t("← Recipes")}</Link>
         </p>

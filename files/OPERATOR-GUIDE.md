@@ -6,10 +6,25 @@ is stored privately, never in this repository. Use **My password** to change you
 password. Owners/managers can reset other permitted accounts under **Staff**. Resets
 revoke that account's sessions. Only an owner can grant or reset another owner.
 
+**Clean trial start, 8 November 2026:** the previous ingredients and recipes were
+archived at the owner's request. They no longer appear, including when inactive items
+are shown. The owner login is unchanged; sign in again because old sessions were revoked.
+A fresh backup was restored and verified before the archive. See
+[the trial handover](TRIAL-HANDOVER-2026-11-08.md) for the starting state and recovery notes.
+
+Each page has a **How this page works** explanation. Open **Step-by-step guide** to
+see the page's instructions and **What happens next** to understand its effect on stock,
+records or payments. Open it again whenever needed. Sign-in help is below the sign-in
+form; the customer tracking page also has its own guide. The guides follow the website
+language and staff role, and do not submit forms or change stock. They are omitted from
+printed order bills.
+
 ## Prepare the real cafe before relying on the figures
 
-1. Check the 60 ingredients and 20 imported recipes. There are still 225 workbook
-   entries requiring real measurements/yields. Missing values have not been guessed.
+1. Create the cafe's ingredients and recipes for the trial. The previous 60 ingredients
+   and 20 imported recipes are archived and can be recovered if the owner requests it.
+   The earlier workbook also had 225 entries requiring real measurements/yields;
+   missing values must not be guessed when entering or importing them.
 2. Count stock physically. Under **Ingredients → Opening stock / valuation**, record
    verified quantities and their total inventory value. For existing positive stock
    with unknown value, enter exactly the current quantity; valuation keeps that quantity

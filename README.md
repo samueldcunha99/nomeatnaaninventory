@@ -4,6 +4,21 @@ Internal management system for a single-outlet cafe and bakery in Chhatrapati
 Sambhajinagar, Maharashtra. Ingredient-level cost visibility, self-maintaining inventory,
 order management, and a customer-facing tracking page. Five-month build.
 
+**Page tutorials - 8 November 2026:** every rendered page now includes a short
+explanation and an expandable step-by-step guide in English, Hindi and Marathi. Guides
+cover inputs, stock/payment effects and the next action; manager-only steps are hidden
+from counter staff. The production day shortcut uses its destination report's guide.
+Local verification: typecheck/build and 17 relevant tests passed; 63 compiled page checks
+passed across all three languages. See [tutorial notes](files/PAGE-TUTORIALS-2026-11-08.md).
+
+**Trial clean start - 8 November 2026:** at the user's request, the live catalogue was
+archived after a fresh backup, successful local restore and cleanup rehearsal. The app
+now shows zero ingredients, recipes, menu items, purchases, batches and orders. The owner
+account, audit history, database structure and hosting configuration are retained; all
+10 old sessions were revoked. Owner login and the live empty screens passed verification.
+This supersedes the active-catalogue counts below. See
+[the trial handover](files/TRIAL-HANDOVER-2026-11-08.md) before cafe setup or recovery.
+
 **Current completion work - 6 November 2026:** the nine inventory/costing/retry defects
 from the earlier audit are fixed. Opening-stock valuation, append-only batch correction,
 safe stock-mode changes, password administration, internal orders/POS, manual payments,

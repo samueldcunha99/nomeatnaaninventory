@@ -1,3 +1,4 @@
+import { PageTutorial } from '../../../ui/page-tutorial.tsx';
 import { WorkspaceHeader } from "../../../ui/workspace-header.tsx";
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -27,6 +28,7 @@ export default async function MenuItemsPage({ params }: { params: Promise<{ id: 
       <WorkspaceHeader actor={actor} title={t("Menu items")} />
 
       <main className="page" id="main-content" tabIndex={-1}>
+      <PageTutorial topic="recipeMenu" role={actor.role} />
         <p>
           <Link href={`/recipes/${recipe.id}/cost`}>← {recipe.name}</Link>
         </p>

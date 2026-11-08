@@ -1,3 +1,4 @@
+import { PageTutorial } from '../ui/page-tutorial.tsx';
 import Link from 'next/link';
 import { requirePermission } from '../../src/auth/server.ts';
 import { loadRecipeGraph } from '../../src/db/recipes.ts';
@@ -24,6 +25,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
   return <>
     <WorkspaceHeader actor={actor} title={t("Daily production")} />
     <main className="page" id="main-content" tabIndex={-1}>
+      <PageTutorial topic="production" role={actor.role} />
       <div className="page-heading"><h1>{t("Daily production")}</h1><Link className="btn btn--secondary" href={{ pathname: '/reports', query: { day } }}>{t("View daily report")}</Link></div>
       <p className="prose-note">{t("Record batches made, their measured yield and the materials used. Dates follow Asia/Kolkata.")}</p>
       {params.day && !istDayStart(params.day) ? <p className="msg msg--error" role="alert">{t("Choose a valid date. Showing today.")}</p> : null}

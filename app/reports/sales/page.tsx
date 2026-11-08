@@ -1,3 +1,4 @@
+import { PageTutorial } from '../../ui/page-tutorial.tsx';
 import Link from 'next/link';
 import { requirePermission } from '../../../src/auth/server.ts';
 import { getSalesReport } from '../../../src/db/sales-report.ts';
@@ -16,6 +17,7 @@ export default async function SalesReportPage({ searchParams }: { searchParams: 
   const week = istToday(new Date(istDayStart(today)!.getTime() - 6 * 86400000));
   const value = (amount: bigint | null) => amount === null ? t('Unknown') : formatINR(amount);
   return <><WorkspaceHeader actor={actor} title={t('Sales reports')} /><main className="page" id="main-content" tabIndex={-1}>
+      <PageTutorial topic="salesReport" role={actor.role} />
     <div className="page-heading"><h1>{t('Sales reports')}</h1><a className="btn btn--secondary" href={`/reports/sales/export?from=${from}&to=${to}`}>{t('Download CSV')}</a></div>
     <p className="prose-note">{t('Completed orders are grouped by their creation date in India. Sales exclude tax and are shown before refunds. Material margins exclude labour, overhead and other expenses.')}</p>
     {(query.from || query.to) && !valid ? <p className="msg msg--warn">{t('Choose a valid date range of at most 366 days.')}</p> : null}

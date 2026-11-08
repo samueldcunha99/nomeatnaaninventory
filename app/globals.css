@@ -691,6 +691,19 @@
 
 /* The shared workspace keeps costing within reach on every internal screen. */
 @layer components {
+  .page-tutorial { margin-bottom: 28px; padding: 18px 20px 8px; min-width: 0; border: 1px solid var(--color-mist); border-radius: 12px; background: var(--color-surface); color: var(--color-ink); overflow-wrap: anywhere; }
+  .page-tutorial__title { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-weight: 600; color: var(--color-navy); }
+  .page-tutorial__title svg { flex-shrink: 0; }
+  .page-tutorial__description { margin: 0 0 8px; color: var(--color-ink-muted); font-size: 14px; line-height: 1.65; }
+  .page-tutorial summary { min-height: 44px; padding: 11px 0; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--color-navy); }
+  .page-tutorial summary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; border-radius: 4px; }
+  .page-tutorial__steps { list-style: decimal; margin: 4px 0 16px; padding-left: 24px; font-size: 14px; line-height: 1.7; }
+  .page-tutorial__steps li { padding-left: 5px; margin-bottom: 10px; }
+  .page-tutorial__steps li::marker { color: var(--color-navy); font-weight: 600; }
+  .page-tutorial__result { border-top: 1px solid var(--color-line); padding-top: 14px; margin: 0 0 12px; font-size: 14px; line-height: 1.7; }
+  .page-tutorial__result strong { display: block; margin-bottom: 4px; }
+  .auth__card .page-tutorial { margin: 24px 0 0; padding: 14px 16px 4px; background: transparent; }
+  @media (max-width: 480px) { .page-tutorial { padding: 14px 16px 4px; } }
   body:has(.workspace-header) { background: var(--color-workspace); }
   .skip-link { position: fixed; top: -6rem; left: 1rem; z-index: 100; padding: 1rem; background: var(--color-surface); }
   .skip-link:focus { top: 1rem; }

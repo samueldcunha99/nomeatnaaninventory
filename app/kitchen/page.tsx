@@ -1,3 +1,4 @@
+import { PageTutorial } from '../ui/page-tutorial.tsx';
 
 import { orderLabel } from '../../src/lib/order-labels.ts';
 import Link from 'next/link';
@@ -17,6 +18,7 @@ export default async function KitchenPage() {
   const rows = await listKitchenOrders(actor);
   return <><WorkspaceHeader actor={actor} title={t('Kitchen board')} />
     <main className="page" id="main-content" tabIndex={-1}>
+      <PageTutorial topic="kitchen" role={actor.role} />
       <div className="page-heading"><h1>{t('Kitchen board')}</h1><RefreshKitchenBoard /></div>
       <p className="prose-note">{t('Active orders, oldest first. Updating preparation status does not deduct stock again.')}</p>
       {rows.length ? <div className="recipe-grid">{rows.map(order => <article className="form-section mt-0" key={order.id}>

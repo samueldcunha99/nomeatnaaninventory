@@ -2483,3 +2483,41 @@ Updated current handover/verification/operator documents. Their final documentat
 commit skips redundant CI/Netlify builds, preserving the tested deployed source revision.
 Cafe data setup, staff acceptance, unresolved workbook measurements and external
 backup/payment/checkout/AI integrations remain explicitly described, not claimed complete.
+
+## 2026-11-08 - Live clean start for the cafe trial
+
+At the user's repeated request, archived the prior catalogue so the cafe starts its
+month of testing with empty working screens. A fresh private dump was checksum checked,
+restored into isolated local PostgreSQL and checked by the recovery tool. The archive
+was rehearsed against that restored copy before live application. An initial UTC/local
+timestamp fingerprint mismatch refused and rolled back; normalized comparisons matched.
+
+The successful live transaction soft deleted 60 ingredients, 20 recipes and 165 active
+recipe lines, preserving all 184 historical line rows and other catalogue history.
+No purchases, movements, batches, menu items, orders, payments or suppliers existed.
+The one owner/tenant and configuration stayed intact; 10 old sessions were revoked,
+83 audit records retained and one maintenance audit record added. No append-only ledger
+guard was bypassed and no schema or application source change was needed.
+
+Live owner sign-in and sign-out revocation passed, along with health and empty overview,
+ingredients (including inactive), recipes, production, orders, kitchen and daily reports,
+plus retained staff access. No business test writes were made. Fresh backup/manifest:
+`backups/trial-start-2026-11-08/`; private evidence: `.netlify/trial-2026-11-08/`.
+Updated the operator guide, README, account handover and trial handover. Real catalogue,
+opening counts/values, menu/tax setup, staff acceptance and off-site backup configuration
+remain cafe setup tasks. No automatic month-end expiry or cleanup was configured.
+
+## 2026-11-08 - Tutorials on every rendered page
+
+Added a page-specific description, native expandable steps and outcome explanation to
+all 27 rendered pages, including public sign-in/tracking and nested ingredient/recipe/
+order pages. The production date redirect uses the destination report's tutorial.
+English, Hindi and Marathi are complete. Manager-only setup/refund steps are omitted
+for counter staff. The guides use existing permissions and add no queries or schema.
+
+Typecheck, production build and 17 relevant checks passed. All 63 compiled HTTP page/
+language combinations passed without business writes. Browser disclosure/keyboard and
+language switching passed; the guide remained open across changes, and a 320-pixel
+viewport showed no horizontal overflow. Tutorials are hidden when printing bills.
+Updated the operator guide and both handovers; details in
+`files/PAGE-TUTORIALS-2026-11-08.md`. Publication verification is recorded separately.

@@ -1,3 +1,4 @@
+import { PageTutorial } from '../../ui/page-tutorial.tsx';
 import { WorkspaceHeader } from "../../ui/workspace-header.tsx";
 import Link from 'next/link';
 import { requirePermission } from '../../../src/auth/server.ts';
@@ -23,6 +24,7 @@ export default async function LowStockPage() {
       <WorkspaceHeader actor={actor} title={t("Low stock")} />
 
       <main className="page" id="main-content" tabIndex={-1}>
+      <PageTutorial topic="lowStock" role={actor.role} />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1>{t("Low stock")}</h1>
           {canRecord ? (

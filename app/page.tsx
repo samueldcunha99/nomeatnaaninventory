@@ -1,3 +1,4 @@
+import { PageTutorial } from './ui/page-tutorial.tsx';
 import { WorkspaceHeader } from "./ui/workspace-header.tsx";
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -71,6 +72,7 @@ export default async function HomePage() {
       <WorkspaceHeader actor={user} title={t("Overview")} />
 
       <main className="page" id="main-content" tabIndex={-1}>
+      <PageTutorial topic="overview" role={user.role} />
         {canCost ? (
           <section className="costing-hero">
             <div>

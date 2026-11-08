@@ -1,5 +1,8 @@
+import { tutorialMessages } from '../page-tutorials.ts';
+
 /** English source keys, with Hindi and Marathi interface translations. */
 export const messages = {
+  ...tutorialMessages,
   "Kitchen board and preparation updates. No prices or costs.": [
     "रसोई बोर्ड और तैयारी की स्थिति बदलना। कीमत या लागत नहीं दिखती।",
     "स्वयंपाकघर फलक आणि तयारीची स्थिती बदलणे. किमती किंवा खर्च दिसत नाहीत."
