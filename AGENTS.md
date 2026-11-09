@@ -11,6 +11,14 @@ after the stock fold. Business forms preserve ordinary drafts on action errors u
 `DraftForm`; passwords/hidden identities are excluded and successful resets remain.
 No schema change was needed. This supersedes older test-count notes below.
 
+**Stock import, 9 November 2026:** 395 isolated PostgreSQL tests and 12 additional
+compiled CSV form workflows pass. Owners/managers can preview and atomically import
+catalogue-only rows, opening valuations or deliveries. Imports call existing ingredient
+and stock writers with a shared transaction; no direct catalogue/ledger insert path.
+Same normalized file/mode/reference replays an immutable tenant-scoped audit manifest.
+Preserve exact decimal conversion, missing-cost semantics, stock locks and unit claims.
+See `files/STOCK-IMPORT-2026-11-09.md`. No schema change.
+
 **Current state, 6 November 2026 (supersedes older milestone/status notes below):**
 Netlify Free + Supabase is the selected deployment. The user approved stages A-C in
 `files/completion-schema-proposal-2026-11-06.md`. Migrations 0008-0012 add nullable

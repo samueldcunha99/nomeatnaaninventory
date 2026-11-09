@@ -8,6 +8,15 @@ const step = (text: Text, roles?: readonly Role[]): Step => ({ text, roles });
 const managers = ['owner', 'manager'] as const;
 
 export const pageTutorials = {
+  stockImport: {
+    description: ['Import an ingredient list, verified opening stock or a delivery from a CSV file.', 'CSV फ़ाइल से सामग्री सूची, सत्यापित शुरुआती स्टॉक या डिलीवरी आयात करें।', 'CSV फाइलमधून साहित्य यादी, पडताळलेला सुरुवातीचा साठा किंवा डिलिव्हरी आयात करा.'],
+    steps: [
+      step(['Download the template, fill it in Excel and save as CSV UTF-8. Keep the headings unchanged.', 'नमूना डाउनलोड करें, Excel में भरें और CSV UTF-8 में सहेजें। शीर्षक न बदलें।', 'नमुना डाउनलोड करा, Excel मध्ये भरा आणि CSV UTF-8 म्हणून जतन करा. मथळे बदलू नका.']),
+      step(['Choose opening stock or a new delivery. Quantities use purchase units; costs are the full rupee value of each row.', 'शुरुआती स्टॉक या नई डिलीवरी चुनें। मात्रा खरीद इकाई में और लागत हर पंक्ति का पूरा रुपया मूल्य है।', 'सुरुवातीचा साठा किंवा नवीन डिलिव्हरी निवडा. प्रमाण खरेदी एककात व खर्च प्रत्येक ओळीचे पूर्ण रुपयातील मूल्य आहे.']),
+      step(['Upload the file, fix every listed error and review the preview before confirming the import.', 'फ़ाइल चुनें, हर बताई गई गलती सुधारें और आयात की पुष्टि से पहले पूर्वावलोकन जाँचें।', 'फाइल निवडा, दाखवलेल्या सर्व चुका सुधारा आणि आयात निश्चित करण्यापूर्वी पूर्वावलोकन तपासा.']),
+    ],
+    result: ['Nothing changes during preview. Confirmation saves the whole file together; the same file and reference cannot add stock twice.', 'पूर्वावलोकन में कुछ नहीं बदलता। पुष्टि पूरी फ़ाइल साथ सहेजती है; समान फ़ाइल और संदर्भ स्टॉक दो बार नहीं जोड़ते।', 'पूर्वावलोकनात काहीही बदलत नाही. निश्चित केल्यावर पूर्ण फाइल एकत्र जतन होते; तीच फाइल आणि संदर्भ साठा दोनदा वाढवत नाहीत.'],
+  },
   login: {
     description: ['Sign in with the staff account created for you.', 'अपने लिए बनाए गए कर्मचारी खाते से साइन इन करें।', 'तुमच्यासाठी तयार केलेल्या कर्मचारी खात्याने साइन इन करा.'],
     steps: [

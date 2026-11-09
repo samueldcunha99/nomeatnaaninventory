@@ -39,7 +39,8 @@ export default async function IngredientsPage({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1>{t("Ingredients")}</h1>
           {canManage ? (
-            <div className="flex flex-wrap gap-2"><Link className="btn btn--secondary" href={{ pathname: '/stock/opening' }}>{t('Opening stock / valuation')}</Link>
+            <div className="flex flex-wrap gap-2"><Link className="btn btn--secondary" href={{ pathname: '/stock/import' }}>{t('Import stock file')}</Link>
+              <Link className="btn btn--secondary" href={{ pathname: '/stock/opening' }}>{t('Opening stock / valuation')}</Link>
               <Link className="btn" href="/ingredients/new">{t(" + New ingredient ")}</Link></div>
           ) : null}
         </div>

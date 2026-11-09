@@ -4,6 +4,15 @@ Internal management system for a single-outlet cafe and bakery in Chhatrapati
 Sambhajinagar, Maharashtra. Ingredient-level cost visibility, self-maintaining inventory,
 order management, and a customer-facing tracking page. Five-month build.
 
+**Stock file import - 9 November 2026:** owners/managers can use **Ingredients →
+Import stock file** to download a CSV template, preview up to 100 ingredient rows and
+confirm an ingredient list, opening valuation or delivery. New ingredients and stock
+save atomically through the existing writers; the same file/mode/reference cannot
+duplicate stock. Missing prices are never assumed free. No schema migration.
+395 isolated PostgreSQL tests, 12 compiled upload/confirmation/access workflows and
+production build passed. Browser upload, template download, duplicate protection and
+English/Hindi/Marathi were verified. See [stock import notes](files/STOCK-IMPORT-2026-11-09.md).
+
 **Full-flow audit - 8 November 2026:** fixed stale measurement/pack handling in stock
 forms (including concurrent ingredient edits), exact-number limits, invalid ingredient
 threshold handling and lost form drafts after validation errors. Published `a608f0a`:

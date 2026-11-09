@@ -51,8 +51,8 @@ export type IngredientRow = {
 };
 
 /** One select, shared by the list and the single fetch, so they cannot drift. */
-function selectIngredients(where: ReturnType<typeof and>) {
-  return db
+function selectIngredients(where: ReturnType<typeof and>, tx: Tx | typeof db = db) {
+  return tx
     .select({
       id: ingredients.id,
       name: ingredients.name,
@@ -95,6 +95,7 @@ function toRow(r: Awaited<ReturnType<typeof selectIngredients>>[number]): Ingred
 export async function listIngredients(
   actor: Actor,
   opts: { search?: string; activeOnly?: boolean } = {},
+  tx?: Tx,
 ): Promise<IngredientRow[]> {
   assertPermission(actor.role, 'ingredients.view');
   const { search, activeOnly = true } = opts;
@@ -104,7 +105,7 @@ export async function listIngredients(
       isNull(ingredients.deletedAt),
       activeOnly ? eq(ingredients.isActive, true) : undefined,
       search ? ilike(ingredients.name, `%${search}%`) : undefined,
-    ),
+    ), tx,
   );
   return rows.map(toRow);
 }

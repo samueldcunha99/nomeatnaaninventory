@@ -2569,3 +2569,18 @@ Corrected the Hindi bill's stock/money balance ambiguity with a separate Balance
 label. Closed temporary browser tabs, restored normal viewport, refreshed the live
 workspace and stopped the QA app/PostgreSQL. No test business records reached Supabase.
 Final details and operational setup limits remain in the full-flow QA report.
+
+## 2026-11-09 - Stock file import built and verified locally
+
+Added owner/manager CSV upload, downloadable template, opening/delivery choice, row-error
+preview and explicit confirmation. Catalogue-only rows leave stock/cost unknown. Existing
+ingredient settings are preserved; unit/pack, duplicate, precision and role checks apply.
+Existing ingredient/receipt writers share a transaction so one failed row rolls everything
+back. A tenant-scoped immutable audit manifest and import lock prevent duplicate uploads.
+No schema migration or new cost arithmetic. All UI/tutorials support English/Hindi/Marathi.
+
+395 isolated PostgreSQL tests, production build/typecheck and 12 compiled multipart-form
+workflow groups pass. Browser upload, invalid-file correction, exact preview/confirmation,
+retry protection, template download and language preservation pass. The HTTP checks found
+and fixed missing confirmation feedback without JavaScript. All test writes are local;
+no Supabase business data imported. See files/STOCK-IMPORT-2026-11-09.md.

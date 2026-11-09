@@ -6,6 +6,7 @@ import { listIngredients } from '../../../src/db/ingredients.ts';
 import { listSuppliers } from '../../../src/db/movements.ts';
 import { ReceiptForm } from './receipt-form.tsx';
 import { getTranslations } from '../../i18n/server.ts';
+import { hasPermission } from '../../../src/lib/auth.ts';
 
 export default async function ReceiptPage() {
   const actor = await requirePermission('stock.record');
@@ -22,6 +23,7 @@ export default async function ReceiptPage() {
       <main className="page" id="main-content" tabIndex={-1}>
       <PageTutorial topic="receipt" role={actor.role} />
       <h1>{t("Stock receipt")}</h1>
+      {hasPermission(actor.role, 'ingredients.manage') ? <p><Link className="btn btn--secondary" href={{ pathname: '/stock/import', query: { mode: 'receipt' } }}>{t('Import stock file')}</Link></p> : null}
       <p className="prose-note">{t(" Enter quantities in the unit you buy in, and what was actually paid for that line. The unit cost is worked out for you — check it against the delivery note before saving. ")}</p>
       <ReceiptForm
         requestId={crypto.randomUUID()}

@@ -1,7 +1,9 @@
 import { tutorialMessages } from '../page-tutorials.ts';
+import { stockImportMessages } from '../stock-import-messages.ts';
 
 /** English source keys, with Hindi and Marathi interface translations. */
 export const messages = {
+  ...stockImportMessages,
   ...tutorialMessages,
   'Balance due': ['बकाया राशि', 'देय शिल्लक'],
   'Hourly rate is too long.': ['प्रति घंटा दर बहुत लंबी है।', 'तासाचा दर खूप लांब आहे.'],

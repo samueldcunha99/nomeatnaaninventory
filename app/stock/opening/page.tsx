@@ -15,6 +15,7 @@ export default async function OpeningStockPage() {
       <PageTutorial topic="opening" role={actor.role} />
       <p><Link href="/ingredients">{t('← Ingredients')}</Link></p>
       <h1>{t('Opening stock / valuation')}</h1>
+      <p><Link className="btn btn--secondary" href={{ pathname: '/stock/import' }}>{t('Import stock file')}</Link></p>
       <p className="prose-note">{t('Enter verified starting quantities and their total inventory value. These entries establish a cost basis and are excluded from new purchases and money paid today.')}</p>
       <p className="msg msg--warn">{t('For existing stock with an unknown value, enter its current positive quantity exactly. Its quantity stays the same while the supplied value is recorded. Make physical count corrections separately. Known purchase costs cannot be replaced here.')}</p>
       <ReceiptForm requestId={crypto.randomUUID()} opening suppliers={[]} ingredients={ingredients.map(i => ({

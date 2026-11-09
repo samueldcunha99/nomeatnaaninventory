@@ -76,18 +76,18 @@ function storedInteger(value: bigint, label: string): number {
  * as one event later, and all of them land in a single transaction - a bad line rolls
  * the whole receipt back rather than half-recording a delivery.
  */
-export async function recordReceipt(actor: Actor, input: ReceiptInput) {
+export async function recordReceipt(actor: Actor, input: ReceiptInput, tx?: Tx) {
   assertPermission(actor.role, 'stock.record');
-  return recordValuedInflow(actor, input, 'receipt');
+  return recordValuedInflow(actor, input, 'receipt', tx);
 }
 
 /** An opening valuation is a priced inflow, distinguished from a new purchase in all reports. */
-export async function recordOpeningStock(actor: Actor, input: ReceiptInput) {
+export async function recordOpeningStock(actor: Actor, input: ReceiptInput, tx?: Tx) {
   assertPermission(actor.role, 'ingredients.manage');
-  return recordValuedInflow(actor, input, 'opening_stock');
+  return recordValuedInflow(actor, input, 'opening_stock', tx);
 }
 
-async function recordValuedInflow(actor: Actor, input: ReceiptInput, referenceType: 'receipt' | 'opening_stock') {
+async function recordValuedInflow(actor: Actor, input: ReceiptInput, referenceType: 'receipt' | 'opening_stock', outerTx?: Tx) {
   if (input.lines.length === 0) throw new AuthzError('A receipt needs at least one line.');
   if (referenceType === 'opening_stock' && new Set(input.lines.map(line => line.ingredientId)).size !== input.lines.length) {
     throw new RangeError('Enter each ingredient once when recording opening stock.');
@@ -115,7 +115,7 @@ async function recordValuedInflow(actor: Actor, input: ReceiptInput, referenceTy
     };
   });
 
-  return db.transaction(async tx => {
+  const body = async (tx: Tx) => {
     // Lock the submission before looking for it. Concurrent retries then see the first
     // transaction's committed group. Ingredient locks still belong to recordMovements.
     await tx.execute(raw`select pg_advisory_xact_lock(hashtextextended(${`receipt:${actor.tenantId}:${referenceId}`}, 0))`);
@@ -164,7 +164,8 @@ async function recordValuedInflow(actor: Actor, input: ReceiptInput, referenceTy
     }
     await recordMovements([...resets, ...lines], tx);
     return { referenceId, lineCount: lines.length, replayed: false };
-  });
+  };
+  return outerTx ? body(outerTx) : db.transaction(body);
 }
 
 export type CorrectionInput = EntryUnitClaim & {

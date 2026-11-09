@@ -52,6 +52,39 @@ next delivery. Negative thresholds and values too large to store exactly are ref
 7. Create actual staff accounts and have each role rehearse its work. Keep the old
    record alongside the app during initial staff acceptance and reconcile physical stock.
 
+## Import an ingredient or stock file
+
+Owners/managers open **Ingredients → Import stock file**. The same option appears on
+opening stock and receipts; entering from receipts selects **New purchase / delivery**.
+
+1. Download the blank CSV template. Fill it in Excel and **Save As → CSV UTF-8**.
+   Keep all eight English column headings. Each file supports 100 ingredient rows and
+   256 KB. Ordinary `.xlsx` workbooks need saving as CSV first.
+2. Use `weight` (g), `volume` (ml) or `count` in `unit_type`. A kg pack has
+   `purchase_unit=kg` and `purchase_unit_in_base=1000`; a litre has 1000; a 30-piece
+   tray uses count and 30. `quantity` and `low_stock_threshold` use those purchase units.
+3. `total_cost` is the full rupee value of the row, without a currency sign or thousands
+   separator. For example, quantity `1.25` kg and cost `125` means 1.25 kg worth INR 125.
+   Leave quantity and cost BOTH blank to add an ingredient without stock/cost history.
+   Enter zero cost only for stock that is genuinely free. Brand and threshold are optional.
+4. Select **Opening stock / valuation** for the stock already present at trial start.
+   Opening entries do not count as new purchases. Use **New purchase / delivery** only
+   for newly received stock; it adds to the balance and counts as a purchase today.
+5. Add an import/delivery reference, upload and select **Preview import**. Correct every
+   listed error, then check all quantities, values and new/existing ingredient matches.
+   Select **Confirm import** to save. A failed row rolls back the entire file, including
+   newly created ingredients. Preview never writes business data.
+
+Existing ingredient settings are preserved. Names match case-insensitively within this
+cafe; inactive ingredients need reactivation and different units/pack sizes need correction
+before import. Opening valuation retains its ordinary safeguards: it cannot replace known
+costs, and existing unknown stock needs its exact current positive quantity.
+
+Repeated submission or a fresh upload of the same file, type and reference does not add
+stock twice. If a separate, genuinely identical delivery arrives later, give it a different
+delivery reference. Import does not group multiple supplier invoices or backdate purchases.
+Supplier-specific deliveries can still use the ordinary receipt form.
+
 ## Record preparation correctly
 
 Use **Daily production** for batches actually made. Select the production date, recipe,
