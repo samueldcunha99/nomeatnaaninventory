@@ -1,11 +1,11 @@
-import { assertEnv, databaseUrl, isSupabaseHost, type DatabasePurpose, type EnvLike } from './env.ts';
+import { assertEnv, databaseUrl, isManagedPostgresHost, type DatabasePurpose, type EnvLike } from './env.ts';
 
 /** Both clients use the same connection policy; neither opens a connection here. */
 export function databaseConfig(env: EnvLike = process.env, purpose: DatabasePurpose = 'runtime') {
   assertEnv(env, { purpose });
   const url = databaseUrl(env, purpose)!;
   const ca = env.DATABASE_SSL_CA?.trim().replace(/\\n/g, '\n');
-  const tls = isSupabaseHost(new URL(url).hostname) || Boolean(ca);
+  const tls = isManagedPostgresHost(new URL(url).hostname) || Boolean(ca);
   return {
     url,
     options: {

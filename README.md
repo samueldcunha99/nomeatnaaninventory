@@ -4,6 +4,14 @@ Internal management system for a single-outlet cafe and bakery in Chhatrapati
 Sambhajinagar, Maharashtra. Ingredient-level cost visibility, self-maintaining inventory,
 order management, and a customer-facing tracking page. Five-month build.
 
+**Database migration preparation - 9 November 2026:** the user selected a USD 20/month
+budget and DigitalOcean Managed PostgreSQL. The PostgreSQL 17 Standard creation form
+is configured at USD 15.15/month before taxes in NYC3, near the verified Netlify IAD
+Functions region. Creation awaits the user's billing step; Supabase remains live.
+Verified-CA/restricted-runtime checks now support DigitalOcean, and native backup/restore
+refuses pool aliases. All 397 isolated tests and production build/typecheck pass.
+See [the migration runbook](deploy/DIGITALOCEAN.md) for current status and cutover steps.
+
 **Stock file import - 9 November 2026:** owners/managers can use **Ingredients →
 Import stock file** to download a CSV template, preview up to 100 ingredient rows and
 confirm an ingredient list, opening valuation or delivery. New ingredients and stock

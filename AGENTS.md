@@ -19,6 +19,14 @@ Same normalized file/mode/reference replays an immutable tenant-scoped audit man
 Preserve exact decimal conversion, missing-cost semantics, stock locks and unit claims.
 See `files/STOCK-IMPORT-2026-11-09.md`. No schema change.
 
+**DigitalOcean preparation, 9 November 2026:** the user selected a USD 20/month database
+budget; the USD 15.15/month PG17 Standard form is configured in NYC3 near Netlify IAD.
+Creation awaits user billing; Supabase stays live. 397 isolated tests and build pass.
+DigitalOcean connections require the cluster CA and cafe_app runtime role; backup and
+restore require direct port 25060. Runtime may use an explicit session pool on 25061.
+See `deploy/DIGITALOCEAN.md`. Preserve the existing source until a verified cutover;
+no schema migration or bootstrap/seed of an existing cafe is implied.
+
 **Current state, 6 November 2026 (supersedes older milestone/status notes below):**
 Netlify Free + Supabase is the selected deployment. The user approved stages A-C in
 `files/completion-schema-proposal-2026-11-06.md`. Migrations 0008-0012 add nullable

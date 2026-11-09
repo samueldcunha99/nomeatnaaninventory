@@ -41,7 +41,7 @@ test('managed hosting loopback URLs fail at startup; native local production is 
   assert.equal(checkEnv(localhost, { deployment: true }).ok, true);
   const report = checkEnv({ ...localhost, RENDER: 'true' }, { deployment: true });
   assert.equal(report.ok, false);
-  assert.ok(report.problems.some((p) => p.includes('Supabase connection')));
+  assert.ok(report.problems.some((p) => p.includes('managed PostgreSQL connection')));
   assert.equal(checkEnv({ ...localhost, HOSTING_PROVIDER: 'netlify' }, { deployment: true }).ok, false);
 
   // ...but it is perfectly normal in development.
@@ -91,6 +91,19 @@ test('pool size is bounded and defaults to five', () => {
   for (const value of ['0', '21', '1.5', 'bad']) {
     assert.equal(checkEnv({ ...local, DATABASE_MAX_CONNECTIONS: value }).ok, false);
   }
+});
+
+test('DigitalOcean direct and session-pool connections require verified CA and the restricted runtime role', () => {
+  const managed = { DATABASE_URL: 'postgres://cafe_app:secret@cafe-do-user-123-0.g.db.ondigitalocean.com:25060/nomeatnaan?sslmode=require',
+    DATABASE_SSL_CA: 'do-ca\\ncertificate', NODE_ENV: 'production', DATABASE_MAX_CONNECTIONS: '1' };
+  assert.deepEqual(databaseConfig(managed).options.ssl, { rejectUnauthorized: true, ca: 'do-ca\ncertificate' });
+  assert.equal(databaseConfig(managed).options.max, 1);
+  const pooled = { ...managed, DATABASE_URL: managed.DATABASE_URL.replace(':25060/nomeatnaan', ':25061/cafe_session') };
+  assert.equal(checkEnv(pooled).ok, true);
+  assert.deepEqual(checkEnv({ ...managed, DATABASE_SSL_CA: '' }).missing, ['DATABASE_SSL_CA']);
+  for (const mode of ['disable', 'allow', 'prefer']) assert.equal(checkEnv({ ...managed, DATABASE_URL: managed.DATABASE_URL.replace('require', mode) }).ok, false);
+  assert.equal(checkEnv({ ...managed, DATABASE_URL: managed.DATABASE_URL.replace('cafe_app:', 'doadmin:') }).ok, false);
+  assert.equal(checkEnv({ ...managed, DATABASE_MIGRATION_URL: managed.DATABASE_URL.replace('cafe_app:', 'doadmin:'), APP_DB_PASSWORD: 'runtime-secret' }, { purpose: 'migration' }).ok, true);
 });
 
 test('whitespace is not a value', () => {

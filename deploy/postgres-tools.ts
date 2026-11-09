@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { databaseConfig } from '../src/lib/database-config.ts';
-import { isSupabaseHost } from '../src/lib/env.ts';
+import { isDigitalOceanHost, isManagedPostgresHost } from '../src/lib/env.ts';
 
 export async function checksum(file: string) {
   const hash = createHash('sha256');
@@ -19,7 +19,10 @@ export async function withPostgresTools<T>(connection: string, certificate: stri
   databaseConfig({ DATABASE_URL: connection, DATABASE_SSL_CA: certificate, NODE_ENV: 'development' });
   const url = new URL(connection);
   const ca = certificate?.trim().replace(/\\n/g, '\n');
-  if (isSupabaseHost(url.hostname) && !ca) throw new Error('DATABASE_SSL_CA is required by the native Supabase backup/restore tools.');
+  if (isManagedPostgresHost(url.hostname) && !ca) throw new Error('DATABASE_SSL_CA is required by the native managed PostgreSQL backup/restore tools.');
+  if (isDigitalOceanHost(url.hostname) && url.port !== '25060') {
+    throw new Error('DigitalOcean native backup/restore must use the direct database connection on port 25060, not its pool.');
+  }
   const directory = await mkdtemp(join(tmpdir(), 'cafe-pg-'));
   try {
     const env = { ...process.env, PGHOST: url.hostname.replace(/^\[|\]$/g, ''), PGPORT: url.port || '5432',

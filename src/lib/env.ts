@@ -32,6 +32,14 @@ export function isSupabaseHost(host: string): boolean {
   return host.endsWith('.supabase.co') || host.endsWith('.pooler.supabase.com');
 }
 
+export function isDigitalOceanHost(host: string): boolean {
+  return host.endsWith('.db.ondigitalocean.com');
+}
+
+export function isManagedPostgresHost(host: string): boolean {
+  return isSupabaseHost(host) || isDigitalOceanHost(host);
+}
+
 /** Deployment checks run at startup; builds may legitimately use placeholders. */
 export function checkEnv(env: EnvLike = process.env, opts: { deployment?: boolean; purpose?: DatabasePurpose } = {}): EnvReport {
   const purpose = opts.purpose ?? 'runtime';
@@ -51,20 +59,25 @@ export function checkEnv(env: EnvLike = process.env, opts: { deployment?: boolea
         problems.push(`${key} must be a postgres:// or postgresql:// URL with a database name.`);
       } else {
         const supabase = isSupabaseHost(url.hostname);
-        if (supabase && !env.DATABASE_SSL_CA?.trim()) missing.push('DATABASE_SSL_CA');
+        const digitalOcean = isDigitalOceanHost(url.hostname);
+        const managed = supabase || digitalOcean;
+        if (managed && !env.DATABASE_SSL_CA?.trim()) missing.push('DATABASE_SSL_CA');
         if (supabase && url.port && url.port !== '5432') {
           problems.push(`${key} must use Supabase direct or session mode on port 5432. Transaction mode is unsupported.`);
         }
         if (supabase && url.searchParams.get('sslmode') === 'disable') {
           problems.push(`${key} cannot disable TLS for Supabase.`);
         }
-        if (purpose === 'runtime' && supabase && env.NODE_ENV === 'production' &&
+        if (digitalOcean && ['disable', 'allow', 'prefer'].includes(url.searchParams.get('sslmode') ?? '')) {
+          problems.push(`${key} must require verified TLS for DigitalOcean.`);
+        }
+        if (purpose === 'runtime' && managed && env.NODE_ENV === 'production' &&
             decodeURIComponent(url.username).split('.')[0] !== 'cafe_app') {
-          problems.push('DATABASE_URL must use the cafe_app role in production. Keep the postgres credentials in DATABASE_MIGRATION_URL.');
+          problems.push('DATABASE_URL must use the cafe_app role in production. Keep administrative credentials in DATABASE_MIGRATION_URL.');
         }
         if (opts.deployment && (env.RENDER === 'true' || env.HOSTING_PROVIDER === 'netlify') &&
             ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) {
-          problems.push(`${key} points at localhost on managed hosting. Use the Supabase connection from its Connect panel.`);
+          problems.push(`${key} points at localhost on managed hosting. Use the managed PostgreSQL connection from its Connect panel.`);
         }
       }
     } catch {

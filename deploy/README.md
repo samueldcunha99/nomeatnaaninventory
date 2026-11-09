@@ -1,5 +1,10 @@
 # Netlify Free + Supabase handover
 
+**DigitalOcean target selected, 9 November 2026:** migration preparation is documented
+in [DIGITALOCEAN.md](DIGITALOCEAN.md). The USD 15.15/month PostgreSQL 17 Standard form
+is ready, but creation awaits the user's payment step. The live app still uses Supabase.
+Provider-specific TLS/runtime-role/native-backup guards are prepared; no schema change.
+
 **Selected by the user on 10 October 2026.** This supersedes the Render and E2E/Docker
 deployment decisions. Netlify runs the Next.js app through its managed OpenNext adapter;
 Supabase hosts PostgreSQL. Drizzle migrations, cookie authentication, tenant filtering,

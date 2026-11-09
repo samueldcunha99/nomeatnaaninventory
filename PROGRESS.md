@@ -2594,3 +2594,19 @@ production build and populated restricted-runtime recovery. All 67 live checks p
 CSV preview that was never confirmed. Final live counts still show zero active
 catalogue, movements, batches, orders and payments; owner/archive/84 audit rows retained.
 Temporary local test app/PostgreSQL stopped. No test business data reached Supabase.
+
+## 2026-11-09 - DigitalOcean target prepared; billing awaits user
+
+User selected a USD 20/month database budget and asked to configure their open
+DigitalOcean creation tab. Prepared nomeatnaan-inventory-db, PG17 Standard Regular,
+1 vCPU/1 GB RAM/10 GiB, USD 15.15/month before taxes, autoscaling off. Netlify dashboard
+verified its Functions region is IAD, so target region is NYC3. Automatic approval review
+blocked clicking Add Payment Method and Create Database Cluster, requiring user handoff.
+The configured form is open; no database has been created by this work. Supabase is live.
+
+Added DigitalOcean CA verification and restricted-runtime-role checks, plus direct-only
+native backup/restore guard. 397 isolated tests, typecheck and production build pass.
+Existing auth/tenant/ledger/cost arithmetic and schema are unchanged. Recovery preparation
+uses a fresh Supabase app-only snapshot and an isolated local restored database; actual
+DigitalOcean privileges, pooling and cutover remain to be verified after creation.
+See deploy/DIGITALOCEAN.md. All credentials/dumps/recovery helpers remain private/ignored.
