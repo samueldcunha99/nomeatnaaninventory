@@ -2,7 +2,8 @@
 
 **DigitalOcean target selected, 9 November 2026:** migration preparation is documented
 in [DIGITALOCEAN.md](DIGITALOCEAN.md). The USD 15.15/month PostgreSQL 17 Standard form
-is ready, but creation awaits the user's payment step. The live app still uses Supabase.
+was prepared, but the user deferred creation/migration to December after the month-long
+trial. The live app stays on Supabase; resume migration only when requested.
 Provider-specific TLS/runtime-role/native-backup guards are prepared; no schema change.
 
 **Selected by the user on 10 October 2026.** This supersedes the Render and E2E/Docker

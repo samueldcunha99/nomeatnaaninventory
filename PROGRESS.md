@@ -2624,3 +2624,12 @@ copied owner password verified; cafe_app could read but could not create tables.
 Local PostgreSQL stopped. The configured DigitalOcean USD 15.15/month creation form
 awaits user payment setup after automatic approval review required handoff. No target
 credentials or database exist yet; actual target tests and cutover remain outstanding.
+
+## 2026-11-09 - User deferred DigitalOcean until after the cafe trial
+
+The user explicitly chose to complete the month-long cafe testing on Supabase and
+revisit DigitalOcean next month (December 2026). This supersedes the pending billing
+handoff. Keep Netlify + Supabase active, retain the verified migration preparation,
+and do not provision paid resources or cut over until the user resumes the migration.
+No runtime configuration, cafe data or billing settings were changed for this deferral.
+README, AGENTS, deployment runbooks and the account handover now record this decision.

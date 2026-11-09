@@ -3,6 +3,11 @@
 Conventions for the cafe management system. Read `files/PROJECT-SPEC.md` first — this
 file records what we decided that the spec does not say, and why.
 
+**Deployment decision, 9 November 2026:** the user deferred DigitalOcean until next
+month (December 2026), after the cafe's month-long testing. Netlify + Supabase remains
+the active deployment. Keep the prepared migration support/runbook, but do not create
+paid database resources or perform a cutover until the user resumes that work.
+
 **Latest QA, 8 November 2026:** 382 isolated PostgreSQL tests and 47 compiled form
 workflow groups pass. See `files/FULL-FLOW-QA-2026-11-08.md`. Stock forms now submit
 both measurement type and purchase factor, and writers recheck them under ingredient
@@ -21,7 +26,7 @@ See `files/STOCK-IMPORT-2026-11-09.md`. No schema change.
 
 **DigitalOcean preparation, 9 November 2026:** the user selected a USD 20/month database
 budget; the USD 15.15/month PG17 Standard form is configured in NYC3 near Netlify IAD.
-Creation awaits user billing; Supabase stays live. 397 isolated tests and build pass.
+Creation is deferred by the user until after the trial; Supabase stays live. 397 tests and build pass.
 DigitalOcean connections require the cluster CA and cafe_app runtime role; backup and
 restore require direct port 25060. Runtime may use an explicit session pool on 25061.
 See `deploy/DIGITALOCEAN.md`. Preserve the existing source until a verified cutover;

@@ -2,7 +2,7 @@
 
 **Prepared:** 8 November 2026
 
-**Updated:** 9 November 2026 for the published stock CSV importer.
+**Updated:** 9 November 2026 for stock import, migration preparation and the decision to keep the trial on Supabase.
 
 **Purpose:** Give another ChatGPT account the current project status and enough context to continue safely. This file contains no passwords, API keys, database credentials, or session tokens.
 
@@ -15,7 +15,7 @@ A cafe inventory, recipe costing, production and order management system for No 
 - **Source repository:** [github.com/samueldcunha99/nomeatnaaninventory](https://github.com/samueldcunha99/nomeatnaaninventory)
 - **Live app:** [nomeatnaaninventory.netlify.app](https://nomeatnaaninventory.netlify.app/)
 - **Hosting and database:** Netlify Free + Supabase PostgreSQL, without Docker. The user selected Netlify after an earlier Render plan.
-- **Current deployed application revision:** `9f17a572a12431390160ee1e16c5f7a97a92200b` (short `9f17a57`), DigitalOcean connection support. CI `42584621401` passed 397 tests, zero failed/skipped, build and recovery rehearsal; 13 focused live owner/page/language/preview checks passed. The live database is still Supabase. The DigitalOcean PG17 Standard form is prepared at USD 15.15/month before taxes in NYC3, but creation awaits user billing. A fresh actual source backup was restored and verified locally (20 tables/13 migrations, owner password, fingerprints, restricted role). No target database or final cutover exists yet. See `deploy/DIGITALOCEAN.md`. The preceding stock importer release passed 67 live checks and 12 compiled import groups; the earlier full-flow audit passed 47 workflow groups.
+- **Current deployed application revision:** `9f17a572a12431390160ee1e16c5f7a97a92200b` (short `9f17a57`), DigitalOcean connection support. CI `42584621401` passed 397 tests, zero failed/skipped, build and recovery rehearsal; 13 focused live owner/page/language/preview checks passed. The live database is still Supabase. The DigitalOcean PG17 Standard form is prepared at USD 15.15/month before taxes in NYC3, but the user deferred creation and migration until December 2026, after the cafe trial. Keep Supabase for testing and resume migration only when requested. A fresh actual source backup was restored and verified locally (20 tables/13 migrations, owner password, fingerprints, restricted role). No target database or final cutover exists yet. See `deploy/DIGITALOCEAN.md`. The preceding stock importer release passed 67 live checks and 12 compiled import groups; the earlier full-flow audit passed 47 workflow groups.
 - The app has also been run locally at `http://localhost:3000` during prior work.
 
 ## Work completed
