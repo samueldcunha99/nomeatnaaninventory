@@ -60,3 +60,25 @@ for the existing off-site recovery requirements.
 Provider references: [connections and TLS](https://docs.digitalocean.com/products/databases/postgresql/how-to/connect/),
 [connection pools](https://docs.digitalocean.com/products/databases/postgresql/how-to/manage-connection-pools/),
 [database pricing](https://www.digitalocean.com/pricing/managed-databases).
+
+## Preparation verification
+
+397 isolated native PostgreSQL tests pass, zero failures/skips; production build and
+typecheck pass. A fresh Supabase snapshot was restored into another local database:
+all 20 public/drizzle table counts and all non-session row fingerprints match,
+13 migrations are retained, the owner's existing password verifies against the copied
+hash, and the restricted runtime can read application tables but cannot perform DDL.
+Timestamp fingerprints were normalized to UTC on both connections before comparison.
+Supabase received no business writes. Dumps, credentials and detailed evidence remain
+private under ignored backup and `.netlify/digitalocean-2026-11-09/` paths.
+
+Connection-support application `9f17a572a12431390160ee1e16c5f7a97a92200b` is deployed
+and its readiness response matches. This adds target support; it does not switch the
+runtime database. The paid database, target-specific checks and final cutover still
+await the user completing the configured billing/creation form.
+
+[CI 42584621401](https://github.com/samueldcunha99/nomeatnaaninventory/actions/runs/42584621401)
+passed all 397 tests, zero skipped, build and populated migration/runtime/backup/restore
+rehearsal. Thirteen focused live owner/page/language/preview checks passed after the
+deployment, with zero business writes; owner login/logout still works on Supabase.
+The temporary local PostgreSQL was stopped after verification.

@@ -2610,3 +2610,17 @@ Existing auth/tenant/ledger/cost arithmetic and schema are unchanged. Recovery p
 uses a fresh Supabase app-only snapshot and an isolated local restored database; actual
 DigitalOcean privileges, pooling and cutover remain to be verified after creation.
 See deploy/DIGITALOCEAN.md. All credentials/dumps/recovery helpers remain private/ignored.
+
+## 2026-11-09 - DigitalOcean connection support published; migration pending billing
+
+Application 9f17a572a12431390160ee1e16c5f7a97a92200b is published and readiness
+matches. CI 42584621401 passed all 397 tests, zero failed/skipped, build and populated
+recovery rehearsal. Thirteen focused live owner/page/language/CSV-preview checks passed
+without business writes. Current live database remains Supabase.
+
+A fresh actual Supabase app backup was restored locally: 20 public/drizzle table counts,
+13 migrations and all non-session row fingerprints matched with UTC normalization. The
+copied owner password verified; cafe_app could read but could not create tables.
+Local PostgreSQL stopped. The configured DigitalOcean USD 15.15/month creation form
+awaits user payment setup after automatic approval review required handoff. No target
+credentials or database exist yet; actual target tests and cutover remain outstanding.
