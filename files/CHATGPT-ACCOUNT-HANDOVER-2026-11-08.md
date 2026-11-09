@@ -2,6 +2,8 @@
 
 **Prepared:** 8 November 2026
 
+**Updated:** 9 November 2026 for the published stock CSV importer.
+
 **Purpose:** Give another ChatGPT account the current project status and enough context to continue safely. This file contains no passwords, API keys, database credentials, or session tokens.
 
 ## What the project is
@@ -13,7 +15,7 @@ A cafe inventory, recipe costing, production and order management system for No 
 - **Source repository:** [github.com/samueldcunha99/nomeatnaaninventory](https://github.com/samueldcunha99/nomeatnaaninventory)
 - **Live app:** [nomeatnaaninventory.netlify.app](https://nomeatnaaninventory.netlify.app/)
 - **Hosting and database:** Netlify Free + Supabase PostgreSQL, without Docker. The user selected Netlify after an earlier Render plan.
-- **Current deployed application revision:** `a608f0a7908726ccbd9bec935d8a4dc9e84789de` (short hash `a608f0a`), the 8 November full-flow bug-fix release. GitHub CI run `42509667437` passed all 382 tests with zero failures/skips, production build and backup/restore rehearsal. Netlify health matched this revision, and all 63 live staff-page/language checks passed. The isolated compiled app also passed 47 workflow groups; the browser completed ingredient → delivery → recipe → menu → order → payment → kitchen → customer tracking. Earlier reports refer to prior releases; later documentation-only commits do not rebuild the verified app.
+- **Current deployed application revision:** `8995aa3ef50a8abf4145f6921a6958408aab0fec` (short hash `8995aa3`), the 9 November stock CSV import release. CI `42580997091` passed all 395 tests, zero failures/skips, production build and backup/restore rehearsal. Netlify health matched; all 67 live page/language/preview checks passed with zero business writes. The importer also passed 12 compiled workflow groups and browser upload/template/retry/language checks. The previous full-flow release passed 47 workflow groups and the browser completed ingredient → delivery → recipe → menu → order → payment → kitchen → customer tracking. Later documentation-only commits do not rebuild the verified application.
 - The app has also been run locally at `http://localhost:3000` during prior work.
 
 ## Work completed
@@ -21,6 +23,11 @@ A cafe inventory, recipe costing, production and order management system for No 
 The app includes:
 
 - Ingredient catalogue and recipe/sub-recipe/menu-item management.
+- Owners/managers can use **Ingredients → Import stock file** for a CSV template,
+  row-error preview and atomic ingredient-list/opening-stock/delivery import. Up to
+  100 rows / 256 KB; save Excel as CSV UTF-8. Existing writers/locks and unknown-cost
+  semantics are preserved. Same file/type/reference cannot duplicate stock. No migration.
+  See `files/STOCK-IMPORT-2026-11-09.md` and the operator guide.
 - Metric quantity conversion, append-only stock movements, receipts, adjustments, wastage, movement history and low-stock views.
 - Weighted-average ingredient costing, recipe cost breakdowns, what-if prices, and unknown-cost warnings. Missing cost is kept unknown instead of silently treated as zero.
 - Opening-stock quantity and valuation entry, production batches, prepared-shelf stock, daily production reports, and conservative append-only batch corrections/reversals.

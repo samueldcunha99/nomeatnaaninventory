@@ -11,7 +11,9 @@ save atomically through the existing writers; the same file/mode/reference canno
 duplicate stock. Missing prices are never assumed free. No schema migration.
 395 isolated PostgreSQL tests, 12 compiled upload/confirmation/access workflows and
 production build passed. Browser upload, template download, duplicate protection and
-English/Hindi/Marathi were verified. See [stock import notes](files/STOCK-IMPORT-2026-11-09.md).
+English/Hindi/Marathi were verified. Published `8995aa3`: CI test/build/recovery and all
+67 live language/page/preview checks pass, with zero live business writes. See
+[stock import notes](files/STOCK-IMPORT-2026-11-09.md).
 
 **Full-flow audit - 8 November 2026:** fixed stale measurement/pack handling in stock
 forms (including concurrent ingredient edits), exact-number limits, invalid ingredient

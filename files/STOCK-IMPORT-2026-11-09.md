@@ -43,4 +43,20 @@ A separate identical delivery needs another reference. Ledger notes retain that 
 Every test business write used `.netlify/stock-import-2026-11-09/` isolated databases.
 Its credentials and logs are ignored. The cafe database was not seeded/imported.
 Browser proof: `files/stock-import-browser-2026-11-09.png` (local, not part of release).
-Publication/CI verification follows after pushing the tested application.
+## Published verification
+
+Application `8995aa3ef50a8abf4145f6921a6958408aab0fec` is live; readiness returns the
+exact revision. [CI 42580997091](https://github.com/samueldcunha99/nomeatnaaninventory/actions/runs/42580997091)
+passed **395 tests, zero failures/skips**, typecheck, production build and the populated
+restricted-runtime migration/backup/restore rehearsal.
+
+All **67 live checks** passed: 21 protected pages in all three languages, three sign-in
+guides and an actual multipart stock-file preview. It showed the exact INR 125 value
+and confirmation controls, but was never confirmed. Owner login/logout passed. Final
+read-only counts matched the clean trial: zero active catalogue, movements, batches,
+orders and payment records; one owner/tenant plus existing archives and 84 audit rows.
+No cafe business data was added. Temporary local app/PostgreSQL processes were stopped.
+
+Private evidence is under `.netlify/stock-import-2026-11-09/`: full/focused suites,
+production build, 12 HTTP groups, 67 live checks and final read-only counts. The local
+proof image demonstrates fabricated test stock, not records created in the live cafe.

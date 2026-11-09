@@ -2584,3 +2584,13 @@ workflow groups pass. Browser upload, invalid-file correction, exact preview/con
 retry protection, template download and language preservation pass. The HTTP checks found
 and fixed missing confirmation feedback without JavaScript. All test writes are local;
 no Supabase business data imported. See files/STOCK-IMPORT-2026-11-09.md.
+
+## 2026-11-09 - Stock file importer published
+
+Published application 8995aa3ef50a8abf4145f6921a6958408aab0fec; Netlify readiness
+reports the exact revision. CI 42580997091 passed all 395 tests, zero failed/skipped,
+production build and populated restricted-runtime recovery. All 67 live checks passed:
+21 protected pages across three languages, three sign-in guides and a real multipart
+CSV preview that was never confirmed. Final live counts still show zero active
+catalogue, movements, batches, orders and payments; owner/archive/84 audit rows retained.
+Temporary local test app/PostgreSQL stopped. No test business data reached Supabase.
